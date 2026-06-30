@@ -1,0 +1,6 @@
+[submodule "third_party/akg"]
+	path = third_party/akg
+	url = https://atomgit.com/mindspore/akg.git
+	branch = br_agents
+	shallow = true
+

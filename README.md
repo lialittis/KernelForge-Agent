@@ -65,3 +65,38 @@ work.
 - Decisions: `docs/decisions/`
 
 If chat history and repository files disagree, trust the repository files.
+
+## Benchmark Setup
+
+The official AKG benchmark is managed as a Git submodule, pinned to the
+inspected `br_agents` commit:
+
+```text
+repo:   https://atomgit.com/mindspore/akg.git
+branch: br_agents
+commit: bea77cb38db5713056a7e06e5e8a0cbe9d26954b
+path:   akg_agents/benchmark/akg_kernels_bench_lite
+```
+
+After cloning this repository, initialize the benchmark with:
+
+```bash
+bash scripts/setup_benchmark_submodule.sh
+```
+
+The benchmark will be available at:
+
+```text
+third_party/akg/akg_agents/benchmark/akg_kernels_bench_lite
+```
+
+The submodule keeps our Git history small: this repository stores only a
+pointer to the AKG commit. The setup script enables sparse checkout so the local
+working tree only materializes the benchmark path we need.
+
+For a normal recursive clone, users can also run:
+
+```bash
+git submodule update --init --depth 1 --filter=blob:none third_party/akg
+bash scripts/setup_benchmark_submodule.sh
+```

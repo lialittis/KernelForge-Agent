@@ -5,29 +5,26 @@ and agents.
 
 ## Current Priorities
 
-1. Complete `docs/benchmark_spec.md` from official competition and benchmark
-   materials.
-2. Obtain the official `akg_kernels_bench_lite` source and record its URL,
-   commit, layout, and commands.
-3. Reproduce one official baseline task on Ascend 910.
-4. Save raw official sample tasks under `benchmarks/raw/`.
-5. Create at least one parsed OpSpec example under `benchmarks/parsed/`.
-6. Draft elementwise and broadcast Sketch examples.
-7. Add the first experiment record under `experiments/runs/`.
-8. Decide whether to commit `SketchSkill_AKG_项目书基础版.pdf`.
+1. Reproduce official `t1/gelu.py` on Ascend 910 using the inspected benchmark
+   source.
+2. Create a minimal single-case submission directory with `ModelNew` for GELU.
+3. Run `tools/run_bench.py` against that single-case submission.
+4. Add the first experiment record under `experiments/runs/`.
+5. Create `benchmarks/parsed/t1_gelu.yaml` as the first OpSpec example.
+6. Draft the first elementwise Sketch example for GELU.
+7. Decide whether to commit `SketchSkill_AKG_项目书基础版.pdf`.
 
 ## Research Questions
 
-- What exact task format does `akg_kernels_bench_lite` provide?
-- Which AKG Agents entrypoints are expected for this competition?
+- Which AKG Agents runner path should be treated as authoritative for the final
+  submission: standalone `tools/run_bench.py`, `run_torch_bench_lite.py`, or
+  both?
 - What Triton-Ascend version and APIs are available?
 - What CANN and Ascend 910 environment are provided?
-- What are the official rtol/atol or task-specific correctness tolerances?
-- What exact metric determines ranking: latency, throughput, relative speedup,
-  or a combined score?
-- How is Pass@4 evaluated by the community benchmark?
-- What is the required submission package layout?
-- Which operators should form the first 3-5 task experiment subset?
+- Should project experiments use Pass@4, or match the AKG Agents runner default
+  `--pass-n 3` unless overridden?
+- Which official cases are runnable without `torch_npu` dependencies on the
+  available machine?
 
 ## Coordination Rules
 
@@ -38,4 +35,3 @@ and agents.
 - Prefer append-only experiment records over editing old records, unless
   correcting an obvious metadata mistake.
 - Promote reusable experiment lessons into `skills/`.
-
