@@ -25,6 +25,8 @@ Design pivot and benchmark-reproduction preparation.
 - Added the AKG repository as a pinned Git submodule at `third_party/akg` and
   configured local sparse checkout for `akg_kernels_bench_lite`.
 - Added `scripts/setup_benchmark_submodule.sh` for new machines.
+- Added `docs/dev_guide.md` to document the local-development plus Ascend-worker
+  experiment loop.
 
 ## In Progress
 
@@ -53,32 +55,24 @@ Date: 2026-06-30
 Agent: Codex
 Branch: main
 Summary:
-- Confirmed the official `akg_kernels_bench_lite` benchmark location on
-  AtomGit.
-- Inspected the benchmark README, runner docs, scoring tool, validation tool,
-  and `t1/gelu.py`.
-- Updated the benchmark specification with source URL, branch, commit, task
-  layout, case list, validation rules, scoring rules, and first reproduction
-  plan.
-- Added the AKG repo as a pinned submodule and documented sparse-checkout setup
-  for new users.
+- Added a dedicated development guide for the local-development plus
+  Ascend-worker experiment loop.
+- Linked the guide from `README.md` and `AGENTS.md`.
+- Added a tracked script to recreate the ignored manual GELU submission on any
+  worker machine.
 
 Changed Files:
-- `.gitmodules`
+- `AGENTS.md`
 - `README.md`
-- `docs/benchmark_spec.md`
-- `docs/decisions/0003-manage-akg-benchmark-as-submodule.md`
+- `docs/dev_guide.md`
 - `docs/status.md`
-- `scripts/setup_benchmark_submodule.sh`
-- `tasks/active.md`
-- `third_party/README.md`
-- `third_party/akg`
+- `scripts/create_manual_gelu_submission.sh`
 
 Verification:
-- Confirmed branch with `git ls-remote`.
-- Sparse-cloned the official benchmark path to `/tmp/akg_bench_inspect`.
-- Configured `third_party/akg` at commit
-  `bea77cb38db5713056a7e06e5e8a0cbe9d26954b`.
+- `bash -n scripts/create_manual_gelu_submission.sh` passes.
+- `bash scripts/create_manual_gelu_submission.sh` creates the manual GELU
+  submission.
+- Official `validate_submission.py` passes for the generated submission.
 - Documentation-only repo change. No project code tests were run.
 
 Open Issues:

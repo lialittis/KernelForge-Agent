@@ -26,6 +26,7 @@ Library write-back.
 ## Source Of Truth
 
 - Architecture: `docs/architecture.md`
+- Development loop: `docs/dev_guide.md`
 - Project workflow: `docs/project_workflow.md`
 - Benchmark requirements: `docs/benchmark_spec.md`
 - Current status: `docs/status.md`
@@ -46,8 +47,9 @@ Before starting work:
 2. Read `docs/status.md`.
 3. Read `tasks/active.md`.
 4. Read `docs/architecture.md` for the current system design.
-5. Check recent decision records in `docs/decisions/`.
-6. Confirm whether your task touches benchmark research, harness code, agent
+5. Read `docs/dev_guide.md` if work will be run on a separate Ascend machine.
+6. Check recent decision records in `docs/decisions/`.
+7. Confirm whether your task touches benchmark research, harness code, agent
    code, experiments, skills, or documentation.
 
 Recommended Git flow:
@@ -148,4 +150,3 @@ Every generated candidate should be traceable to:
 
 Change one major variable per experiment cycle whenever possible. This keeps
 results interpretable.
-

@@ -56,6 +56,7 @@ work.
 - Agent guide: `AGENTS.md`
 - Architecture: `docs/architecture.md`
 - Workflow: `docs/project_workflow.md`
+- Dev guide: `docs/dev_guide.md`
 - Benchmark spec: `docs/benchmark_spec.md`
 - Current status: `docs/status.md`
 - Roadmap: `docs/roadmap.md`
