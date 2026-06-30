@@ -147,6 +147,30 @@ The script writes into `outputs/`, which is ignored by Git. That is intentional:
 the submission is a runtime artifact, while the script is the reproducible
 source.
 
+## Extracting GELU OpSpec
+
+The current parser milestone supports `t1/gelu.py`.
+
+Generate an OpSpec YAML from the official case file:
+
+```bash
+python scripts/extract_opspec.py \
+  --case third_party/akg/akg_agents/benchmark/akg_kernels_bench_lite/t1/gelu.py \
+  --experiment experiments/runs/2026-06-30-gelu-manual-baseline.yaml \
+  --repo-root . \
+  --output /tmp/t1_gelu.generated.yaml
+```
+
+The committed canonical OpSpec is:
+
+```text
+benchmarks/parsed/t1_gelu.yaml
+```
+
+Do not overwrite committed OpSpecs automatically. Generate to a temporary path,
+compare the result, then intentionally update `benchmarks/parsed/` if the
+schema or extracted facts change.
+
 ## Copying Results Back
 
 Copy back only the useful result files, not the whole `outputs/` tree.

@@ -4,7 +4,7 @@ Last updated: 2026-06-30
 
 ## Current Phase
 
-Design pivot and benchmark-reproduction preparation.
+GELU OpSpec automation and first custom-kernel preparation.
 
 ## Completed
 
@@ -33,12 +33,12 @@ Design pivot and benchmark-reproduction preparation.
 - Added the first parsed OpSpec and Sketch for `t1/gelu`.
 - Added the first experiment record for the manual GELU baseline.
 - Captured Ascend worker CANN version: `8.5.1`.
+- Implemented a GELU-only automated OpSpec extractor and CLI.
 
 ## In Progress
 
-- Confirming Ascend 910 environment constraints.
-- Preparing the repo for OpSpec, Sketch, Skill Library, and experiment-driven
-  implementation.
+- Preparing the first custom Triton-Ascend GELU candidate.
+- Verifying Triton-Ascend availability on the Ascend worker.
 
 ## Blockers
 
@@ -47,11 +47,11 @@ Design pivot and benchmark-reproduction preparation.
 
 ## Next Actions
 
-1. Commit the first GELU experiment metadata and OpSpec.
-2. Implement automated OpSpec extraction for `t1/gelu.py`.
-3. Install/verify `triton-ascend` on the Ascend worker.
-4. Generate a first custom Triton-Ascend GELU candidate.
-5. Compare the custom candidate against the manual PyTorch baseline.
+1. Install/verify `triton-ascend` on the Ascend worker.
+2. Generate a first custom Triton-Ascend GELU candidate.
+3. Run the custom candidate through `tools/run_bench.py`.
+4. Compare the custom candidate against the manual PyTorch baseline.
+5. Record the custom candidate experiment.
 
 ## Latest Handoff
 
@@ -59,22 +59,23 @@ Date: 2026-06-30
 Agent: Codex
 Branch: main
 Summary:
-- Recorded the first successful Ascend-worker benchmark run for `t1/gelu`.
-- Added `benchmarks/parsed/t1_gelu.yaml` with OpSpec and initial Sketch fields.
-- Added `experiments/runs/2026-06-30-gelu-manual-baseline.yaml`.
-- Updated the experiment record with CANN `8.5.1`.
+- Implemented the first automated OpSpec extraction path for `t1/gelu.py`.
+- Added a CLI for extracting GELU OpSpecs from the official case file.
+- Added focused tests for extraction, CLI YAML output, Sketch fields, and YAML
+  round trips.
 
 Changed Files:
-- `benchmarks/parsed/t1_gelu.yaml`
+- `docs/dev_guide.md`
 - `docs/status.md`
-- `experiments/runs/2026-06-30-gelu-manual-baseline.yaml`
+- `kernel_forge/benchmark/`
+- `scripts/extract_opspec.py`
+- `tasks/active.md`
+- `tests/test_gelu_opspec_extractor.py`
 
 Verification:
-- Ascend worker ran official `tools/run_bench.py` for `t1/gelu`.
-- Correctness passed with `max_abs_diff=0.0` and `max_rel_diff=0.0`.
-- Median baseline latency: `0.0438129500253126 ms`.
-- Median solution latency: `0.04382457991596311 ms`.
-- Speedup: `0.9997x`; weighted score: `59.98`.
+- `python -m py_compile kernel_forge/benchmark/*.py scripts/extract_opspec.py tests/test_gelu_opspec_extractor.py`
+- `python scripts/extract_opspec.py --case .../t1/gelu.py --experiment ... --output /tmp/t1_gelu.generated.yaml`
+- `pytest -q tests/test_gelu_opspec_extractor.py`
 
 Open Issues:
 - The PDF is present as `SketchSkill_AKG_项目书基础版.pdf` but is currently
@@ -82,5 +83,5 @@ Open Issues:
 - Need `triton-ascend` installed or otherwise confirmed for custom kernel work.
 
 Next Suggested Step:
-- Commit the GELU experiment metadata, then implement a small parser that emits
-  `benchmarks/parsed/t1_gelu.yaml` automatically from the official case file.
+- Install/verify `triton-ascend`, then create the first custom Triton-Ascend
+  GELU `ModelNew` candidate.

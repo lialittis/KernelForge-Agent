@@ -5,12 +5,13 @@ and agents.
 
 ## Current Priorities
 
-1. Commit `benchmarks/parsed/t1_gelu.yaml` and the GELU experiment record.
-2. Implement automated OpSpec extraction for `t1/gelu.py`.
-3. Install/verify `triton-ascend` on the Ascend worker.
-4. Generate a first custom Triton-Ascend GELU candidate.
-5. Compare the custom candidate against the manual PyTorch baseline.
-6. Decide whether to commit `SketchSkill_AKG_项目书基础版.pdf`.
+1. Install/verify `triton-ascend` on the Ascend worker.
+2. Generate a first custom Triton-Ascend GELU candidate.
+3. Run the custom candidate through `tools/run_bench.py`.
+4. Compare the custom candidate against the manual PyTorch baseline.
+5. Record the custom candidate experiment under `experiments/runs/`.
+6. Expand OpSpec extraction beyond GELU after the custom GELU loop is complete.
+7. Decide whether to commit `SketchSkill_AKG_项目书基础版.pdf`.
 
 ## Research Questions
 
