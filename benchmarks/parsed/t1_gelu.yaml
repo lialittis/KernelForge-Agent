@@ -1,0 +1,83 @@
+id: t1/gelu
+name: gelu
+tier: t1
+category: elementwise
+source_path: third_party/akg/akg_agents/benchmark/akg_kernels_bench_lite/t1/gelu.py
+reference_class: Model
+candidate_class: ModelNew
+
+inputs:
+  - name: input_tensor
+    shape: [32, 512, 1024]
+    dtype: float32
+    layout: contiguous
+
+outputs:
+  - name: output
+    shape: [32, 512, 1024]
+    dtype: float32
+    layout: contiguous
+
+semantics:
+  expression: torch.nn.functional.gelu(input_tensor)
+  formula: "0.5 * x * (1 + erf(x / sqrt(2)))"
+  broadcast: none
+  reduction_axes: []
+  normalization_axes: []
+  layout_transform: none
+  boundary_conditions:
+    tail_mask_required: true
+
+validation:
+  rtol: 1.0e-2
+  atol: 1.0e-2
+  max_error_required: null
+  shape_cases:
+    - [32, 512, 1024]
+  dtype_cases:
+    - float32
+
+performance:
+  metric: median_latency_ms
+  warmup: 10
+  repeats: 100
+  num_trials: 3
+  baseline_latency_ms: 0.0438129500253126
+  baseline_source: official_reference_model
+
+sketch:
+  operator_category: elementwise
+  compute_pattern: unary_pointwise_gelu
+  parallel_axes:
+    - flattened_output_elements
+  tile_plan:
+    strategy: contiguous_1d_tiling
+    shape: [16777216]
+    tunable: true
+  memory_plan:
+    input: contiguous_global_read
+    output: contiguous_global_write
+    intermediate: local_register_or_vector
+  pipeline_plan:
+    stages:
+      - load
+      - compute_gelu
+      - store
+  boundary_mask:
+    required: true
+    reason: flattened element count may not be divisible by backend tile size
+  accumulation_dtype: float32
+  backend_target: triton_ascend
+  performance_knobs:
+    tile_size: null
+    vector_width: null
+    num_warps_or_cores: null
+  known_risks:
+    - backend_gelu_intrinsic_or_erf_availability
+    - tail_mask_correctness
+
+submission:
+  required_files:
+    - t1/gelu.py
+  entrypoint: ModelNew
+

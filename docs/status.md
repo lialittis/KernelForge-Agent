@@ -27,6 +27,12 @@ Design pivot and benchmark-reproduction preparation.
 - Added `scripts/setup_benchmark_submodule.sh` for new machines.
 - Added `docs/dev_guide.md` to document the local-development plus Ascend-worker
   experiment loop.
+- Ran the first official benchmark smoke test on the Ascend worker:
+  `t1/gelu` passed correctness with speedup `0.9997x` and weighted score
+  `59.98`.
+- Added the first parsed OpSpec and Sketch for `t1/gelu`.
+- Added the first experiment record for the manual GELU baseline.
+- Captured Ascend worker CANN version: `8.5.1`.
 
 ## In Progress
 
@@ -36,18 +42,16 @@ Design pivot and benchmark-reproduction preparation.
 
 ## Blockers
 
-- Ascend 910 environment details, CANN/AKG/Triton-Ascend versions, and local
-  commands still need confirmation.
-- No official sample task has been reproduced yet.
+- `triton-ascend` is not installed on the Ascend worker yet; this blocks custom
+  Triton-Ascend candidate experiments but not the manual PyTorch baseline.
 
 ## Next Actions
 
-1. Reproduce `t1/gelu.py` from the official benchmark on Ascend 910.
-2. Create a minimal single-case submission with `ModelNew`.
-3. Run `tools/run_bench.py` against that submission.
-4. Record the run under `experiments/runs/`.
-5. Create `benchmarks/parsed/t1_gelu.yaml` as the first OpSpec example.
-6. Draft the first elementwise Sketch template for GELU.
+1. Commit the first GELU experiment metadata and OpSpec.
+2. Implement automated OpSpec extraction for `t1/gelu.py`.
+3. Install/verify `triton-ascend` on the Ascend worker.
+4. Generate a first custom Triton-Ascend GELU candidate.
+5. Compare the custom candidate against the manual PyTorch baseline.
 
 ## Latest Handoff
 
@@ -55,31 +59,28 @@ Date: 2026-06-30
 Agent: Codex
 Branch: main
 Summary:
-- Added a dedicated development guide for the local-development plus
-  Ascend-worker experiment loop.
-- Linked the guide from `README.md` and `AGENTS.md`.
-- Added a tracked script to recreate the ignored manual GELU submission on any
-  worker machine.
+- Recorded the first successful Ascend-worker benchmark run for `t1/gelu`.
+- Added `benchmarks/parsed/t1_gelu.yaml` with OpSpec and initial Sketch fields.
+- Added `experiments/runs/2026-06-30-gelu-manual-baseline.yaml`.
+- Updated the experiment record with CANN `8.5.1`.
 
 Changed Files:
-- `AGENTS.md`
-- `README.md`
-- `docs/dev_guide.md`
+- `benchmarks/parsed/t1_gelu.yaml`
 - `docs/status.md`
-- `scripts/create_manual_gelu_submission.sh`
+- `experiments/runs/2026-06-30-gelu-manual-baseline.yaml`
 
 Verification:
-- `bash -n scripts/create_manual_gelu_submission.sh` passes.
-- `bash scripts/create_manual_gelu_submission.sh` creates the manual GELU
-  submission.
-- Official `validate_submission.py` passes for the generated submission.
-- Documentation-only repo change. No project code tests were run.
+- Ascend worker ran official `tools/run_bench.py` for `t1/gelu`.
+- Correctness passed with `max_abs_diff=0.0` and `max_rel_diff=0.0`.
+- Median baseline latency: `0.0438129500253126 ms`.
+- Median solution latency: `0.04382457991596311 ms`.
+- Speedup: `0.9997x`; weighted score: `59.98`.
 
 Open Issues:
 - The PDF is present as `SketchSkill_AKG_项目书基础版.pdf` but is currently
   untracked; decide whether to commit it as source material.
-- Need Ascend 910 environment details and first local baseline run.
+- Need `triton-ascend` installed or otherwise confirmed for custom kernel work.
 
 Next Suggested Step:
-- Run `t1/gelu.py` through the official runner with a minimal `ModelNew`
-  submission on Ascend 910.
+- Commit the GELU experiment metadata, then implement a small parser that emits
+  `benchmarks/parsed/t1_gelu.yaml` automatically from the official case file.

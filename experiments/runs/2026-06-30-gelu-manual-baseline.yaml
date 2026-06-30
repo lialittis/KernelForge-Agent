@@ -1,0 +1,123 @@
+id: 2026-06-30-gelu-manual-baseline
+date: 2026-06-30
+agent: manual
+machine: ascend-worker-dee4b41ee68d
+branch: main
+commit: ea02da3055534aa334b3fdae7fd95de417c510dc
+status: passed
+
+benchmark:
+  source: akg_kernels_bench_lite
+  source_repo: https://atomgit.com/mindspore/akg.git
+  source_branch: br_agents
+  source_commit: bea77cb38db5713056a7e06e5e8a0cbe9d26954b
+  task_id: t1/gelu
+  operator_name: gelu
+  operator_category: elementwise
+  reference_path: third_party/akg/akg_agents/benchmark/akg_kernels_bench_lite/t1/gelu.py
+
+environment:
+  hardware: Ascend NPU
+  device: npu
+  device_count: 1
+  os: openEuler 24.03 LTS-SP2
+  cann_version: 8.5.1
+  mindspore_version: null
+  akg_version: null
+  python_version: 3.11.14
+  torch_version: 2.9.0+cpu
+  torch_npu_version: 2.9.0rc1
+  triton_version: 3.6.0
+  triton_ascend_version: not_installed
+
+generation:
+  model: null
+  backend: pytorch_npu_baseline
+  prompt_version: null
+  retrieved_skills: []
+  opspec_path: benchmarks/parsed/t1_gelu.yaml
+  sketch_path: benchmarks/parsed/t1_gelu.yaml#sketch
+  candidate_path: outputs/submissions/manual_baseline/manual_baseline/t1/gelu.py
+  candidate_index: 0
+  repair_iteration: 0
+
+command: |
+  python third_party/akg/akg_agents/benchmark/akg_kernels_bench_lite/tools/run_bench.py \
+    outputs/submissions/manual_baseline \
+    --team manual_baseline \
+    --bench-dir third_party/akg/akg_agents/benchmark/akg_kernels_bench_lite \
+    --output outputs/results/manual_baseline_gelu \
+    --warmup 10 \
+    --iterations 100 \
+    --num-trials 3
+
+results:
+  compile:
+    status: not_applicable
+    log: null
+  runtime:
+    status: pass
+    log: null
+  correctness:
+    status: pass
+    rtol: 1.0e-2
+    atol: 1.0e-2
+    max_abs_diff: 0.0
+    max_rel_diff: 0.0
+    detail: PASS
+    failed_shapes: []
+  pass_n:
+    pass_at_1: true
+    pass_at_4: null
+  performance:
+    status: pass
+    warmup: 10
+    repeats: 100
+    num_trials: 3
+    baseline_median_latency_ms: 0.0438129500253126
+    baseline_min_latency_ms: 0.043799710110761225
+    baseline_max_latency_ms: 0.04386977001558989
+    solution_median_latency_ms: 0.04382457991596311
+    solution_min_latency_ms: 0.04381225968245417
+    solution_max_latency_ms: 0.043825910543091595
+    speedup_vs_baseline: 0.9997
+    score: 59.98
+    weighted_score: 59.98
+  profiling:
+    status: not_run
+    bottleneck: null
+    profile_path: null
+
+search:
+  method: null
+  knobs:
+    tile_size: null
+    num_cores: null
+    vector_width: null
+    unroll_factor: null
+    double_buffer: null
+    parallel_axis: null
+    boundary_strategy: null
+
+failure:
+  category: null
+  summary: null
+  routed_to: null
+
+artifacts:
+  code: outputs/submissions/manual_baseline/manual_baseline/t1/gelu.py
+  logs: null
+  profiles: null
+  reports: outputs/results/manual_baseline_gelu/manual_baseline.json
+
+skill_updates: []
+
+notes: >
+  First end-to-end benchmark smoke test. ModelNew uses PyTorch GELU, so this
+  validates the official benchmark runner, submission layout, torch_npu runtime,
+  correctness comparison, and latency reporting. It is not yet a custom
+  Triton-Ascend kernel.
+
+next:
+  - Implement automated OpSpec extraction for t1/gelu.py.
+  - Generate a first custom Triton-Ascend GELU candidate.

@@ -5,14 +5,12 @@ and agents.
 
 ## Current Priorities
 
-1. Reproduce official `t1/gelu.py` on Ascend 910 using the inspected benchmark
-   source.
-2. Create a minimal single-case submission directory with `ModelNew` for GELU.
-3. Run `tools/run_bench.py` against that single-case submission.
-4. Add the first experiment record under `experiments/runs/`.
-5. Create `benchmarks/parsed/t1_gelu.yaml` as the first OpSpec example.
-6. Draft the first elementwise Sketch example for GELU.
-7. Decide whether to commit `SketchSkill_AKG_项目书基础版.pdf`.
+1. Commit `benchmarks/parsed/t1_gelu.yaml` and the GELU experiment record.
+2. Implement automated OpSpec extraction for `t1/gelu.py`.
+3. Install/verify `triton-ascend` on the Ascend worker.
+4. Generate a first custom Triton-Ascend GELU candidate.
+5. Compare the custom candidate against the manual PyTorch baseline.
+6. Decide whether to commit `SketchSkill_AKG_项目书基础版.pdf`.
 
 ## Research Questions
 
