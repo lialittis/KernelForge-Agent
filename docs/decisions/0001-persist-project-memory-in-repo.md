@@ -8,10 +8,10 @@ Accepted
 
 ## Context
 
-KernelForge-Agent will be developed across multiple machines and by multiple
+SketchSkill-AKG will be developed across multiple machines and by multiple
 humans or AI agents. Chat history and local notes are not reliable shared state.
-The project needs durable guidance, status, decisions, and experiment metadata
-that travel with the repository.
+The project needs durable guidance, status, decisions, skills, and experiment
+metadata that travel with the repository.
 
 ## Decision
 
@@ -23,6 +23,7 @@ Use Git-tracked repository files as the source of truth for project memory:
 - `docs/roadmap.md` for milestones
 - `docs/decisions/` for architecture and workflow decisions
 - `experiments/` for experiment metadata
+- `skills/` for reusable operator-generation and optimization knowledge
 - `tasks/` for active work tracking
 
 Large generated artifacts, build outputs, caches, and raw logs should not be
@@ -47,4 +48,3 @@ Negative:
 
 If merge conflicts become frequent, move handoffs into append-only files under a
 dedicated `handoffs/` directory.
-

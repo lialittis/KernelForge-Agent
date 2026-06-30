@@ -1,56 +1,35 @@
-# 项目标题
+# Historical Draft
 
-**KernelForge-Agent：基于反馈闭环的 AI 算子生成与优化系统**
+This file previously described the generic KernelForge-Agent idea:
 
----
+> KernelForge-Agent: feedback-loop-based AI operator generation and
+> optimization.
 
-# 项目概述
+The active project design has been updated to **SketchSkill-AKG**, based on
+`SketchSkill_AKG_项目书基础版.pdf`.
 
-本项目拟开发一个面向 AI 算子开发场景的自动算子生成 Agent。该 Agent 是一个可运行的软件系统，能够读取官方 Benchmark 中的算子任务描述，结合大模型代码生成能力、检索增强生成机制和自动化验证流程，完成从算子描述到可执行算子代码的自动生成。
+## Active Direction
 
-项目不仅关注生成代码本身，还强调完整闭环：自动生成多个候选算子实现，自动编译、运行、进行正确性比对和性能测试，并根据编译错误、运行错误或性能反馈进行多轮修复与优化。最终输出可复现的 Agent 系统、Benchmark 评测结果以及可复用的 Skill Library。
+**SketchSkill-AKG: skill-driven operator generation and hardware-feedback
+optimization for Ascend NPU.**
 
-Skill Library 将沉淀开发过程中形成的可复用资产，包括提示词模板、算子生成规则、自动化验证脚本、性能测试脚本、错误修复规则、调优经验和典型算子样例等，为后续算子自动生成任务提供复用基础。
+The project now plans to build on AKG Kernel Agent and combine:
 
----
+- NPU-aware Operator Sketch
+- operator-pattern Skill Library
+- correctness and performance dual-loop Agents
+- hardware-feedback search
+- AKG Agents + Triton-Ascend as the main path
+- TileLang-Ascend and Ascend C as selected enhancement paths
 
-# 核心思路
+The target hardware is Ascend 910 NPU. The target benchmark is the
+community/competition-provided AKG operator benchmark, referred to in the
+proposal as `akg_kernels_bench_lite`.
 
-本项目的核心思路是构建一个“**生成—验证—反馈—优化—沉淀**”的自动化闭环。
+See:
 
-```text
-Benchmark 算子任务
-    ↓
-Agent 解析算子语义、输入输出、shape、dtype
-    ↓
-检索 Skill Library 中的提示词、样例、规则和历史经验
-    ↓
-大模型生成多个候选算子实现
-    ↓
-自动编译与运行
-    ↓
-正确性验证与 Pass@N 统计
-    ↓
-性能测试与基准对比
-    ↓
-根据错误日志或性能结果自动修复和优化
-    ↓
-沉淀新的 prompt、脚本、规则和案例到 Skill Library
-```
-
-核心亮点包括：
-
-1. **Agent 系统化实现**
-   将算子生成、编译、验证、性能测试和反馈优化集成为一个自动化程序，而不是孤立地手写算子。
-
-2. **检索增强生成**
-   在生成算子前检索官方样例、历史成功案例、API 使用规则和错误修复经验，降低大模型幻觉，提高代码可运行性。
-
-3. **多候选生成与 Pass@N 评估**
-   针对同一 Benchmark 任务生成多个候选实现，通过自动验证统计 Pass@N，提高整体正确率。
-
-4. **反馈驱动优化**
-   利用编译日志、运行错误、数值误差和性能测试结果，引导大模型进行修复和性能优化。
-
-5. **可复用 Skill Library**
-   将提示词模板、自动化脚本、调优规则、错误修复经验和典型案例系统整理，形成可复用资产。
+- `README.md`
+- `docs/architecture.md`
+- `docs/project_workflow.md`
+- `docs/benchmark_spec.md`
+- `skills/`

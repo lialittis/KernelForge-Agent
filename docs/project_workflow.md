@@ -1,109 +1,180 @@
 # Project Workflow
 
 This document captures the shared research and implementation workflow for
-KernelForge-Agent. It should evolve as experiments reveal better methods.
+SketchSkill-AKG. It should evolve as experiments reveal better methods.
 
 ## Goal
 
-Build a reproducible AI agent system for automatic operator generation and
-optimization. The agent should close the loop from benchmark task description to
-candidate code, validation, performance measurement, feedback repair, and
-knowledge persistence.
+Build a reproducible AI agent system for automatic Ascend 910 NPU operator
+generation and optimization. The system should close the loop from benchmark
+task description to OpSpec, NPU-aware Sketch, backend candidate code,
+correctness verification, hardware profiling, search, and Skill Library
+write-back.
+
+## Main Path
+
+Use **AKG Agents + Triton-Ascend** as the initial path because it is expected to
+match the benchmark repository and can provide the fastest end-to-end
+prototype.
+
+Enhancement paths are intentionally narrower:
+
+- TileLang-Ascend for selected reduction, matmul-like, attention-like, or
+  complex memory-access operators.
+- Ascend C for a few representative performance-focused kernels.
+- CCE/TBE and CANN documentation as knowledge sources for RAG and skills.
+- MLIR/AscendNPU IR as a long-term alignment target for structured lowering.
+- CUDA/Triton implementations as migration knowledge sources, not as direct
+  line-by-line translation targets.
 
 ## Core Loop
 
 ```text
-benchmark task
--> parse operator semantics, inputs, outputs, shapes, and dtypes
--> retrieve relevant prompts, examples, rules, and prior fixes
--> generate one or more candidate implementations
--> compile and run candidates
--> verify correctness
--> benchmark performance
--> repair or optimize based on logs and metrics
--> persist useful findings into the Skill Library
+akg_kernels_bench_lite task or official sample
+-> Benchmark Parser extracts raw task information
+-> Spec Agent builds structured OpSpec
+-> Sketch Agent builds NPU-aware Operator Sketch
+-> Skill Retriever fetches relevant operator-pattern skills
+-> Code Agent generates Triton-Ascend candidate kernels
+-> Compile & Verify Agent compiles, runs, compares, and records Pass@N
+-> Repair Agent routes failures to Code Agent or Sketch Agent
+-> Profiler & Search Agent optimizes correct kernels on Ascend 910
+-> Best Kernel Selector chooses correct and fastest candidate
+-> Skill Writer persists bad-to-good trajectory and reusable rules
 ```
 
 ## Development Stages
 
-### Stage 1: Benchmark Specification
+### Stage 1: Benchmark And Environment Reproduction
 
-Create `docs/benchmark_spec.md` once official requirements and examples are
-available. Capture:
+Create and maintain `docs/benchmark_spec.md` from official materials. Capture:
 
-- task input format
-- required output format
-- supported implementation language/runtime
-- correctness tolerance
-- performance metric
-- submission constraints
-- official sample operators
+- benchmark repository and task layout
+- `akg_kernels_bench_lite` task format
+- expected candidate file layout
+- supported backend/runtime
+- build, run, and validation commands
+- correctness tolerances
+- performance metrics
+- sample operators and baselines
+- submission packaging constraints
 
-### Stage 2: Manual Baseline
+Exit condition: one official baseline or sample task can be run on the target
+environment.
 
-Implement one known-good operator manually. The baseline should exercise the
-same compile, run, validation, and profiling flow that generated candidates will
-use later.
+### Stage 2: OpSpec Parser
 
-### Stage 3: Harness Automation
+Implement the Benchmark Parser and Spec Agent. The output should be structured
+and stable enough for later agents.
 
-Build the benchmark harness before building complex agent behavior. Minimum
-components:
+Minimum OpSpec fields:
 
-- task parser
-- candidate workspace manager
-- compiler/build runner
-- execution runner
-- correctness validator
-- performance profiler
-- structured result writer
+- operator name and category
+- input/output shapes and dtypes
+- broadcasting and layout behavior
+- reduction axes or normalization axes when relevant
+- reference implementation path or callable
+- tolerance rules
+- baseline performance data if available
+- test shape set
 
-### Stage 4: Single-Shot Generation
+### Stage 3: NPU-Aware Sketch Templates
 
-Generate one candidate implementation from a benchmark task and run it through
-the harness. Save the prompt, generated code, logs, and result metadata.
+Define JSON/YAML-style Sketch templates per operator category. Sketch should be
+easy for an LLM to generate, validate, repair, and lower to backend code.
 
-### Stage 5: Feedback Repair
+Minimum Sketch fields:
 
-Feed compiler errors, runtime errors, numerical mismatch reports, and relevant
-source snippets back into a repair prompt. Track repair iterations separately
-from the original generation.
+- compute pattern
+- parallel axes
+- tile plan
+- memory plan for GM/UB movement
+- pipeline plan, including copyin-compute-copyout where applicable
+- boundary and mask strategy
+- accumulation dtype
+- backend target
+- performance knobs
 
-### Stage 6: Multi-Candidate Generation
+### Stage 4: Triton-Ascend Candidate Generation
 
-Generate multiple candidates for each task and report Pass@N. Keep each
-candidate isolated so compile logs, runtime logs, and metrics do not overwrite
-each other.
+Use AKG Agents plus retrieved skills to generate multiple Triton-Ascend
+candidates from OpSpec and Sketch. Save prompt, Sketch, retrieved skills,
+generated code, and metadata for each candidate.
 
-### Stage 7: Retrieval-Augmented Generation
+### Stage 5: Correctness Loop
 
-Build a Skill Library from prompts, rules, examples, fixes, and tuning notes.
-Retrieve only context relevant to the current task and record which skills were
-used in each experiment.
+Build compile/run/correctness verification before deep performance work. Track:
 
-### Stage 8: Performance Optimization
+- compile errors
+- runtime errors
+- shape/dtype errors
+- boundary/mask errors
+- numerical mismatch
+- Pass@1 and Pass@4
+- shape/dtype coverage
 
-Only optimize candidates that already pass correctness checks. Compare optimized
-versions against the manual baseline, official baseline, or previous best
-candidate.
+Repair routing:
+
+- syntax/API/type errors go to Code Agent
+- shape/broadcast/layout/tile-design errors go to Sketch Agent
+- numerical errors trigger dtype, boundary, reduction, and mask checks
+- environment errors are marked separately and not treated as model failures
+
+### Stage 6: Skill Library And RAG
+
+Store skills by operator pattern. Each skill should include applicability,
+shape/dtype constraints, Sketch templates, backend generation notes, common
+failures, profiling interpretation, and bad-to-good examples.
+
+Skill updates should be driven by experiments, not only by speculation.
+
+### Stage 7: Hardware Profiling And Search
+
+Only optimize candidates that already pass correctness checks. Use real Ascend
+910 profiling and keep the search space small and interpretable.
+
+Initial knobs:
+
+- tile size
+- num cores or parallel axis mapping
+- vector width
+- unroll factor
+- double buffering
+- boundary strategy
+- memory access pattern
+- copyin/compute/copyout pipeline
+
+Search methods can include rule-based enumeration, UCB/adaptive search, and
+small evolutionary search. Each search round must produce a structured
+experiment record.
+
+### Stage 8: Multi-Backend Enhancement
+
+After the Triton-Ascend path works, select representative operators for:
+
+- TileLang-Ascend experiments
+- Ascend C experiments
+- CUDA/Triton-to-NPU Sketch migration experiments
+
+Do not let enhancement paths block the main benchmark pipeline.
 
 ## Research Loop
 
 Use short experiment cycles:
 
 ```text
-choose 3-5 benchmark tasks
--> run current agent or harness
+choose 3-5 benchmark tasks from one operator category
+-> run current OpSpec/Sketch/generation/verification flow
 -> classify failures
 -> improve one component
 -> rerun the same task set
 -> compare metrics
 -> document results
--> promote reusable findings into the Skill Library
+-> promote reusable lessons into skills/
 ```
 
-Avoid changing prompts, retrieval, repair logic, and benchmark scripts all in
-the same experiment cycle. Mixed changes make results hard to explain.
+Avoid changing prompts, Sketch templates, retrieval logic, repair routing, and
+benchmark scripts in the same experiment cycle.
 
 ## Metrics
 
@@ -111,69 +182,55 @@ Track separate metrics instead of only the final score:
 
 - compile success rate
 - correctness pass rate
-- Pass@1, Pass@3, Pass@5
+- Pass@1 and Pass@4
+- operator-category pass rate
+- shape/dtype coverage
+- max error, mean error, rtol/atol status
 - average repair iterations
-- performance compared with baseline
+- latency and throughput
+- speedup or slowdown versus baseline
+- profiling bottleneck category
 - generation time and cost
+- retrieved skill set
 - failure categories
-- retrieval hit rate once retrieval exists
-
-## Skill Library Shape
-
-Recommended initial structure:
-
-```text
-skills/
-  prompts/
-    generation.md
-    repair.md
-    optimization.md
-  rules/
-    dtype_rules.md
-    shape_rules.md
-    api_usage.md
-    memory_layout.md
-  examples/
-    successful_ops/
-    failed_ops/
-  fixes/
-    compile_errors.md
-    runtime_errors.md
-    numerical_errors.md
-  scripts/
-    validate.py
-    benchmark.py
-```
-
-The Skill Library is not only documentation. It should become retrievable
-context for future generations and repairs.
 
 ## Recommended Implementation Layout
-
-This layout is a target, not a requirement for the current empty prototype:
 
 ```text
 KernelForge-Agent/
   docs/
-    benchmark_spec.md
     architecture.md
-    experiment_plan.md
+    benchmark_spec.md
+    project_workflow.md
   kernel_forge/
-    agent/
-      planner.py
-      generator.py
-      repairer.py
-      optimizer.py
     benchmark/
       parser.py
+      opspec.py
       runner.py
       validator.py
       profiler.py
+    sketch/
+      schema.py
+      templates.py
+      validator.py
+    agent/
+      spec_agent.py
+      sketch_agent.py
+      code_agent.py
+      verify_agent.py
+      repair_agent.py
+      profile_search_agent.py
+      skill_writer.py
     retrieval/
       indexer.py
       retriever.py
+    backends/
+      triton_ascend.py
+      tilelang_ascend.py
+      ascend_c.py
     skill_library/
       loader.py
+      writer.py
     utils/
   skills/
   benchmarks/
@@ -184,6 +241,7 @@ KernelForge-Agent/
   outputs/
     candidates/
     logs/
+    profiles/
   tests/
 ```
 
@@ -194,4 +252,6 @@ KernelForge-Agent/
 - Add a decision record for non-trivial architecture or workflow choices.
 - Add or update experiment records for any generated or benchmarked candidate.
 - Keep generated artifacts out of Git unless they are small, curated examples.
+- Update the relevant `skills/*/SKILL.md` file when a repair or optimization
+  lesson becomes reusable.
 

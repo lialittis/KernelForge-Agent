@@ -5,22 +5,29 @@ and agents.
 
 ## Current Priorities
 
-1. Write `docs/benchmark_spec.md` from official competition materials.
-2. Collect official sample benchmark tasks under a future `benchmarks/raw/`
-   directory.
-3. Define the first manual baseline operator and required build/run commands.
-4. Create the initial harness design in `docs/architecture.md`.
-5. Add the first experiment record under `experiments/runs/` after a baseline
-   or generated candidate is executed.
+1. Complete `docs/benchmark_spec.md` from official competition and benchmark
+   materials.
+2. Obtain the official `akg_kernels_bench_lite` source and record its URL,
+   commit, layout, and commands.
+3. Reproduce one official baseline task on Ascend 910.
+4. Save raw official sample tasks under `benchmarks/raw/`.
+5. Create at least one parsed OpSpec example under `benchmarks/parsed/`.
+6. Draft elementwise and broadcast Sketch examples.
+7. Add the first experiment record under `experiments/runs/`.
+8. Decide whether to commit `SketchSkill_AKG_项目书基础版.pdf`.
 
 ## Research Questions
 
-- What exact operator task format does the official benchmark provide?
-- Which implementation language/runtime is required?
-- What are the correctness tolerances?
-- What performance metric determines ranking?
-- What are the submission packaging constraints?
-- Are official sample operators available for local validation?
+- What exact task format does `akg_kernels_bench_lite` provide?
+- Which AKG Agents entrypoints are expected for this competition?
+- What Triton-Ascend version and APIs are available?
+- What CANN and Ascend 910 environment are provided?
+- What are the official rtol/atol or task-specific correctness tolerances?
+- What exact metric determines ranking: latency, throughput, relative speedup,
+  or a combined score?
+- How is Pass@4 evaluated by the community benchmark?
+- What is the required submission package layout?
+- Which operators should form the first 3-5 task experiment subset?
 
 ## Coordination Rules
 
@@ -30,4 +37,5 @@ and agents.
 - Do not overwrite another agent's unmerged work.
 - Prefer append-only experiment records over editing old records, unless
   correcting an obvious metadata mistake.
+- Promote reusable experiment lessons into `skills/`.
 

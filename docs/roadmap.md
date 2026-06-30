@@ -1,125 +1,134 @@
 # Roadmap
 
-This roadmap should be updated after major experiment cycles.
+This roadmap follows the SketchSkill-AKG proposal. Update it after major
+experiment cycles.
 
-## Milestone 1: Benchmark Understanding
+## Milestone 1: Environment And Benchmark Reproduction
 
 Deliverables:
 
-- `docs/benchmark_spec.md`
-- collected official sample tasks
-- initial notes on supported runtimes, build commands, correctness rules, and
-  performance metrics
+- completed `docs/benchmark_spec.md`
+- Ascend 910 environment notes
+- AKG Agents setup notes
+- official benchmark source location and commit
+- baseline run for at least one simple operator
+- initial benchmark classification table
 
 Exit criteria:
 
-- A human or agent can explain exactly what input a benchmark task provides and
-  what output a candidate implementation must produce.
+- A clean environment can run one official benchmark baseline and produce
+  correctness plus performance output.
 
-## Milestone 2: Manual Baseline
+## Milestone 2: OpSpec And Benchmark Parser
 
 Deliverables:
 
-- one manually written operator implementation
-- compile command
-- run command
-- correctness checker
-- performance measurement script or command
+- parser for `akg_kernels_bench_lite` or confirmed official task format
+- structured OpSpec schema
+- parsed examples under `benchmarks/parsed/`
+- tests for representative task parsing
 
 Exit criteria:
 
-- The baseline can be built, executed, validated, and profiled from a clean
-  checkout.
+- At least three official tasks can be converted into stable OpSpec records.
 
-## Milestone 3: Automated Harness
+## Milestone 3: NPU-Aware Sketch
 
 Deliverables:
 
-- benchmark task parser
-- candidate workspace layout
+- Sketch schema
+- category-specific Sketch templates
+- validator for required Sketch fields
+- examples for elementwise, broadcast, and reduction tasks
+
+Exit criteria:
+
+- An OpSpec can be converted into a valid Sketch for at least three operator
+  categories.
+
+## Milestone 4: Triton-Ascend Generation Loop
+
+Deliverables:
+
+- AKG Agents integration path
+- Triton-Ascend candidate generation
+- prompt templates
+- saved candidate metadata
 - compile/run wrapper
-- validator
-- profiler
-- structured result file writer
 
 Exit criteria:
 
-- A candidate can be evaluated by a single command and produce a structured
-  result.
+- The system can generate and evaluate at least one Triton-Ascend candidate
+  from OpSpec plus Sketch.
 
-## Milestone 4: Single-Shot Generation
+## Milestone 5: Correctness Repair And Pass@4
 
 Deliverables:
 
-- generation prompt template
-- model/agent invocation wrapper
-- saved candidate code
-- saved prompt and response metadata
+- correctness validator
+- Pass@1 and Pass@4 reporting
+- error classifier
+- Repair Agent routing rules
+- bad-to-good repair records
 
 Exit criteria:
 
-- The system can generate one candidate from one benchmark task and evaluate it
-  through the harness.
+- For a fixed benchmark subset, the project reports Pass@1, Pass@4, failure
+  categories, and repair iteration counts.
 
-## Milestone 5: Feedback Repair
+## Milestone 6: Skill Library Retrieval And Write-Back
 
 Deliverables:
 
-- repair prompt template
-- compiler error summarization
-- runtime error summarization
-- numerical mismatch summarization
-- repair iteration tracking
+- populated category `SKILL.md` files
+- Skill Retriever
+- Skill Writer
+- experiment-to-skill promotion workflow
 
 Exit criteria:
 
-- Failed candidates can be repaired automatically for a bounded number of
-  iterations, with each attempt recorded.
+- Generation and repair prompts include traceable retrieved skills, and
+  successful repairs update the relevant skill files.
 
-## Milestone 6: Multi-Candidate Pass@N
+## Milestone 7: Hardware Profiling And Search
 
 Deliverables:
 
-- candidate batch generation
-- isolated candidate workspaces
-- Pass@1, Pass@3, and Pass@5 reporting
+- Ascend 910 profiling runner
+- latency and throughput result parser
+- search over tile/core/vector/unroll/double-buffer knobs
+- performance comparison reports
 
 Exit criteria:
 
-- The project can report Pass@N for a fixed benchmark subset.
+- Correct candidates can be profiled and optimized reproducibly on Ascend 910.
 
-## Milestone 7: Skill Library Retrieval
+## Milestone 8: Multi-Backend Enhancement
 
 Deliverables:
 
-- initial `skills/` content
-- retriever/indexer
-- retrieval logging in experiment records
+- selected TileLang-Ascend experiments
+- selected Ascend C experiments
+- CUDA/Triton-to-Sketch migration notes
+- comparison against the Triton-Ascend main path
 
 Exit criteria:
 
-- Generation and repair prompts include traceable retrieved context.
+- At least one representative operator has a documented multi-backend
+  comparison or migration case study.
 
-## Milestone 8: Performance Optimization
-
-Deliverables:
-
-- optimization prompt template
-- performance regression guard
-- comparison against baseline or previous best
-
-Exit criteria:
-
-- Correct candidates can be optimized and compared reproducibly.
-
-## Milestone 9: Final Evaluation
+## Milestone 9: Submission And Report
 
 Deliverables:
 
-- full benchmark result summary
-- ablation experiments
-- final report
-- reusable Skill Library snapshot
+- prototype code
+- benchmark run scripts
+- correctness and performance results
+- Pass@1/Pass@4 summary
+- NPU-aware Sketch templates
+- Skill Library snapshot
+- reproduction documentation
+- final proposal/report and PR materials
 
 Exit criteria:
 
