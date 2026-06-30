@@ -1,0 +1,27 @@
+# Python/cache
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Build outputs
+build/
+dist/
+*.egg-info/
+
+# Generated experiment artifacts
+outputs/
+experiments/runs/*.tmp
+experiments/runs/*.log
+
+# Local machine files
+.env
+.env.*
+.DS_Store
+
