@@ -348,6 +348,24 @@ python third_party/akg/akg_agents/benchmark/akg_kernels_bench_lite/tools/run_ben
   --num-trials 3
 ```
 
+If v7 passes correctness but is slower than the baseline, test v8. It keeps the
+same math and raises the Triton block size from 1024 to 4096:
+
+```bash
+bash scripts/create_gelu_triton_v8_submission.sh
+python scripts/probe_gelu_triton_backend.py \
+  --candidate outputs/submissions/gelu_triton_v8/gelu_triton_v8/t1/gelu.py \
+  --shape 32 512 1024
+python third_party/akg/akg_agents/benchmark/akg_kernels_bench_lite/tools/run_bench.py \
+  outputs/submissions/gelu_triton_v8 \
+  --team gelu_triton_v8 \
+  --bench-dir third_party/akg/akg_agents/benchmark/akg_kernels_bench_lite \
+  --output outputs/results/gelu_triton_v8_triton_backend \
+  --warmup 10 \
+  --iterations 100 \
+  --num-trials 3
+```
+
 Equivalent inline smoke check:
 
 ```bash
