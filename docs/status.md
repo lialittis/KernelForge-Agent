@@ -39,10 +39,12 @@ First custom GELU candidate execution.
 - Added `scripts/create_gelu_triton_submission.sh` to materialize the candidate
   into the official benchmark submission layout.
 - Added tests for the candidate source and generated submission layout.
+- Ran `gelu_triton_v1` through the official benchmark on the Ascend worker:
+  `t1/gelu` passed correctness with speedup `1.0176x` and weighted score
+  `60.18`.
 
 ## In Progress
 
-- Preparing to run `gelu_triton_v1` on the Ascend worker.
 - Verifying whether the candidate actually launches through Triton-Ascend or
   falls back to PyTorch GELU.
 
@@ -55,12 +57,12 @@ First custom GELU candidate execution.
 ## Next Actions
 
 1. Pull the latest commit on the Ascend worker.
-2. Run `bash scripts/create_gelu_triton_submission.sh`.
-3. Run the optional smoke check in `docs/dev_guide.md` and record
+2. Run `python scripts/probe_gelu_triton_backend.py` and record
    `last_backend`.
-4. Run `gelu_triton_v1` through `tools/run_bench.py`.
-5. Compare the custom candidate against the manual PyTorch baseline.
-6. Record the custom candidate experiment.
+3. If `last_backend` is `triton`, tune the candidate and compare against the
+   manual PyTorch baseline.
+4. If `last_backend` is `torch_fallback_*`, debug Triton-Ascend availability or
+   `tl.erf` lowering.
 
 ## Latest Handoff
 
@@ -70,31 +72,35 @@ Branch: main
 Summary:
 - Added a tracked `gelu_triton_v1` candidate source.
 - Added a submission generator for the official benchmark layout.
-- Documented the Ascend worker smoke check and benchmark command.
+- Documented the Ascend worker backend probe and benchmark command.
 - Added tests that validate the candidate source and generated package shape
   without requiring NPU hardware.
+- Recorded the first `gelu_triton_v1` official benchmark result:
+  correctness pass, speedup `1.0176x`, weighted score `60.18`.
 
 Changed Files:
 - `docs/dev_guide.md`
 - `docs/status.md`
 - `experiments/runs/2026-07-01-gelu-triton-v1-planned.yaml`
 - `kernel_forge/candidates/`
+- `scripts/probe_gelu_triton_backend.py`
 - `scripts/create_gelu_triton_submission.sh`
 - `tasks/active.md`
 - `tests/test_gelu_triton_submission.py`
 
 Verification:
 - `python -m py_compile kernel_forge/candidates/gelu_triton_v1.py tests/test_gelu_triton_submission.py`
+- `python -m py_compile scripts/probe_gelu_triton_backend.py`
 - `bash scripts/create_gelu_triton_submission.sh`
 - `pytest -q tests/test_gelu_triton_submission.py`
 
 Open Issues:
 - The PDF is present as `SketchSkill_AKG_项目书基础版.pdf` but is currently
   untracked; decide whether to commit it as source material.
-- Need `gelu_triton_v1` results from the Ascend worker.
-- Need to confirm whether `tl.erf` lowers successfully on the worker's
-  Triton-Ascend stack.
+- Need `gelu_triton_v1` backend probe output from the Ascend worker.
+- Need to confirm whether `tl.erf` lowered successfully or the result used
+  PyTorch fallback.
 
 Next Suggested Step:
-- Run `gelu_triton_v1` on the Ascend worker and paste the result JSON summary
-  back into this repo.
+- Run `python scripts/probe_gelu_triton_backend.py` on the Ascend worker and
+  paste the JSON output back into this repo.

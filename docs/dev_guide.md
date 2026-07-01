@@ -200,7 +200,16 @@ outputs/submissions/gelu_triton_v1/
       gelu.py
 ```
 
-Optional smoke check on the Ascend worker:
+Probe the backend path on the Ascend worker:
+
+```bash
+python scripts/probe_gelu_triton_backend.py
+```
+
+The probe prints JSON with `last_backend`, `last_error`, and correctness deltas.
+Use `--shape 32 512 1024` to probe the exact benchmark shape.
+
+Equivalent inline smoke check:
 
 ```bash
 python - <<'PY'

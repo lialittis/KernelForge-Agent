@@ -1,0 +1,108 @@
+id: 2026-07-01-gelu-triton-v1-planned
+date: 2026-07-01
+agent: codex
+machine: ascend-worker
+branch: main
+commit: null
+status: measured_needs_backend_confirmation
+
+benchmark:
+  source: akg_kernels_bench_lite
+  source_commit: bea77cb38db5713056a7e06e5e8a0cbe9d26954b
+  task_id: t1/gelu
+  operator_name: gelu
+  operator_category: elementwise
+  reference_path: third_party/akg/akg_agents/benchmark/akg_kernels_bench_lite/t1/gelu.py
+
+environment:
+  hardware: Ascend 910
+  device_name: null
+  cann_version: null
+  python_version: null
+  torch_version: null
+  torch_npu_version: null
+  triton_version: null
+  triton_ascend_version: null
+
+generation:
+  model: manual
+  backend: triton_ascend
+  prompt_version: null
+  retrieved_skills:
+    - skills/elementwise/SKILL.md
+    - skills/benchmark_evaluation/SKILL.md
+  opspec_path: benchmarks/parsed/t1_gelu.yaml
+  sketch_path: benchmarks/parsed/t1_gelu.yaml#sketch
+  candidate_source_path: kernel_forge/candidates/gelu_triton_v1.py
+  candidate_path: outputs/submissions/gelu_triton_v1/gelu_triton_v1/t1/gelu.py
+  candidate_index: 1
+  repair_iteration: 0
+
+commands:
+  create_submission: bash scripts/create_gelu_triton_submission.sh
+  benchmark: >
+    python third_party/akg/akg_agents/benchmark/akg_kernels_bench_lite/tools/run_bench.py
+    outputs/submissions/gelu_triton_v1
+    --team gelu_triton_v1
+    --bench-dir third_party/akg/akg_agents/benchmark/akg_kernels_bench_lite
+    --output outputs/results/gelu_triton_v1
+    --warmup 10
+    --iterations 100
+    --num-trials 3
+
+results:
+  compile:
+    status: not_run
+    log: null
+  runtime:
+    status: backend_probe_needed
+    last_backend: null
+    last_error: null
+  correctness:
+    status: pass
+    rtol: 0.01
+    atol: 0.01
+    max_abs_diff: null
+    max_rel_diff: null
+  performance:
+    status: measured
+    warmup: 10
+    repeats: 100
+    num_trials: 3
+    baseline_latency_ms: 0.0438129500253126
+    solution_latency_ms: null
+    speedup_vs_baseline: 1.0176
+    weighted_score: 60.18
+
+search:
+  method: fixed_first_candidate
+  knobs:
+    block_size: 1024
+    num_warps: 4
+    parallel_axis: flattened_output_elements
+    boundary_strategy: mask_offsets_lt_numel
+
+failure:
+  category: backend_confirmation_missing
+  summary: >
+    Official benchmark passed and reported speedup 1.0176x, but the benchmark
+    runner does not serialize ModelNew._last_backend. Run the probe script to
+    confirm whether the measured path was Triton or PyTorch fallback.
+  routed_to: scripts/probe_gelu_triton_backend.py
+
+artifacts:
+  code: outputs/submissions/gelu_triton_v1/gelu_triton_v1/t1/gelu.py
+  reports: outputs/results/gelu_triton_v1/gelu_triton_v1.json
+  logs: null
+  profiles: null
+
+notes: >
+  First custom candidate uses exact erf-form GELU. It falls back to PyTorch GELU
+  if Triton, tl.erf, or the NPU launch path is unavailable. On 2026-07-01 the
+  official benchmark passed with speedup 1.0176x and weighted score 60.18, but
+  backend path confirmation is still required.
+
+next:
+  - Run python scripts/probe_gelu_triton_backend.py on the Ascend worker.
+  - Update runtime.last_backend and runtime.last_error from the probe output.
+  - If last_backend is triton, tune block size and compare against the baseline.
