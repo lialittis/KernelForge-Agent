@@ -65,3 +65,21 @@ missing backend installation. Install the backend package, then rerun both:
 
 - `python scripts/diagnose_triton_ascend.py`
 - `python scripts/probe_gelu_triton_backend.py`
+
+### GELU Absolute Error Passes But Relative Error Fails
+
+Observed in `gelu_triton_v1` after a real Triton-Ascend launch:
+
+```text
+max_abs_diff=4.737377e-04
+max_rel_diff=4.803681e+00
+```
+
+Interpretation:
+
+- The official benchmark checks max absolute error and max relative error
+  separately.
+- Small absolute differences around near-zero reference outputs can still fail
+  the relative-error threshold.
+- For exact GELU, prefer forms that avoid cancellation in negative-tail outputs,
+  such as `0.5 * x * erfc(-x / sqrt(2))`, if the backend supports `erfc`.

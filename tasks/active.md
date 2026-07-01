@@ -6,12 +6,13 @@ and agents.
 ## Current Priorities
 
 1. Pull the latest project changes on the Ascend worker.
-2. Install `triton-ascend==3.2.0` on the Ascend worker.
-3. Rerun `python scripts/diagnose_triton_ascend.py` and confirm
-   `triton_ascend` imports.
-4. Rerun `python scripts/probe_gelu_triton_backend.py`.
-5. If `last_backend` becomes `triton`, compare the custom candidate against the
-   manual PyTorch baseline and tune `gelu_triton_v1`.
+2. Generate `gelu_triton_v2` with
+   `bash scripts/create_gelu_triton_v2_submission.sh`.
+3. Probe v2 with `python scripts/probe_gelu_triton_backend.py --candidate outputs/submissions/gelu_triton_v2/gelu_triton_v2/t1/gelu.py --shape 32 512 1024`.
+4. If v2 reports `last_backend: triton`, run the official benchmark for
+   `gelu_triton_v2`.
+5. If v2 still fails relative error, investigate a benchmark-safe exact GELU
+   strategy for negative-tail outputs.
 6. Record the custom candidate experiment under `experiments/runs/`.
 7. Expand OpSpec extraction beyond GELU after the custom GELU loop is complete.
 8. Decide whether to commit `SketchSkill_AKG_项目书基础版.pdf`.

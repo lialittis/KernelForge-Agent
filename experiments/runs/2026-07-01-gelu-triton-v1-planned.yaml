@@ -4,7 +4,7 @@ agent: codex
 machine: ascend-worker
 branch: main
 commit: null
-status: blocked_triton_ascend_missing
+status: failed_relative_error_after_triton_launch
 
 benchmark:
   source: akg_kernels_bench_lite
@@ -21,8 +21,9 @@ environment:
   python_version: 3.11.14
   torch_version: 2.9.0+cpu
   torch_npu_version: 2.9.0rc1
-  triton_version: 3.6.0
-  triton_ascend_version: not_installed
+  triton_version: 3.2.0
+  triton_package_metadata_version: 3.6.0
+  triton_ascend_version: 3.2.0
 
 generation:
   model: manual
@@ -57,41 +58,43 @@ results:
     status: not_run
     log: null
   runtime:
-    status: fallback
-    last_backend: torch_fallback_after_error
-    last_error: "RuntimeError: 0 active drivers ([]). There should only be one."
-    probe_shape: [1024, 1024]
+    status: triton_launch
+    last_backend: triton
+    last_error: null
+    probe_shape: [32, 512, 1024]
     output_device: npu:0
     output_dtype: torch.float32
   correctness:
-    status: pass
+    status: fail_official_relative_error
     rtol: 0.01
     atol: 0.01
-    max_abs_diff: 0.0
-    max_rel_diff: 0.0
+    max_abs_diff: 0.0004737377166748047
+    max_rel_diff: 4.803681
     allclose: true
   performance:
-    status: fallback_measured
+    status: not_measured_correctness_failed
     warmup: 10
     repeats: 100
     num_trials: 3
     baseline_latency_ms: 0.0438129500253126
     solution_latency_ms: null
-    speedup_vs_baseline: 1.0176
-    weighted_score: 60.18
-    interpretation: fallback_variance_not_custom_kernel_speedup
+    speedup_vs_baseline: null
+    weighted_score: 0.0
+    previous_fallback_speedup_vs_baseline: 1.0176
+    interpretation: official benchmark stops before scoring when correctness fails
 
 diagnosis:
   torch_npu_available: true
   npu_device_count: 1
   triton_import_ok: true
   triton_has_erf: true
-  triton_active_driver_error: "RuntimeError: 0 active drivers ([]). There should only be one."
-  triton_ascend_package: null
+  triton_current_target: "GPUTarget(backend='npu', arch='Ascend910B2C', warp_size=0)"
+  triton_ascend_package: 3.2.0
   triton_ascend_import_error: "ModuleNotFoundError: No module named 'triton_ascend'"
   interpretation: >
-    The Ascend runtime and torch_npu are available. Upstream Triton imports, but
-    the Ascend backend package is absent, so Triton has no active NPU driver.
+    The isolated venv loads Triton-Ascend successfully through the triton
+    package and reports an NPU target. The separate module name `triton_ascend`
+    still does not import, but this is not blocking kernel launch.
 
 search:
   method: fixed_first_candidate
@@ -102,14 +105,13 @@ search:
     boundary_strategy: mask_offsets_lt_numel
 
 failure:
-  category: triton_ascend_not_installed
+  category: gelu_relative_error_near_zero
   summary: >
-    Official benchmark passed and reported speedup 1.0176x, but the backend
-    probe showed ModelNew used PyTorch fallback after Triton raised
-    "RuntimeError: 0 active drivers ([]). There should only be one." The
-    follow-up diagnostic showed package `triton-ascend` is not installed and
-    module `triton_ascend` cannot be imported. Treat this as a missing backend
-    package, not a custom kernel performance result.
+    After installing Triton-Ascend in an isolated venv, ModelNew launched as a
+    real Triton kernel on NPU. The official benchmark failed correctness because
+    max relative error exceeded rtol even though max absolute error was small.
+    This points to near-zero negative-tail GELU outputs and the benchmark's
+    separate relative-error check.
   routed_to: skills/ascend_debug/SKILL.md
 
 artifacts:
@@ -124,9 +126,10 @@ notes: >
   official benchmark passed with speedup 1.0176x and weighted score 60.18. The
   follow-up probe confirmed this was PyTorch fallback, caused by Triton runtime
   reporting zero active drivers. The diagnostic confirmed the root cause is a
-  missing Triton-Ascend backend package.
+  missing Triton-Ascend backend package. After installing Triton-Ascend in a
+  venv, v1 launched through Triton but failed the official benchmark with
+  max_abs_diff 4.737377e-04 and max_rel_diff 4.803681e+00.
 
 next:
-  - Install a Triton-Ascend package compatible with the worker CANN and Python stack.
-  - Rerun python scripts/diagnose_triton_ascend.py and confirm triton_ascend imports.
-  - Rerun python scripts/probe_gelu_triton_backend.py after backend installation.
+  - Test gelu_triton_v2, which uses erfc form to avoid negative-tail cancellation.
+  - If v2 still fails, design a benchmark-safe exact GELU strategy for near-zero outputs.

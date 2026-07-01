@@ -50,25 +50,28 @@ Triton-Ascend backend installation.
   - `triton` imports as version `3.6.0`.
   - `triton-ascend` is not installed.
   - `triton_ascend` import fails with `ModuleNotFoundError`.
+- After installing Triton-Ascend in an isolated venv, `gelu_triton_v1` launched
+  through Triton on NPU but failed official correctness due relative error:
+  `max_abs_diff=4.737377e-04`, `max_rel_diff=4.803681e+00`.
+- Added `gelu_triton_v2`, which uses an erfc-form GELU expression to avoid
+  negative-tail cancellation when `tl.erfc` is available.
 
 ## In Progress
 
-- Installing or selecting a compatible Triton-Ascend backend package.
+- Testing `gelu_triton_v2` against the official benchmark.
 
 ## Blockers
 
-- The Ascend worker only has upstream `triton`; the Ascend backend package is
-  missing. The `gelu_triton_v1` benchmark result is PyTorch fallback behavior,
-  not a custom Triton-Ascend kernel result.
+- `gelu_triton_v1` launches as a real Triton-Ascend kernel but fails the
+  official benchmark's separate relative-error threshold.
 
 ## Next Actions
 
 1. Pull the latest commit on the Ascend worker.
-2. Run `python -m pip install triton-ascend==3.2.0`.
-3. Rerun `python scripts/diagnose_triton_ascend.py` and confirm
-   `triton_ascend` imports.
-4. Rerun `python scripts/probe_gelu_triton_backend.py`.
-5. Only tune `gelu_triton_v1` after `last_backend` is `triton`.
+2. Generate `gelu_triton_v2` with
+   `bash scripts/create_gelu_triton_v2_submission.sh`.
+3. Probe v2 with `scripts/probe_gelu_triton_backend.py --candidate ...`.
+4. Run v2 through the official benchmark if the probe reports Triton backend.
 
 ## Latest Handoff
 
@@ -88,6 +91,9 @@ Summary:
 - Added `scripts/diagnose_triton_ascend.py` for environment diagnostics.
 - Recorded the diagnostic result: `triton-ascend` is missing while `torch_npu`
   and the Ascend device are available.
+- Recorded the first real Triton-Ascend launch for `gelu_triton_v1` and its
+  official correctness failure.
+- Added `gelu_triton_v2` and submission generator.
 
 Changed Files:
 - `docs/dev_guide.md`
@@ -97,6 +103,7 @@ Changed Files:
 - `scripts/diagnose_triton_ascend.py`
 - `scripts/probe_gelu_triton_backend.py`
 - `scripts/create_gelu_triton_submission.sh`
+- `scripts/create_gelu_triton_v2_submission.sh`
 - `tasks/active.md`
 - `tests/test_gelu_triton_submission.py`
 
@@ -104,15 +111,15 @@ Verification:
 - `python -m py_compile kernel_forge/candidates/gelu_triton_v1.py tests/test_gelu_triton_submission.py`
 - `python -m py_compile scripts/probe_gelu_triton_backend.py`
 - `python -m py_compile scripts/diagnose_triton_ascend.py`
+- `python -m py_compile kernel_forge/candidates/gelu_triton_v2.py`
 - `bash scripts/create_gelu_triton_submission.sh`
 - `pytest -q tests/test_gelu_triton_submission.py`
 
 Open Issues:
 - The PDF is present as `SketchSkill_AKG_项目书基础版.pdf` but is currently
   untracked; decide whether to commit it as source material.
-- Need Triton-Ascend backend registration fixed before custom kernel
-  performance work can start.
+- Need to confirm whether Triton-Ascend exposes `tl.erfc` and whether v2 passes
+  the official relative-error check.
 
 Next Suggested Step:
-- Install `triton-ascend==3.2.0` on the Ascend worker, then rerun
-  `python scripts/diagnose_triton_ascend.py`.
+- Run the `gelu_triton_v2` probe and official benchmark on the Ascend worker.

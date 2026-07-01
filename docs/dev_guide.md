@@ -233,6 +233,24 @@ Do not treat benchmark speedup as custom-kernel speedup until the probe reports:
 last_backend: triton
 ```
 
+If `gelu_triton_v1` launches Triton but fails the official benchmark with a
+small absolute error and large relative error, test the erfc-form v2 candidate:
+
+```bash
+bash scripts/create_gelu_triton_v2_submission.sh
+python scripts/probe_gelu_triton_backend.py \
+  --candidate outputs/submissions/gelu_triton_v2/gelu_triton_v2/t1/gelu.py \
+  --shape 32 512 1024
+python third_party/akg/akg_agents/benchmark/akg_kernels_bench_lite/tools/run_bench.py \
+  outputs/submissions/gelu_triton_v2 \
+  --team gelu_triton_v2 \
+  --bench-dir third_party/akg/akg_agents/benchmark/akg_kernels_bench_lite \
+  --output outputs/results/gelu_triton_v2_triton_backend \
+  --warmup 10 \
+  --iterations 100 \
+  --num-trials 3
+```
+
 Equivalent inline smoke check:
 
 ```bash
