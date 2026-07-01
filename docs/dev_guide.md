@@ -171,6 +171,77 @@ Do not overwrite committed OpSpecs automatically. Generate to a temporary path,
 compare the result, then intentionally update `benchmarks/parsed/` if the
 schema or extracted facts change.
 
+## First Triton-Ascend GELU Candidate
+
+The first custom candidate source is tracked at:
+
+```text
+kernel_forge/candidates/gelu_triton_v1.py
+```
+
+It implements a Triton-style 1D GELU kernel for contiguous NPU tensors. If
+Triton, `tl.erf`, or the NPU backend launch path is unavailable, it falls back
+to `torch.nn.functional.gelu` so correctness experiments can still run and
+report the environment gap.
+
+Generate the official submission layout:
+
+```bash
+bash scripts/create_gelu_triton_submission.sh
+```
+
+This writes:
+
+```text
+outputs/submissions/gelu_triton_v1/
+  gelu_triton_v1/
+    meta.json
+    t1/
+      gelu.py
+```
+
+Optional smoke check on the Ascend worker:
+
+```bash
+python - <<'PY'
+import importlib.util
+import torch
+import torch_npu
+
+path = "outputs/submissions/gelu_triton_v1/gelu_triton_v1/t1/gelu.py"
+spec = importlib.util.spec_from_file_location("gelu_candidate", path)
+mod = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(mod)
+
+model = mod.ModelNew().npu().eval()
+x = torch.randn(1024, 1024).npu()
+with torch.no_grad():
+    y = model(x)
+torch.npu.synchronize()
+
+print("output:", y.device, y.dtype, tuple(y.shape))
+print("last_backend:", getattr(model, "_last_backend", None))
+print("last_error:", getattr(model, "_last_error", None))
+PY
+```
+
+Then run the official benchmark:
+
+```bash
+python third_party/akg/akg_agents/benchmark/akg_kernels_bench_lite/tools/run_bench.py \
+  outputs/submissions/gelu_triton_v1 \
+  --team gelu_triton_v1 \
+  --bench-dir third_party/akg/akg_agents/benchmark/akg_kernels_bench_lite \
+  --output outputs/results/gelu_triton_v1 \
+  --warmup 10 \
+  --iterations 100 \
+  --num-trials 3
+```
+
+If `last_backend` is `triton`, compare speedup against the manual baseline. If
+it is a `torch_fallback_*` value, record the fallback reason and treat the run
+as an environment or backend-support finding, not a kernel-performance result.
+
 ## Copying Results Back
 
 Copy back only the useful result files, not the whole `outputs/` tree.

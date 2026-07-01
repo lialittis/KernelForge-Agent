@@ -1,10 +1,10 @@
 # Status
 
-Last updated: 2026-06-30
+Last updated: 2026-07-01
 
 ## Current Phase
 
-GELU OpSpec automation and first custom-kernel preparation.
+First custom GELU candidate execution.
 
 ## Completed
 
@@ -34,54 +34,67 @@ GELU OpSpec automation and first custom-kernel preparation.
 - Added the first experiment record for the manual GELU baseline.
 - Captured Ascend worker CANN version: `8.5.1`.
 - Implemented a GELU-only automated OpSpec extractor and CLI.
+- Added the first custom GELU candidate source:
+  `kernel_forge/candidates/gelu_triton_v1.py`.
+- Added `scripts/create_gelu_triton_submission.sh` to materialize the candidate
+  into the official benchmark submission layout.
+- Added tests for the candidate source and generated submission layout.
 
 ## In Progress
 
-- Preparing the first custom Triton-Ascend GELU candidate.
-- Verifying Triton-Ascend availability on the Ascend worker.
+- Preparing to run `gelu_triton_v1` on the Ascend worker.
+- Verifying whether the candidate actually launches through Triton-Ascend or
+  falls back to PyTorch GELU.
 
 ## Blockers
 
-- `triton-ascend` is not installed on the Ascend worker yet; this blocks custom
-  Triton-Ascend candidate experiments but not the manual PyTorch baseline.
+- Triton-Ascend availability is still unverified on the Ascend worker. The
+  candidate has a correctness-preserving PyTorch fallback, but a fallback run is
+  not a valid custom-kernel performance result.
 
 ## Next Actions
 
-1. Install/verify `triton-ascend` on the Ascend worker.
-2. Generate a first custom Triton-Ascend GELU candidate.
-3. Run the custom candidate through `tools/run_bench.py`.
-4. Compare the custom candidate against the manual PyTorch baseline.
-5. Record the custom candidate experiment.
+1. Pull the latest commit on the Ascend worker.
+2. Run `bash scripts/create_gelu_triton_submission.sh`.
+3. Run the optional smoke check in `docs/dev_guide.md` and record
+   `last_backend`.
+4. Run `gelu_triton_v1` through `tools/run_bench.py`.
+5. Compare the custom candidate against the manual PyTorch baseline.
+6. Record the custom candidate experiment.
 
 ## Latest Handoff
 
-Date: 2026-06-30
+Date: 2026-07-01
 Agent: Codex
 Branch: main
 Summary:
-- Implemented the first automated OpSpec extraction path for `t1/gelu.py`.
-- Added a CLI for extracting GELU OpSpecs from the official case file.
-- Added focused tests for extraction, CLI YAML output, Sketch fields, and YAML
-  round trips.
+- Added a tracked `gelu_triton_v1` candidate source.
+- Added a submission generator for the official benchmark layout.
+- Documented the Ascend worker smoke check and benchmark command.
+- Added tests that validate the candidate source and generated package shape
+  without requiring NPU hardware.
 
 Changed Files:
 - `docs/dev_guide.md`
 - `docs/status.md`
-- `kernel_forge/benchmark/`
-- `scripts/extract_opspec.py`
+- `experiments/runs/2026-07-01-gelu-triton-v1-planned.yaml`
+- `kernel_forge/candidates/`
+- `scripts/create_gelu_triton_submission.sh`
 - `tasks/active.md`
-- `tests/test_gelu_opspec_extractor.py`
+- `tests/test_gelu_triton_submission.py`
 
 Verification:
-- `python -m py_compile kernel_forge/benchmark/*.py scripts/extract_opspec.py tests/test_gelu_opspec_extractor.py`
-- `python scripts/extract_opspec.py --case .../t1/gelu.py --experiment ... --output /tmp/t1_gelu.generated.yaml`
-- `pytest -q tests/test_gelu_opspec_extractor.py`
+- `python -m py_compile kernel_forge/candidates/gelu_triton_v1.py tests/test_gelu_triton_submission.py`
+- `bash scripts/create_gelu_triton_submission.sh`
+- `pytest -q tests/test_gelu_triton_submission.py`
 
 Open Issues:
 - The PDF is present as `SketchSkill_AKG_项目书基础版.pdf` but is currently
   untracked; decide whether to commit it as source material.
-- Need `triton-ascend` installed or otherwise confirmed for custom kernel work.
+- Need `gelu_triton_v1` results from the Ascend worker.
+- Need to confirm whether `tl.erf` lowers successfully on the worker's
+  Triton-Ascend stack.
 
 Next Suggested Step:
-- Install/verify `triton-ascend`, then create the first custom Triton-Ascend
-  GELU `ModelNew` candidate.
+- Run `gelu_triton_v1` on the Ascend worker and paste the result JSON summary
+  back into this repo.
