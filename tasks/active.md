@@ -6,15 +6,14 @@ and agents.
 ## Current Priorities
 
 1. Pull the latest project changes on the Ascend worker.
-2. Run `python scripts/probe_gelu_triton_backend.py` and record
-   `last_backend`.
-3. If `last_backend` is `triton`, compare the custom candidate against the
+2. Run `python scripts/diagnose_triton_ascend.py` on the Ascend worker.
+3. Fix Triton-Ascend backend registration so Triton has one active driver.
+4. Rerun `python scripts/probe_gelu_triton_backend.py`.
+5. If `last_backend` becomes `triton`, compare the custom candidate against the
    manual PyTorch baseline and tune `gelu_triton_v1`.
-4. If `last_backend` is `torch_fallback_*`, debug Triton-Ascend availability or
-   `tl.erf` lowering.
-5. Record the custom candidate experiment under `experiments/runs/`.
-6. Expand OpSpec extraction beyond GELU after the custom GELU loop is complete.
-7. Decide whether to commit `SketchSkill_AKG_项目书基础版.pdf`.
+6. Record the custom candidate experiment under `experiments/runs/`.
+7. Expand OpSpec extraction beyond GELU after the custom GELU loop is complete.
+8. Decide whether to commit `SketchSkill_AKG_项目书基础版.pdf`.
 
 ## Research Questions
 

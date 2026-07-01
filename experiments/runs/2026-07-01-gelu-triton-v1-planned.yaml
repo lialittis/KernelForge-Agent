@@ -4,7 +4,7 @@ agent: codex
 machine: ascend-worker
 branch: main
 commit: null
-status: measured_needs_backend_confirmation
+status: fallback_due_triton_driver
 
 benchmark:
   source: akg_kernels_bench_lite
@@ -40,6 +40,8 @@ generation:
 
 commands:
   create_submission: bash scripts/create_gelu_triton_submission.sh
+  backend_probe: python scripts/probe_gelu_triton_backend.py
+  diagnose_triton_ascend: python scripts/diagnose_triton_ascend.py
   benchmark: >
     python third_party/akg/akg_agents/benchmark/akg_kernels_bench_lite/tools/run_bench.py
     outputs/submissions/gelu_triton_v1
@@ -55,17 +57,21 @@ results:
     status: not_run
     log: null
   runtime:
-    status: backend_probe_needed
-    last_backend: null
-    last_error: null
+    status: fallback
+    last_backend: torch_fallback_after_error
+    last_error: "RuntimeError: 0 active drivers ([]). There should only be one."
+    probe_shape: [1024, 1024]
+    output_device: npu:0
+    output_dtype: torch.float32
   correctness:
     status: pass
     rtol: 0.01
     atol: 0.01
-    max_abs_diff: null
-    max_rel_diff: null
+    max_abs_diff: 0.0
+    max_rel_diff: 0.0
+    allclose: true
   performance:
-    status: measured
+    status: fallback_measured
     warmup: 10
     repeats: 100
     num_trials: 3
@@ -73,6 +79,7 @@ results:
     solution_latency_ms: null
     speedup_vs_baseline: 1.0176
     weighted_score: 60.18
+    interpretation: fallback_variance_not_custom_kernel_speedup
 
 search:
   method: fixed_first_candidate
@@ -83,12 +90,14 @@ search:
     boundary_strategy: mask_offsets_lt_numel
 
 failure:
-  category: backend_confirmation_missing
+  category: triton_driver_unavailable
   summary: >
-    Official benchmark passed and reported speedup 1.0176x, but the benchmark
-    runner does not serialize ModelNew._last_backend. Run the probe script to
-    confirm whether the measured path was Triton or PyTorch fallback.
-  routed_to: scripts/probe_gelu_triton_backend.py
+    Official benchmark passed and reported speedup 1.0176x, but the backend
+    probe showed ModelNew used PyTorch fallback after Triton raised
+    "RuntimeError: 0 active drivers ([]). There should only be one." Treat this
+    as a Triton-Ascend environment/backend registration issue, not a custom
+    kernel performance result.
+  routed_to: skills/ascend_debug/SKILL.md
 
 artifacts:
   code: outputs/submissions/gelu_triton_v1/gelu_triton_v1/t1/gelu.py
@@ -99,10 +108,11 @@ artifacts:
 notes: >
   First custom candidate uses exact erf-form GELU. It falls back to PyTorch GELU
   if Triton, tl.erf, or the NPU launch path is unavailable. On 2026-07-01 the
-  official benchmark passed with speedup 1.0176x and weighted score 60.18, but
-  backend path confirmation is still required.
+  official benchmark passed with speedup 1.0176x and weighted score 60.18. The
+  follow-up probe confirmed this was PyTorch fallback, caused by Triton runtime
+  reporting zero active drivers.
 
 next:
-  - Run python scripts/probe_gelu_triton_backend.py on the Ascend worker.
-  - Update runtime.last_backend and runtime.last_error from the probe output.
-  - If last_backend is triton, tune block size and compare against the baseline.
+  - Run python scripts/diagnose_triton_ascend.py on the Ascend worker.
+  - Verify/install a Triton-Ascend package compatible with the worker CANN and Python stack.
+  - Rerun python scripts/probe_gelu_triton_backend.py after backend installation.

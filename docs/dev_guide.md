@@ -209,6 +209,14 @@ python scripts/probe_gelu_triton_backend.py
 The probe prints JSON with `last_backend`, `last_error`, and correctness deltas.
 Use `--shape 32 512 1024` to probe the exact benchmark shape.
 
+If the probe reports `torch_fallback_after_error` with
+`RuntimeError: 0 active drivers ([]). There should only be one.`, Triton
+imported but no usable backend driver is registered. Diagnose the environment:
+
+```bash
+python scripts/diagnose_triton_ascend.py
+```
+
 Equivalent inline smoke check:
 
 ```bash

@@ -4,7 +4,7 @@ Last updated: 2026-07-01
 
 ## Current Phase
 
-First custom GELU candidate execution.
+Triton-Ascend backend availability debugging.
 
 ## Completed
 
@@ -42,27 +42,28 @@ First custom GELU candidate execution.
 - Ran `gelu_triton_v1` through the official benchmark on the Ascend worker:
   `t1/gelu` passed correctness with speedup `1.0176x` and weighted score
   `60.18`.
+- Ran the backend probe for `gelu_triton_v1`; it used PyTorch fallback after
+  Triton raised `RuntimeError: 0 active drivers ([]). There should only be
+  one.`.
 
 ## In Progress
 
-- Verifying whether the candidate actually launches through Triton-Ascend or
-  falls back to PyTorch GELU.
+- Diagnosing why Triton has no active backend driver on the Ascend worker.
 
 ## Blockers
 
-- Triton-Ascend availability is still unverified on the Ascend worker. The
-  candidate has a correctness-preserving PyTorch fallback, but a fallback run is
-  not a valid custom-kernel performance result.
+- Triton currently reports zero active drivers on the Ascend worker. The
+  `gelu_triton_v1` benchmark result is therefore PyTorch fallback behavior, not
+  a custom Triton-Ascend kernel result.
 
 ## Next Actions
 
 1. Pull the latest commit on the Ascend worker.
-2. Run `python scripts/probe_gelu_triton_backend.py` and record
-   `last_backend`.
-3. If `last_backend` is `triton`, tune the candidate and compare against the
-   manual PyTorch baseline.
-4. If `last_backend` is `torch_fallback_*`, debug Triton-Ascend availability or
-   `tl.erf` lowering.
+2. Run `python scripts/diagnose_triton_ascend.py`.
+3. Verify/install a Triton-Ascend backend package compatible with the worker's
+   CANN, Python, torch, and torch_npu stack.
+4. Rerun `python scripts/probe_gelu_triton_backend.py`.
+5. Only tune `gelu_triton_v1` after `last_backend` is `triton`.
 
 ## Latest Handoff
 
@@ -77,12 +78,16 @@ Summary:
   without requiring NPU hardware.
 - Recorded the first `gelu_triton_v1` official benchmark result:
   correctness pass, speedup `1.0176x`, weighted score `60.18`.
+- Recorded the backend probe result: `torch_fallback_after_error` due to
+  Triton runtime reporting zero active drivers.
+- Added `scripts/diagnose_triton_ascend.py` for environment diagnostics.
 
 Changed Files:
 - `docs/dev_guide.md`
 - `docs/status.md`
 - `experiments/runs/2026-07-01-gelu-triton-v1-planned.yaml`
 - `kernel_forge/candidates/`
+- `scripts/diagnose_triton_ascend.py`
 - `scripts/probe_gelu_triton_backend.py`
 - `scripts/create_gelu_triton_submission.sh`
 - `tasks/active.md`
@@ -91,16 +96,16 @@ Changed Files:
 Verification:
 - `python -m py_compile kernel_forge/candidates/gelu_triton_v1.py tests/test_gelu_triton_submission.py`
 - `python -m py_compile scripts/probe_gelu_triton_backend.py`
+- `python -m py_compile scripts/diagnose_triton_ascend.py`
 - `bash scripts/create_gelu_triton_submission.sh`
 - `pytest -q tests/test_gelu_triton_submission.py`
 
 Open Issues:
 - The PDF is present as `SketchSkill_AKG_项目书基础版.pdf` but is currently
   untracked; decide whether to commit it as source material.
-- Need `gelu_triton_v1` backend probe output from the Ascend worker.
-- Need to confirm whether `tl.erf` lowered successfully or the result used
-  PyTorch fallback.
+- Need Triton-Ascend backend registration fixed before custom kernel
+  performance work can start.
 
 Next Suggested Step:
-- Run `python scripts/probe_gelu_triton_backend.py` on the Ascend worker and
-  paste the JSON output back into this repo.
+- Run `python scripts/diagnose_triton_ascend.py` on the Ascend worker and paste
+  the JSON output back into this repo.
