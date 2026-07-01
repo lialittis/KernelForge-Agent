@@ -99,3 +99,6 @@ Interpretation:
   numerics even when the source does not pass `approximate="tanh"`. Compare
   worst-error values against both erf-exact and tanh-approximate formulas before
   assuming exact GELU is the benchmark target.
+- Avoid computing tanh-approximate GELU as `0.5 * x * (1 + tanh(u))` when
+  `u << 0`; that reintroduces cancellation. Use the equivalent stable form
+  `x / (1 + exp(-2u))`.
