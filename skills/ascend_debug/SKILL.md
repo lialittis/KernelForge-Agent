@@ -92,3 +92,6 @@ Interpretation:
 - Framework tail repair can pass correctness but is extremely slow. Prefer a
   pure-kernel tail approximation such as the Abramowitz-Stegun erfc polynomial
   for `x < -2.1`.
+- If a pure Triton approximation fails, run
+  `scripts/analyze_gelu_candidate_error.py` to identify the input value at the
+  worst relative-error element before changing formulas again.

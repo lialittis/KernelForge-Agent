@@ -66,10 +66,15 @@ GELU Triton correctness repair.
   and weighted score `0.52`.
 - Added `gelu_triton_v5`, a pure Triton piecewise kernel using an
   Abramowitz-Stegun erfc tail approximation for `x < -2.1`.
+- Ran `gelu_triton_v5`; it launched as a pure Triton kernel but failed the
+  official relative-error check with `max_rel_diff=7.534710`.
+- Added `scripts/analyze_gelu_candidate_error.py` to locate worst GELU errors
+  by input value.
 
 ## In Progress
 
-- Testing `gelu_triton_v5` against the official benchmark.
+- Localizing `gelu_triton_v5` worst-error inputs before choosing the next
+  repair.
 
 ## Blockers
 
@@ -79,15 +84,16 @@ GELU Triton correctness repair.
   in the active Triton-Ascend stack.
 - `gelu_triton_v4` passes correctness but the framework tail repair makes it
   unusably slow.
+- `gelu_triton_v5` is pure Triton but still fails relative error.
 
 ## Next Actions
 
 1. Pull the latest commit on the Ascend worker.
-2. Generate `gelu_triton_v5` with
-   `bash scripts/create_gelu_triton_v5_submission.sh`.
-3. Probe v5 with `scripts/probe_gelu_triton_backend.py --candidate ...`.
-4. Run v5 through the official benchmark.
-5. If v5 passes, tune block size and tail threshold for latency.
+2. Run `scripts/analyze_gelu_candidate_error.py` for `gelu_triton_v5`.
+3. Use the worst-error input to decide whether to repair the negative tail,
+   transition region, or positive path.
+4. If GELU remains numerically fragile, use a framework-safe GELU baseline and
+   move custom Triton work to the next operator.
 
 ## Latest Handoff
 
@@ -113,6 +119,7 @@ Summary:
 - Recorded `gelu_triton_v2` fallback behavior because `tl.erfc` is unavailable.
 - Added `gelu_triton_v3` and submission generator.
 - Recorded v3/v4 repair results and added `gelu_triton_v5`.
+- Recorded `gelu_triton_v5` failure and added a worst-error analyzer.
 
 Changed Files:
 - `docs/dev_guide.md`
@@ -126,6 +133,7 @@ Changed Files:
 - `scripts/create_gelu_triton_v3_submission.sh`
 - `scripts/create_gelu_triton_v4_submission.sh`
 - `scripts/create_gelu_triton_v5_submission.sh`
+- `scripts/analyze_gelu_candidate_error.py`
 - `tasks/active.md`
 - `tests/test_gelu_triton_submission.py`
 
@@ -137,14 +145,15 @@ Verification:
 - `python -m py_compile kernel_forge/candidates/gelu_triton_v3.py`
 - `python -m py_compile kernel_forge/candidates/gelu_triton_v4.py`
 - `python -m py_compile kernel_forge/candidates/gelu_triton_v5.py`
+- `python -m py_compile scripts/analyze_gelu_candidate_error.py`
 - `bash scripts/create_gelu_triton_submission.sh`
 - `pytest -q tests/test_gelu_triton_submission.py`
 
 Open Issues:
 - The PDF is present as `SketchSkill_AKG_项目书基础版.pdf` but is currently
   untracked; decide whether to commit it as source material.
-- Need to test whether v5 passes the official relative-error check without
-  framework tail repair.
+- Need worst-error localization for `gelu_triton_v5`.
 
 Next Suggested Step:
-- Run the `gelu_triton_v5` probe and official benchmark on the Ascend worker.
+- Run `scripts/analyze_gelu_candidate_error.py` for `gelu_triton_v5` on the
+  Ascend worker.

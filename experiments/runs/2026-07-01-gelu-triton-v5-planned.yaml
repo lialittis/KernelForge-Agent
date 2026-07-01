@@ -4,7 +4,7 @@ agent: codex
 machine: ascend-worker
 branch: main
 commit: null
-status: planned
+status: failed_relative_error
 
 benchmark:
   source: akg_kernels_bench_lite
@@ -54,17 +54,17 @@ commands:
 
 results:
   runtime:
-    status: not_run
-    last_backend: null
+    status: triton_launch
+    last_backend: triton_piecewise_tail_approx
     last_error: null
   correctness:
-    status: not_run
+    status: fail_official_relative_error
     rtol: 0.01
     atol: 0.01
-    max_abs_diff: null
-    max_rel_diff: null
+    max_abs_diff: 0.0004737377166748047
+    max_rel_diff: 7.534710
   performance:
-    status: not_run
+    status: not_measured_correctness_failed
     warmup: 10
     repeats: 100
     num_trials: 3
@@ -72,11 +72,20 @@ results:
     solution_latency_ms: null
     speedup_vs_baseline: null
 
+failure:
+  category: pure_triton_tail_approx_failed
+  summary: >
+    V5 launched as a pure Triton piecewise kernel but failed the official
+    relative-error check. The probe reported max_rel_diff 7.3618445 and the
+    official benchmark reported max_rel_diff 7.534710, with max_abs_diff still
+    4.737377e-04.
+  routed_to: scripts/analyze_gelu_candidate_error.py
+
 notes: >
   V5 uses the original tl.erf GELU path for x >= -2.1 and an
   Abramowitz-Stegun erfc approximation for x < -2.1. It is intended to preserve
   v4's benchmark-safe relative error while avoiding framework tail repair.
 
 next:
-  - Run the v5 probe and official benchmark on the Ascend worker.
-  - If correctness passes, tune block size and threshold for latency.
+  - Run scripts/analyze_gelu_candidate_error.py for v5 on the Ascend worker.
+  - Use the worst input value to choose the next formula or switch GELU to a framework-safe implementation.

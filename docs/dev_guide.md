@@ -304,6 +304,14 @@ python third_party/akg/akg_agents/benchmark/akg_kernels_bench_lite/tools/run_ben
   --num-trials 3
 ```
 
+For any failed GELU candidate, locate the worst input value:
+
+```bash
+python scripts/analyze_gelu_candidate_error.py \
+  --candidate outputs/submissions/gelu_triton_v5/gelu_triton_v5/t1/gelu.py \
+  --shape 32 512 1024
+```
+
 Equivalent inline smoke check:
 
 ```bash
