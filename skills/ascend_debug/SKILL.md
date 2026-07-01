@@ -95,3 +95,7 @@ Interpretation:
 - If a pure Triton approximation fails, run
   `scripts/analyze_gelu_candidate_error.py` to identify the input value at the
   worst relative-error element before changing formulas again.
+- The NPU `torch.nn.functional.gelu` reference may follow tanh-approximate GELU
+  numerics even when the source does not pass `approximate="tanh"`. Compare
+  worst-error values against both erf-exact and tanh-approximate formulas before
+  assuming exact GELU is the benchmark target.

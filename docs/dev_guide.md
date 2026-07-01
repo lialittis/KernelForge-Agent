@@ -312,6 +312,24 @@ python scripts/analyze_gelu_candidate_error.py \
   --shape 32 512 1024
 ```
 
+If the analyzer shows the NPU reference follows tanh-approximate GELU rather
+than erf-exact GELU, test v6:
+
+```bash
+bash scripts/create_gelu_triton_v6_submission.sh
+python scripts/probe_gelu_triton_backend.py \
+  --candidate outputs/submissions/gelu_triton_v6/gelu_triton_v6/t1/gelu.py \
+  --shape 32 512 1024
+python third_party/akg/akg_agents/benchmark/akg_kernels_bench_lite/tools/run_bench.py \
+  outputs/submissions/gelu_triton_v6 \
+  --team gelu_triton_v6 \
+  --bench-dir third_party/akg/akg_agents/benchmark/akg_kernels_bench_lite \
+  --output outputs/results/gelu_triton_v6_triton_backend \
+  --warmup 10 \
+  --iterations 100 \
+  --num-trials 3
+```
+
 Equivalent inline smoke check:
 
 ```bash
