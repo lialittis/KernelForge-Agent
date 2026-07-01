@@ -83,3 +83,6 @@ Interpretation:
   the relative-error threshold.
 - For exact GELU, prefer forms that avoid cancellation in negative-tail outputs,
   such as `0.5 * x * erfc(-x / sqrt(2))`, if the backend supports `erfc`.
+- If `erfc` is unavailable, a temporary benchmark-safety strategy is to compute
+  the bulk in Triton and repair the problematic tail with the framework exact
+  GELU. Treat this as a diagnostic bridge, not a final pure-kernel solution.

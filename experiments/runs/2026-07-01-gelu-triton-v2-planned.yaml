@@ -4,7 +4,7 @@ agent: codex
 machine: ascend-worker
 branch: main
 commit: null
-status: planned
+status: fallback_erfc_unavailable
 
 benchmark:
   source: akg_kernels_bench_lite
@@ -54,29 +54,42 @@ commands:
 
 results:
   runtime:
-    status: not_run
-    last_backend: null
+    status: fallback
+    last_backend: torch_fallback_erfc_unavailable
     last_error: null
+    probe_shape: [32, 512, 1024]
+    output_device: npu:0
+    output_dtype: torch.float32
   correctness:
-    status: not_run
+    status: pass_fallback
     rtol: 0.01
     atol: 0.01
-    max_abs_diff: null
-    max_rel_diff: null
+    max_abs_diff: 0.0
+    max_rel_diff: 0.0
+    allclose: true
   performance:
-    status: not_run
+    status: fallback_measured
     warmup: 10
     repeats: 100
     num_trials: 3
     baseline_latency_ms: 0.0438129500253126
     solution_latency_ms: null
-    speedup_vs_baseline: null
+    speedup_vs_baseline: 0.9998
+    weighted_score: 59.99
+    interpretation: fallback_not_custom_kernel_speedup
+
+failure:
+  category: erfc_unavailable
+  summary: >
+    V2 could not run the Triton erfc-form kernel because `tl.erfc` is not
+    exposed in the active Triton-Ascend stack. It fell back to PyTorch GELU and
+    passed the official benchmark with speedup 0.9998x and weighted score 59.99.
+  routed_to: skills/ascend_debug/SKILL.md
 
 notes: >
   V2 uses 0.5 * x * erfc(-x / sqrt(2)) instead of 0.5 * x * (1 + erf(x / sqrt(2))).
-  This may avoid cancellation for negative-tail outputs if Triton-Ascend exposes
-  an accurate tl.erfc implementation.
+  The active Triton-Ascend stack does not expose tl.erfc, so this candidate
+  fell back to PyTorch and did not test the intended custom kernel.
 
 next:
-  - Run the v2 backend probe on the Ascend worker.
-  - Run the official benchmark only if last_backend is triton or fallback behavior is intentional.
+  - Test gelu_triton_v3, which repairs only the negative tail with framework GELU.

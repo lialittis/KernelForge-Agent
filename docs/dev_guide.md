@@ -251,6 +251,23 @@ python third_party/akg/akg_agents/benchmark/akg_kernels_bench_lite/tools/run_ben
   --num-trials 3
 ```
 
+If v2 falls back because `tl.erfc` is unavailable, test the hybrid v3 candidate:
+
+```bash
+bash scripts/create_gelu_triton_v3_submission.sh
+python scripts/probe_gelu_triton_backend.py \
+  --candidate outputs/submissions/gelu_triton_v3/gelu_triton_v3/t1/gelu.py \
+  --shape 32 512 1024
+python third_party/akg/akg_agents/benchmark/akg_kernels_bench_lite/tools/run_bench.py \
+  outputs/submissions/gelu_triton_v3 \
+  --team gelu_triton_v3 \
+  --bench-dir third_party/akg/akg_agents/benchmark/akg_kernels_bench_lite \
+  --output outputs/results/gelu_triton_v3_triton_backend \
+  --warmup 10 \
+  --iterations 100 \
+  --num-trials 3
+```
+
 Equivalent inline smoke check:
 
 ```bash

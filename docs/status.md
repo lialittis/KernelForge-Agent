@@ -4,7 +4,7 @@ Last updated: 2026-07-01
 
 ## Current Phase
 
-Triton-Ascend backend installation.
+GELU Triton correctness repair.
 
 ## Completed
 
@@ -55,23 +55,31 @@ Triton-Ascend backend installation.
   `max_abs_diff=4.737377e-04`, `max_rel_diff=4.803681e+00`.
 - Added `gelu_triton_v2`, which uses an erfc-form GELU expression to avoid
   negative-tail cancellation when `tl.erfc` is available.
+- Ran `gelu_triton_v2`; `tl.erfc` was unavailable, so it fell back to PyTorch
+  GELU and passed with speedup `0.9998x` and weighted score `59.99`.
+- Added `gelu_triton_v3`, a hybrid diagnostic candidate that computes the bulk
+  GELU path in Triton and repairs `x < -3.0` with framework GELU.
 
 ## In Progress
 
-- Testing `gelu_triton_v2` against the official benchmark.
+- Testing `gelu_triton_v3` against the official benchmark.
 
 ## Blockers
 
 - `gelu_triton_v1` launches as a real Triton-Ascend kernel but fails the
   official benchmark's separate relative-error threshold.
+- `gelu_triton_v2` cannot test erfc-form GELU because `tl.erfc` is unavailable
+  in the active Triton-Ascend stack.
 
 ## Next Actions
 
 1. Pull the latest commit on the Ascend worker.
-2. Generate `gelu_triton_v2` with
-   `bash scripts/create_gelu_triton_v2_submission.sh`.
-3. Probe v2 with `scripts/probe_gelu_triton_backend.py --candidate ...`.
-4. Run v2 through the official benchmark if the probe reports Triton backend.
+2. Generate `gelu_triton_v3` with
+   `bash scripts/create_gelu_triton_v3_submission.sh`.
+3. Probe v3 with `scripts/probe_gelu_triton_backend.py --candidate ...`.
+4. Run v3 through the official benchmark.
+5. If v3 passes but is slow, replace the PyTorch tail repair with a pure Triton
+   benchmark-safe negative-tail formula.
 
 ## Latest Handoff
 
@@ -94,6 +102,8 @@ Summary:
 - Recorded the first real Triton-Ascend launch for `gelu_triton_v1` and its
   official correctness failure.
 - Added `gelu_triton_v2` and submission generator.
+- Recorded `gelu_triton_v2` fallback behavior because `tl.erfc` is unavailable.
+- Added `gelu_triton_v3` and submission generator.
 
 Changed Files:
 - `docs/dev_guide.md`
@@ -104,6 +114,7 @@ Changed Files:
 - `scripts/probe_gelu_triton_backend.py`
 - `scripts/create_gelu_triton_submission.sh`
 - `scripts/create_gelu_triton_v2_submission.sh`
+- `scripts/create_gelu_triton_v3_submission.sh`
 - `tasks/active.md`
 - `tests/test_gelu_triton_submission.py`
 
@@ -112,14 +123,15 @@ Verification:
 - `python -m py_compile scripts/probe_gelu_triton_backend.py`
 - `python -m py_compile scripts/diagnose_triton_ascend.py`
 - `python -m py_compile kernel_forge/candidates/gelu_triton_v2.py`
+- `python -m py_compile kernel_forge/candidates/gelu_triton_v3.py`
 - `bash scripts/create_gelu_triton_submission.sh`
 - `pytest -q tests/test_gelu_triton_submission.py`
 
 Open Issues:
 - The PDF is present as `SketchSkill_AKG_项目书基础版.pdf` but is currently
   untracked; decide whether to commit it as source material.
-- Need to confirm whether Triton-Ascend exposes `tl.erfc` and whether v2 passes
-  the official relative-error check.
+- Need to test whether v3 passes the official relative-error check and how much
+  the framework tail repair costs.
 
 Next Suggested Step:
-- Run the `gelu_triton_v2` probe and official benchmark on the Ascend worker.
+- Run the `gelu_triton_v3` probe and official benchmark on the Ascend worker.

@@ -1,0 +1,82 @@
+id: 2026-07-01-gelu-triton-v3-planned
+date: 2026-07-01
+agent: codex
+machine: ascend-worker
+branch: main
+commit: null
+status: planned
+
+benchmark:
+  source: akg_kernels_bench_lite
+  source_commit: bea77cb38db5713056a7e06e5e8a0cbe9d26954b
+  task_id: t1/gelu
+  operator_name: gelu
+  operator_category: elementwise
+  reference_path: third_party/akg/akg_agents/benchmark/akg_kernels_bench_lite/t1/gelu.py
+
+environment:
+  hardware: Ascend 910
+  device_name: Ascend910B2C
+  cann_version: 8.5.1
+  python_version: 3.11.14
+  torch_version: 2.9.0+cpu
+  torch_npu_version: 2.9.0rc1
+  triton_version: 3.2.0
+  triton_ascend_version: 3.2.0
+  venv: /data/venvs/kf-triton-ascend
+
+generation:
+  model: manual
+  backend: triton_ascend
+  opspec_path: benchmarks/parsed/t1_gelu.yaml
+  sketch_path: benchmarks/parsed/t1_gelu.yaml#sketch
+  candidate_source_path: kernel_forge/candidates/gelu_triton_v3.py
+  candidate_path: outputs/submissions/gelu_triton_v3/gelu_triton_v3/t1/gelu.py
+  candidate_index: 3
+  repair_iteration: 2
+  repair_reason: erfc_unavailable_and_relative_error_near_zero
+
+commands:
+  create_submission: bash scripts/create_gelu_triton_v3_submission.sh
+  backend_probe: >
+    python scripts/probe_gelu_triton_backend.py
+    --candidate outputs/submissions/gelu_triton_v3/gelu_triton_v3/t1/gelu.py
+    --shape 32 512 1024
+  benchmark: >
+    python third_party/akg/akg_agents/benchmark/akg_kernels_bench_lite/tools/run_bench.py
+    outputs/submissions/gelu_triton_v3
+    --team gelu_triton_v3
+    --bench-dir third_party/akg/akg_agents/benchmark/akg_kernels_bench_lite
+    --output outputs/results/gelu_triton_v3_triton_backend
+    --warmup 10
+    --iterations 100
+    --num-trials 3
+
+results:
+  runtime:
+    status: not_run
+    last_backend: null
+    last_error: null
+  correctness:
+    status: not_run
+    rtol: 0.01
+    atol: 0.01
+    max_abs_diff: null
+    max_rel_diff: null
+  performance:
+    status: not_run
+    warmup: 10
+    repeats: 100
+    num_trials: 3
+    baseline_latency_ms: 0.0438129500253126
+    solution_latency_ms: null
+    speedup_vs_baseline: null
+
+notes: >
+  V3 computes the bulk GELU path in Triton using erf and repairs x < -3.0 with
+  framework exact GELU. This is a diagnostic bridge to verify the near-zero tail
+  hypothesis, not a final pure Triton kernel.
+
+next:
+  - Run the v3 probe and official benchmark on the Ascend worker.
+  - If correctness passes, inspect performance cost of the framework tail repair.
