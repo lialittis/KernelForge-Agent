@@ -14,6 +14,8 @@ V3_CANDIDATE = ROOT / "kernel_forge/candidates/gelu_triton_v3.py"
 V3_SCRIPT = ROOT / "scripts/create_gelu_triton_v3_submission.sh"
 V4_CANDIDATE = ROOT / "kernel_forge/candidates/gelu_triton_v4.py"
 V4_SCRIPT = ROOT / "scripts/create_gelu_triton_v4_submission.sh"
+V5_CANDIDATE = ROOT / "kernel_forge/candidates/gelu_triton_v5.py"
+V5_SCRIPT = ROOT / "scripts/create_gelu_triton_v5_submission.sh"
 
 
 def test_candidate_source_is_valid_python():
@@ -21,6 +23,7 @@ def test_candidate_source_is_valid_python():
     py_compile.compile(str(V2_CANDIDATE), doraise=True)
     py_compile.compile(str(V3_CANDIDATE), doraise=True)
     py_compile.compile(str(V4_CANDIDATE), doraise=True)
+    py_compile.compile(str(V5_CANDIDATE), doraise=True)
 
 
 def test_candidate_defines_modelnew_and_uses_safe_imports():
@@ -36,7 +39,13 @@ def test_candidate_defines_modelnew_and_uses_safe_imports():
         "multiprocessing",
     }
 
-    for candidate in (CANDIDATE, V2_CANDIDATE, V3_CANDIDATE, V4_CANDIDATE):
+    for candidate in (
+        CANDIDATE,
+        V2_CANDIDATE,
+        V3_CANDIDATE,
+        V4_CANDIDATE,
+        V5_CANDIDATE,
+    ):
         tree = ast.parse(candidate.read_text(encoding="utf-8"))
         class_names = {
             node.name for node in ast.walk(tree) if isinstance(node, ast.ClassDef)
@@ -115,3 +124,19 @@ def test_v4_generator_creates_official_submission_layout(monkeypatch):
     assert meta["team_name"] == "gelu_triton_v4_test"
     assert meta["candidate"] == "gelu_triton_v4"
     assert generated_case.read_text() == V4_CANDIDATE.read_text()
+
+
+def test_v5_generator_creates_official_submission_layout(monkeypatch):
+    monkeypatch.setenv("TEAM_NAME", "gelu_triton_v5_test")
+
+    subprocess.run(["bash", str(V5_SCRIPT)], cwd=ROOT, check=True)
+
+    submission_root = (
+        ROOT / "outputs/submissions/gelu_triton_v5_test/gelu_triton_v5_test"
+    )
+    generated_case = submission_root / "t1/gelu.py"
+    meta = json.loads((submission_root / "meta.json").read_text())
+
+    assert meta["team_name"] == "gelu_triton_v5_test"
+    assert meta["candidate"] == "gelu_triton_v5"
+    assert generated_case.read_text() == V5_CANDIDATE.read_text()

@@ -286,6 +286,24 @@ python third_party/akg/akg_agents/benchmark/akg_kernels_bench_lite/tools/run_ben
   --num-trials 3
 ```
 
+If v4 passes but is too slow, test v5. It keeps the whole computation inside one
+Triton kernel by using an erfc tail approximation for `x < -2.1`:
+
+```bash
+bash scripts/create_gelu_triton_v5_submission.sh
+python scripts/probe_gelu_triton_backend.py \
+  --candidate outputs/submissions/gelu_triton_v5/gelu_triton_v5/t1/gelu.py \
+  --shape 32 512 1024
+python third_party/akg/akg_agents/benchmark/akg_kernels_bench_lite/tools/run_bench.py \
+  outputs/submissions/gelu_triton_v5 \
+  --team gelu_triton_v5 \
+  --bench-dir third_party/akg/akg_agents/benchmark/akg_kernels_bench_lite \
+  --output outputs/results/gelu_triton_v5_triton_backend \
+  --warmup 10 \
+  --iterations 100 \
+  --num-trials 3
+```
+
 Equivalent inline smoke check:
 
 ```bash

@@ -4,7 +4,7 @@ agent: codex
 machine: ascend-worker
 branch: main
 commit: null
-status: planned
+status: pass_but_too_slow
 
 benchmark:
   source: akg_kernels_bench_lite
@@ -54,28 +54,34 @@ commands:
 
 results:
   runtime:
-    status: not_run
-    last_backend: null
+    status: triton_hybrid_tail_indexed_torch
+    last_backend: triton_hybrid_tail_indexed_torch
     last_error: null
+    probe_shape: [32, 512, 1024]
+    output_device: npu:0
+    output_dtype: torch.float32
   correctness:
-    status: not_run
+    status: pass
     rtol: 0.01
     atol: 0.01
-    max_abs_diff: null
-    max_rel_diff: null
+    max_abs_diff: 0.0004737377166748047
+    max_rel_diff: 0.004939538426697254
+    allclose: true
   performance:
-    status: not_run
+    status: measured_too_slow
     warmup: 10
     repeats: 100
     num_trials: 3
     baseline_latency_ms: 0.0438129500253126
     solution_latency_ms: null
-    speedup_vs_baseline: null
+    speedup_vs_baseline: 0.0087
+    weighted_score: 0.52
+    interpretation: framework_tail_repair_dominates_latency
 
 notes: >
   V4 widens the framework exact GELU repair from x < -3.0 to x < -2.1 and uses
-  indexed tail repair to avoid evaluating PyTorch GELU over the full tensor.
+  indexed tail repair to avoid evaluating PyTorch GELU over the full tensor. It
+  passed correctness but was far slower than the PyTorch baseline.
 
 next:
-  - Run the v4 probe and official benchmark on the Ascend worker.
-  - If correctness passes, measure whether indexed tail repair is slower than the baseline.
+  - Test gelu_triton_v5, which replaces framework tail repair with a pure Triton tail approximation.

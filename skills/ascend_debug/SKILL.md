@@ -89,3 +89,6 @@ Interpretation:
 - A repair threshold of `x < -3.0` reduced but did not eliminate the relative
   error. Use a wider threshold such as `x < -2.1` when validating the tail
   hypothesis against this benchmark.
+- Framework tail repair can pass correctness but is extremely slow. Prefer a
+  pure-kernel tail approximation such as the Abramowitz-Stegun erfc polynomial
+  for `x < -2.1`.
