@@ -86,3 +86,6 @@ Interpretation:
 - If `erfc` is unavailable, a temporary benchmark-safety strategy is to compute
   the bulk in Triton and repair the problematic tail with the framework exact
   GELU. Treat this as a diagnostic bridge, not a final pure-kernel solution.
+- A repair threshold of `x < -3.0` reduced but did not eliminate the relative
+  error. Use a wider threshold such as `x < -2.1` when validating the tail
+  hypothesis against this benchmark.

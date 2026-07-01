@@ -6,11 +6,11 @@ and agents.
 ## Current Priorities
 
 1. Pull the latest project changes on the Ascend worker.
-2. Generate `gelu_triton_v3` with
-   `bash scripts/create_gelu_triton_v3_submission.sh`.
-3. Probe v3 with `python scripts/probe_gelu_triton_backend.py --candidate outputs/submissions/gelu_triton_v3/gelu_triton_v3/t1/gelu.py --shape 32 512 1024`.
-4. Run the official benchmark for `gelu_triton_v3`.
-5. If v3 passes but is slow, replace the PyTorch tail repair with a pure Triton
+2. Generate `gelu_triton_v4` with
+   `bash scripts/create_gelu_triton_v4_submission.sh`.
+3. Probe v4 with `python scripts/probe_gelu_triton_backend.py --candidate outputs/submissions/gelu_triton_v4/gelu_triton_v4/t1/gelu.py --shape 32 512 1024`.
+4. Run the official benchmark for `gelu_triton_v4`.
+5. If v4 passes but is slow, replace the PyTorch tail repair with a pure Triton
    benchmark-safe negative-tail formula.
 6. Record the custom candidate experiment under `experiments/runs/`.
 7. Expand OpSpec extraction beyond GELU after the custom GELU loop is complete.

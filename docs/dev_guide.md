@@ -268,6 +268,24 @@ python third_party/akg/akg_agents/benchmark/akg_kernels_bench_lite/tools/run_ben
   --num-trials 3
 ```
 
+If v3 still fails relative error, test v4. It widens the exact tail repair to
+`x < -2.1` and repairs only indexed tail values:
+
+```bash
+bash scripts/create_gelu_triton_v4_submission.sh
+python scripts/probe_gelu_triton_backend.py \
+  --candidate outputs/submissions/gelu_triton_v4/gelu_triton_v4/t1/gelu.py \
+  --shape 32 512 1024
+python third_party/akg/akg_agents/benchmark/akg_kernels_bench_lite/tools/run_bench.py \
+  outputs/submissions/gelu_triton_v4 \
+  --team gelu_triton_v4 \
+  --bench-dir third_party/akg/akg_agents/benchmark/akg_kernels_bench_lite \
+  --output outputs/results/gelu_triton_v4_triton_backend \
+  --warmup 10 \
+  --iterations 100 \
+  --num-trials 3
+```
+
 Equivalent inline smoke check:
 
 ```bash
