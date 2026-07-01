@@ -4,7 +4,7 @@ agent: codex
 machine: ascend-worker
 branch: main
 commit: null
-status: fallback_due_triton_driver
+status: blocked_triton_ascend_missing
 
 benchmark:
   source: akg_kernels_bench_lite
@@ -16,13 +16,13 @@ benchmark:
 
 environment:
   hardware: Ascend 910
-  device_name: null
-  cann_version: null
-  python_version: null
-  torch_version: null
-  torch_npu_version: null
-  triton_version: null
-  triton_ascend_version: null
+  device_name: Ascend910B2C
+  cann_version: 8.5.1
+  python_version: 3.11.14
+  torch_version: 2.9.0+cpu
+  torch_npu_version: 2.9.0rc1
+  triton_version: 3.6.0
+  triton_ascend_version: not_installed
 
 generation:
   model: manual
@@ -81,6 +81,18 @@ results:
     weighted_score: 60.18
     interpretation: fallback_variance_not_custom_kernel_speedup
 
+diagnosis:
+  torch_npu_available: true
+  npu_device_count: 1
+  triton_import_ok: true
+  triton_has_erf: true
+  triton_active_driver_error: "RuntimeError: 0 active drivers ([]). There should only be one."
+  triton_ascend_package: null
+  triton_ascend_import_error: "ModuleNotFoundError: No module named 'triton_ascend'"
+  interpretation: >
+    The Ascend runtime and torch_npu are available. Upstream Triton imports, but
+    the Ascend backend package is absent, so Triton has no active NPU driver.
+
 search:
   method: fixed_first_candidate
   knobs:
@@ -90,13 +102,14 @@ search:
     boundary_strategy: mask_offsets_lt_numel
 
 failure:
-  category: triton_driver_unavailable
+  category: triton_ascend_not_installed
   summary: >
     Official benchmark passed and reported speedup 1.0176x, but the backend
     probe showed ModelNew used PyTorch fallback after Triton raised
-    "RuntimeError: 0 active drivers ([]). There should only be one." Treat this
-    as a Triton-Ascend environment/backend registration issue, not a custom
-    kernel performance result.
+    "RuntimeError: 0 active drivers ([]). There should only be one." The
+    follow-up diagnostic showed package `triton-ascend` is not installed and
+    module `triton_ascend` cannot be imported. Treat this as a missing backend
+    package, not a custom kernel performance result.
   routed_to: skills/ascend_debug/SKILL.md
 
 artifacts:
@@ -110,9 +123,10 @@ notes: >
   if Triton, tl.erf, or the NPU launch path is unavailable. On 2026-07-01 the
   official benchmark passed with speedup 1.0176x and weighted score 60.18. The
   follow-up probe confirmed this was PyTorch fallback, caused by Triton runtime
-  reporting zero active drivers.
+  reporting zero active drivers. The diagnostic confirmed the root cause is a
+  missing Triton-Ascend backend package.
 
 next:
-  - Run python scripts/diagnose_triton_ascend.py on the Ascend worker.
-  - Verify/install a Triton-Ascend package compatible with the worker CANN and Python stack.
+  - Install a Triton-Ascend package compatible with the worker CANN and Python stack.
+  - Rerun python scripts/diagnose_triton_ascend.py and confirm triton_ascend imports.
   - Rerun python scripts/probe_gelu_triton_backend.py after backend installation.

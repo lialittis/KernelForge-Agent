@@ -58,3 +58,10 @@ First checks:
 - Confirm the Ascend toolkit environment was sourced before running Python.
 - Confirm the installed Triton-Ascend package is compatible with CANN, Python,
   torch, and torch_npu on the worker.
+
+If the diagnosis shows `triton-ascend: null` and
+`ModuleNotFoundError: No module named 'triton_ascend'`, the immediate issue is
+missing backend installation. Install the backend package, then rerun both:
+
+- `python scripts/diagnose_triton_ascend.py`
+- `python scripts/probe_gelu_triton_backend.py`

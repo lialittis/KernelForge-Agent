@@ -4,7 +4,7 @@ Last updated: 2026-07-01
 
 ## Current Phase
 
-Triton-Ascend backend availability debugging.
+Triton-Ascend backend installation.
 
 ## Completed
 
@@ -45,23 +45,28 @@ Triton-Ascend backend availability debugging.
 - Ran the backend probe for `gelu_triton_v1`; it used PyTorch fallback after
   Triton raised `RuntimeError: 0 active drivers ([]). There should only be
   one.`.
+- Ran `scripts/diagnose_triton_ascend.py` on the Ascend worker:
+  - `torch_npu` is available with one `Ascend910B2C` device.
+  - `triton` imports as version `3.6.0`.
+  - `triton-ascend` is not installed.
+  - `triton_ascend` import fails with `ModuleNotFoundError`.
 
 ## In Progress
 
-- Diagnosing why Triton has no active backend driver on the Ascend worker.
+- Installing or selecting a compatible Triton-Ascend backend package.
 
 ## Blockers
 
-- Triton currently reports zero active drivers on the Ascend worker. The
-  `gelu_triton_v1` benchmark result is therefore PyTorch fallback behavior, not
-  a custom Triton-Ascend kernel result.
+- The Ascend worker only has upstream `triton`; the Ascend backend package is
+  missing. The `gelu_triton_v1` benchmark result is PyTorch fallback behavior,
+  not a custom Triton-Ascend kernel result.
 
 ## Next Actions
 
 1. Pull the latest commit on the Ascend worker.
-2. Run `python scripts/diagnose_triton_ascend.py`.
-3. Verify/install a Triton-Ascend backend package compatible with the worker's
-   CANN, Python, torch, and torch_npu stack.
+2. Run `python -m pip install triton-ascend==3.2.0`.
+3. Rerun `python scripts/diagnose_triton_ascend.py` and confirm
+   `triton_ascend` imports.
 4. Rerun `python scripts/probe_gelu_triton_backend.py`.
 5. Only tune `gelu_triton_v1` after `last_backend` is `triton`.
 
@@ -81,6 +86,8 @@ Summary:
 - Recorded the backend probe result: `torch_fallback_after_error` due to
   Triton runtime reporting zero active drivers.
 - Added `scripts/diagnose_triton_ascend.py` for environment diagnostics.
+- Recorded the diagnostic result: `triton-ascend` is missing while `torch_npu`
+  and the Ascend device are available.
 
 Changed Files:
 - `docs/dev_guide.md`
@@ -107,5 +114,5 @@ Open Issues:
   performance work can start.
 
 Next Suggested Step:
-- Run `python scripts/diagnose_triton_ascend.py` on the Ascend worker and paste
-  the JSON output back into this repo.
+- Install `triton-ascend==3.2.0` on the Ascend worker, then rerun
+  `python scripts/diagnose_triton_ascend.py`.

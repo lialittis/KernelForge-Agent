@@ -217,6 +217,22 @@ imported but no usable backend driver is registered. Diagnose the environment:
 python scripts/diagnose_triton_ascend.py
 ```
 
+If the diagnosis shows `triton-ascend: null` and
+`ModuleNotFoundError: No module named 'triton_ascend'`, install the Ascend
+backend package and recheck:
+
+```bash
+python -m pip install triton-ascend==3.2.0
+python scripts/diagnose_triton_ascend.py
+python scripts/probe_gelu_triton_backend.py
+```
+
+Do not treat benchmark speedup as custom-kernel speedup until the probe reports:
+
+```text
+last_backend: triton
+```
+
 Equivalent inline smoke check:
 
 ```bash

@@ -6,8 +6,9 @@ and agents.
 ## Current Priorities
 
 1. Pull the latest project changes on the Ascend worker.
-2. Run `python scripts/diagnose_triton_ascend.py` on the Ascend worker.
-3. Fix Triton-Ascend backend registration so Triton has one active driver.
+2. Install `triton-ascend==3.2.0` on the Ascend worker.
+3. Rerun `python scripts/diagnose_triton_ascend.py` and confirm
+   `triton_ascend` imports.
 4. Rerun `python scripts/probe_gelu_triton_backend.py`.
 5. If `last_backend` becomes `triton`, compare the custom candidate against the
    manual PyTorch baseline and tune `gelu_triton_v1`.
