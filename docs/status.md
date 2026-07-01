@@ -4,7 +4,7 @@ Last updated: 2026-07-01
 
 ## Current Phase
 
-GELU Triton correctness repair.
+GELU Triton performance tuning.
 
 ## Completed
 
@@ -75,6 +75,10 @@ GELU Triton correctness repair.
   `4.37`.
 - Added `gelu_triton_v8`, which keeps v7's stable tanh/sigmoid formula and
   increases block size from `1024` to `4096`.
+- Ran `gelu_triton_v8`; it passed official correctness and improved over v7
+  with speedup `0.2856x` and weighted score `17.13`.
+- Added `gelu_triton_v9`, which keeps the v8 formula and increases block size
+  from `4096` to `8192`.
 
 ## In Progress
 
@@ -89,17 +93,17 @@ GELU Triton correctness repair.
 - `gelu_triton_v4` passes correctness but the framework tail repair makes it
   unusably slow.
 - `gelu_triton_v5` is pure Triton but still fails relative error.
-- `gelu_triton_v7` passes correctness but is still much slower than the PyTorch
-  baseline.
+- `gelu_triton_v8` passes correctness and improves over v7, but is still much
+  slower than the PyTorch baseline.
 
 ## Next Actions
 
 1. Pull the latest commit on the Ascend worker.
-2. Generate `gelu_triton_v8` with
-   `bash scripts/create_gelu_triton_v8_submission.sh`.
-3. Probe v8 with `scripts/probe_gelu_triton_backend.py --candidate ...`.
-4. Run v8 through the official benchmark.
-5. Compare v8 latency against v7 before trying larger blocks.
+2. Generate `gelu_triton_v9` with
+   `bash scripts/create_gelu_triton_v9_submission.sh`.
+3. Probe v9 with `scripts/probe_gelu_triton_backend.py --candidate ...`.
+4. Run v9 through the official benchmark.
+5. Compare v9 latency against v7 and v8 before trying larger blocks.
 
 ## Latest Handoff
 
@@ -127,6 +131,8 @@ Summary:
 - Recorded v3/v4 repair results and added `gelu_triton_v5`.
 - Recorded `gelu_triton_v5` failure and added a worst-error analyzer.
 - Recorded `gelu_triton_v7` correctness pass and added `gelu_triton_v8`.
+- Recorded `gelu_triton_v8` correctness pass and performance improvement, then
+  added `gelu_triton_v9`.
 
 Changed Files:
 - `docs/dev_guide.md`
@@ -143,6 +149,7 @@ Changed Files:
 - `scripts/create_gelu_triton_v6_submission.sh`
 - `scripts/create_gelu_triton_v7_submission.sh`
 - `scripts/create_gelu_triton_v8_submission.sh`
+- `scripts/create_gelu_triton_v9_submission.sh`
 - `scripts/analyze_gelu_candidate_error.py`
 - `tasks/active.md`
 - `tests/test_gelu_triton_submission.py`
@@ -158,6 +165,7 @@ Verification:
 - `python -m py_compile kernel_forge/candidates/gelu_triton_v6.py`
 - `python -m py_compile kernel_forge/candidates/gelu_triton_v7.py`
 - `python -m py_compile kernel_forge/candidates/gelu_triton_v8.py`
+- `python -m py_compile kernel_forge/candidates/gelu_triton_v9.py`
 - `python -m py_compile scripts/analyze_gelu_candidate_error.py`
 - `bash scripts/create_gelu_triton_submission.sh`
 - `pytest -q tests/test_gelu_triton_submission.py`
@@ -165,7 +173,7 @@ Verification:
 Open Issues:
 - The PDF is present as `SketchSkill_AKG_项目书基础版.pdf` but is currently
   untracked; decide whether to commit it as source material.
-- Need to tune a correct pure Triton GELU implementation beyond `0.0728x`.
+- Need to tune a correct pure Triton GELU implementation beyond `0.2856x`.
 
 Next Suggested Step:
-- Run the `gelu_triton_v8` probe and official benchmark on the Ascend worker.
+- Run the `gelu_triton_v9` probe and official benchmark on the Ascend worker.
