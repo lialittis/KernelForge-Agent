@@ -105,6 +105,10 @@ GELU Triton performance tuning.
   with speedup `0.6059x` and weighted score `36.35`.
 - Added `gelu_triton_v14`, which keeps per-vector block size `16384` and
   increases sequential chunks per program from `2` to `3`.
+- Ran `gelu_triton_v14`; it passed official correctness but regressed versus
+  v13 with speedup `0.5875x` and weighted score `35.25`.
+- Added `gelu_triton_v15`, which combines v12's `24576` block size with v13's
+  two sequential chunks per program.
 
 ## In Progress
 
@@ -119,18 +123,19 @@ GELU Triton performance tuning.
 - `gelu_triton_v4` passes correctness but the framework tail repair makes it
   unusably slow.
 - `gelu_triton_v5` is pure Triton but still fails relative error.
-- `gelu_triton_v13` passes correctness and improves over v12, but is still much
+- `gelu_triton_v13` remains the current best GELU Triton candidate but is still
+  much
   slower than the PyTorch baseline.
 - `gelu_triton_v11` cannot compile at block size `32768` because the tile
   exceeds available UB.
 
 ## Next Actions
 
-1. Generate `gelu_triton_v14` with
-   `bash scripts/create_gelu_triton_v14_submission.sh`.
-2. Probe v14 with `scripts/probe_gelu_triton_backend.py --candidate ...`.
-3. If v14 probes cleanly, run it through the official benchmark.
-4. Compare v14 latency against v13 before increasing chunks again.
+1. Generate `gelu_triton_v15` with
+   `bash scripts/create_gelu_triton_v15_submission.sh`.
+2. Probe v15 with `scripts/probe_gelu_triton_backend.py --candidate ...`.
+3. If v15 probes cleanly, run it through the official benchmark.
+4. Compare v15 latency against v13 and v14.
 
 ## Latest Handoff
 

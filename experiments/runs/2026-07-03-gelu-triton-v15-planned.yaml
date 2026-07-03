@@ -1,10 +1,10 @@
-id: 2026-07-03-gelu-triton-v14-planned
+id: 2026-07-03-gelu-triton-v15-planned
 date: 2026-07-03
 agent: codex
 machine: ascend-worker
 branch: main
 commit: null
-status: pass_regressed
+status: planned
 
 benchmark:
   source: akg_kernels_bench_lite
@@ -30,64 +30,63 @@ generation:
   backend: triton_ascend
   opspec_path: benchmarks/parsed/t1_gelu.yaml
   sketch_path: benchmarks/parsed/t1_gelu.yaml#sketch
-  candidate_source_path: kernel_forge/candidates/gelu_triton_v14.py
-  candidate_path: outputs/submissions/gelu_triton_v14/gelu_triton_v14/t1/gelu.py
-  candidate_index: 14
-  repair_iteration: 13
-  repair_reason: continue_sequential_chunk_tiling_after_v13_speedup_improvement
+  candidate_source_path: kernel_forge/candidates/gelu_triton_v15.py
+  candidate_path: outputs/submissions/gelu_triton_v15/gelu_triton_v15/t1/gelu.py
+  candidate_index: 15
+  repair_iteration: 14
+  repair_reason: combine_best_single_vector_block_with_best_chunk_count
 
 commands:
-  create_submission: bash scripts/create_gelu_triton_v14_submission.sh
+  create_submission: bash scripts/create_gelu_triton_v15_submission.sh
   backend_probe: >
     python scripts/probe_gelu_triton_backend.py
-    --candidate outputs/submissions/gelu_triton_v14/gelu_triton_v14/t1/gelu.py
+    --candidate outputs/submissions/gelu_triton_v15/gelu_triton_v15/t1/gelu.py
     --shape 32 512 1024
   benchmark: >
     python third_party/akg/akg_agents/benchmark/akg_kernels_bench_lite/tools/run_bench.py
-    outputs/submissions/gelu_triton_v14
-    --team gelu_triton_v14
+    outputs/submissions/gelu_triton_v15
+    --team gelu_triton_v15
     --bench-dir third_party/akg/akg_agents/benchmark/akg_kernels_bench_lite
-    --output outputs/results/gelu_triton_v14_triton_backend
+    --output outputs/results/gelu_triton_v15_triton_backend
     --warmup 10
     --iterations 100
     --num-trials 3
 
 results:
   runtime:
-    status: triton_launch_inferred_from_benchmark
-    last_backend: triton_tanh_sigmoid_form_bs16384x3
+    status: not_run
+    last_backend: null
     last_error: null
   correctness:
-    status: pass
+    status: not_run
     rtol: 0.01
     atol: 0.01
     max_abs_diff: null
     max_rel_diff: null
   performance:
-    status: measured_regression
+    status: not_run
     warmup: 10
     repeats: 100
     num_trials: 3
     baseline_latency_ms: 0.0438129500253126
     solution_latency_ms: null
-    solution_latency_ms_estimate: 0.07457523408563847
-    speedup_vs_baseline: 0.5875
-    weighted_score: 35.25
-    comparison: slower_than_v13
+    speedup_vs_baseline: null
 
 search:
   method: sequential_chunk_tiling
   knobs:
-    vector_block_size: 16384
-    chunks_per_program: 3
+    vector_block_size: 24576
+    chunks_per_program: 2
     effective_elements_per_program: 49152
-    previous_chunks_per_program: 2
-    previous_effective_elements_per_program: 32768
+    previous_best_vector_block_size: 24576
+    previous_best_chunks_per_program: 2
+    previous_best_candidate: gelu_triton_v13
 
 notes: >
-  V14 keeps the v13 per-vector block size at 16384 and increases sequential
-  chunks per program from 2 to 3. This further reduces program count while
-  staying below the known single-vector UB overflow point.
+  V15 combines the best single-vector block size from v12 with the best
+  sequential chunk count from v13. It has the same effective elements per
+  program as v14 but uses two larger chunks instead of three smaller chunks.
 
 next:
-  - Test gelu_triton_v15 with the best single-vector block size and two chunks.
+  - Probe v15 before benchmarking.
+  - If v15 compiles and passes, benchmark against v13 and v14.
