@@ -89,6 +89,10 @@ GELU Triton performance tuning.
   with speedup `0.4869x` and weighted score `29.22`.
 - Added `gelu_triton_v10`, which keeps the v9 formula and increases block size
   from `8192` to `16384`.
+- Ran `gelu_triton_v10`; it passed official correctness and improved over v9
+  with speedup `0.5635x` and weighted score `33.81`.
+- Added `gelu_triton_v11`, which keeps the v10 formula and increases block size
+  from `16384` to `32768`.
 
 ## In Progress
 
@@ -103,16 +107,16 @@ GELU Triton performance tuning.
 - `gelu_triton_v4` passes correctness but the framework tail repair makes it
   unusably slow.
 - `gelu_triton_v5` is pure Triton but still fails relative error.
-- `gelu_triton_v9` passes correctness and improves over v8, but is still much
+- `gelu_triton_v10` passes correctness and improves over v9, but is still much
   slower than the PyTorch baseline.
 
 ## Next Actions
 
-1. Generate `gelu_triton_v10` with
-   `bash scripts/create_gelu_triton_v10_submission.sh`.
-2. Probe v10 with `scripts/probe_gelu_triton_backend.py --candidate ...`.
-3. Run v10 through the official benchmark.
-4. Compare v10 latency against v8 and v9 before trying larger blocks.
+1. Generate `gelu_triton_v11` with
+   `bash scripts/create_gelu_triton_v11_submission.sh`.
+2. Probe v11 with `scripts/probe_gelu_triton_backend.py --candidate ...`.
+3. If v11 probes cleanly, run it through the official benchmark.
+4. Compare v11 latency against v9 and v10 before trying larger blocks.
 
 ## Latest Handoff
 

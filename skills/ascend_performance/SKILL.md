@@ -37,12 +37,13 @@ optimization on Ascend 910.
 
 ### Correct GELU Triton Kernel Still Slower Than Framework
 
-Observed for `gelu_triton_v7` and improved through `gelu_triton_v9`:
+Observed for `gelu_triton_v7` and improved through `gelu_triton_v10`:
 
 ```text
 gelu_triton_v7: correctness pass, speedup 0.0728x, block size 1024
 gelu_triton_v8: correctness pass, speedup 0.2856x, block size 4096
 gelu_triton_v9: correctness pass, speedup 0.4869x, block size 8192
+gelu_triton_v10: correctness pass, speedup 0.5635x, block size 16384
 ```
 
 First tuning axis:
@@ -50,4 +51,4 @@ First tuning axis:
 - Reduce program count by increasing block size.
 - Compare each candidate against the same official benchmark settings.
 - Do not treat correctness-only probe timing as benchmark timing.
-- Continue this axis with `16384` before changing the math or backend strategy.
+- Continue this axis with `32768` before changing the math or backend strategy.
