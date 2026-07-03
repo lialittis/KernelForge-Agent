@@ -46,6 +46,7 @@ gelu_triton_v9: correctness pass, speedup 0.4869x, block size 8192
 gelu_triton_v10: correctness pass, speedup 0.5635x, block size 16384
 gelu_triton_v11: compile failure, UB overflow at block size 32768
 gelu_triton_v12: correctness pass, speedup 0.5764x, block size 24576
+gelu_triton_v13: correctness pass, speedup 0.6059x, block size 16384 x 2 chunks
 ```
 
 First tuning axis:
@@ -61,3 +62,6 @@ First tuning axis:
 - Once single-vector block size hits the UB boundary, try sequential chunks per
   program with a smaller per-vector block to reduce program count without
   increasing one vector tile.
+- Increase chunks per program one step at a time and compare against the same
+  official benchmark settings; fewer programs can help, but too much sequential
+  work per program can reduce parallelism.
