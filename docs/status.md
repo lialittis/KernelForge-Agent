@@ -117,6 +117,11 @@ GELU Triton performance tuning.
   v13 with speedup `0.5373x` and weighted score `32.24`.
 - Added `gelu_triton_v17`, which keeps v13's tiling and tests an `exp2`-based
   sigmoid lowering.
+- Probed `gelu_triton_v17`; Triton JIT rejected the Python global
+  `_NEG_TWO_LOG2E` inside a `@jit` function, so the candidate fell back to
+  PyTorch before testing `tl.exp2`.
+- Added `gelu_triton_v18`, which keeps v17's `exp2` lowering but inlines the
+  numeric constant inside the JIT expression.
 
 ## In Progress
 
@@ -135,14 +140,16 @@ GELU Triton performance tuning.
   much slower than the PyTorch baseline.
 - `gelu_triton_v11` cannot compile at block size `32768` because the tile
   exceeds available UB.
+- `gelu_triton_v17` cannot compile because Triton JIT cannot access normal
+  Python globals from inside `@jit` functions.
 
 ## Next Actions
 
-1. Generate `gelu_triton_v17` with
-   `bash scripts/create_gelu_triton_v17_submission.sh`.
-2. Probe v17 with `scripts/probe_gelu_triton_backend.py --candidate ...`.
-3. If v17 probes cleanly, run it through the official benchmark.
-4. Compare v17 latency against v13.
+1. Generate `gelu_triton_v18` with
+   `bash scripts/create_gelu_triton_v18_submission.sh`.
+2. Probe v18 with `scripts/probe_gelu_triton_backend.py --candidate ...`.
+3. If v18 probes cleanly, run it through the official benchmark.
+4. Compare v18 latency against v13.
 
 ## Latest Handoff
 
@@ -222,8 +229,7 @@ Verification:
 Open Issues:
 - The PDF is present as `SketchSkill_AKG_项目书基础版.pdf` but is currently
   untracked; decide whether to commit it as source material.
-- Need to tune a correct pure Triton GELU implementation beyond `0.4869x`.
+- Need to tune a correct pure Triton GELU implementation beyond `0.6059x`.
 
 Next Suggested Step:
-- Run the `gelu_triton_v10` probe and official benchmark on the new Ascend
-  worker.
+- Run the `gelu_triton_v18` probe on the Ascend worker.

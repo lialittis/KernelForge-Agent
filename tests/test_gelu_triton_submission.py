@@ -40,6 +40,8 @@ V16_CANDIDATE = ROOT / "kernel_forge/candidates/gelu_triton_v16.py"
 V16_SCRIPT = ROOT / "scripts/create_gelu_triton_v16_submission.sh"
 V17_CANDIDATE = ROOT / "kernel_forge/candidates/gelu_triton_v17.py"
 V17_SCRIPT = ROOT / "scripts/create_gelu_triton_v17_submission.sh"
+V18_CANDIDATE = ROOT / "kernel_forge/candidates/gelu_triton_v18.py"
+V18_SCRIPT = ROOT / "scripts/create_gelu_triton_v18_submission.sh"
 
 
 def test_candidate_source_is_valid_python():
@@ -60,6 +62,7 @@ def test_candidate_source_is_valid_python():
     py_compile.compile(str(V15_CANDIDATE), doraise=True)
     py_compile.compile(str(V16_CANDIDATE), doraise=True)
     py_compile.compile(str(V17_CANDIDATE), doraise=True)
+    py_compile.compile(str(V18_CANDIDATE), doraise=True)
 
 
 def test_candidate_defines_modelnew_and_uses_safe_imports():
@@ -93,6 +96,7 @@ def test_candidate_defines_modelnew_and_uses_safe_imports():
         V15_CANDIDATE,
         V16_CANDIDATE,
         V17_CANDIDATE,
+        V18_CANDIDATE,
     ):
         tree = ast.parse(candidate.read_text(encoding="utf-8"))
         class_names = {
@@ -380,3 +384,19 @@ def test_v17_generator_creates_official_submission_layout(monkeypatch):
     assert meta["team_name"] == "gelu_triton_v17_test"
     assert meta["candidate"] == "gelu_triton_v17"
     assert generated_case.read_text() == V17_CANDIDATE.read_text()
+
+
+def test_v18_generator_creates_official_submission_layout(monkeypatch):
+    monkeypatch.setenv("TEAM_NAME", "gelu_triton_v18_test")
+
+    subprocess.run(["bash", str(V18_SCRIPT)], cwd=ROOT, check=True)
+
+    submission_root = (
+        ROOT / "outputs/submissions/gelu_triton_v18_test/gelu_triton_v18_test"
+    )
+    generated_case = submission_root / "t1/gelu.py"
+    meta = json.loads((submission_root / "meta.json").read_text())
+
+    assert meta["team_name"] == "gelu_triton_v18_test"
+    assert meta["candidate"] == "gelu_triton_v18"
+    assert generated_case.read_text() == V18_CANDIDATE.read_text()

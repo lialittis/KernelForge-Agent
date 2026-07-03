@@ -50,6 +50,7 @@ gelu_triton_v13: correctness pass, speedup 0.6059x, block size 16384 x 2 chunks
 gelu_triton_v14: correctness pass, speedup 0.5875x, block size 16384 x 3 chunks
 gelu_triton_v15: correctness pass, speedup 0.5858x, block size 24576 x 2 chunks
 gelu_triton_v16: correctness pass, speedup 0.5373x, tl.sigmoid lowering
+gelu_triton_v17: compile failure, non-constexpr global used inside @jit function
 ```
 
 First tuning axis:
@@ -74,3 +75,5 @@ First tuning axis:
   math lowerings such as `tl.sigmoid` versus explicit reciprocal-exp sigmoid.
 - If `tl.sigmoid` regresses, test equivalent explicit lowerings such as `exp2`
   before moving to a different operator or backend strategy.
+- Triton JIT functions cannot read ordinary Python globals reliably. Inline
+  scalar constants in the JIT expression or pass them as constexpr values.
