@@ -4,7 +4,7 @@ agent: codex
 machine: ascend-worker
 branch: main
 commit: null
-status: planned
+status: compile_failed
 
 benchmark:
   source: akg_kernels_bench_lite
@@ -54,17 +54,19 @@ commands:
 
 results:
   runtime:
-    status: not_run
-    last_backend: null
-    last_error: null
+    status: compile_failed_then_torch_fallback
+    last_backend: torch_fallback_after_error
+    last_error_category: triton_ascend_ub_overflow
+    compiler_error_summary: ub overflow, requires 2097152 bits while 1572864 bits available
   correctness:
-    status: not_run
+    status: fallback_allclose_not_kernel_result
     rtol: 0.01
     atol: 0.01
-    max_abs_diff: null
-    max_rel_diff: null
+    max_abs_diff: 0.0
+    max_rel_diff: 0.0
+    allclose: true
   performance:
-    status: not_run
+    status: not_run_due_compile_failure
     warmup: 10
     repeats: 100
     num_trials: 3
@@ -77,6 +79,9 @@ search:
   knobs:
     block_size: 32768
     previous_block_size: 16384
+    ub_required_bits: 2097152
+    ub_available_bits: 1572864
+    estimated_max_block_size_at_64_bits_per_element: 24576
 
 notes: >
   V11 keeps v10's stable tanh/sigmoid GELU formula and increases BLOCK_SIZE from
@@ -85,5 +90,4 @@ notes: >
   backend scheduling, register pressure, or compile support.
 
 next:
-  - Run the v11 probe on the Ascend worker before benchmarking.
-  - If the probe passes, run the official benchmark and compare against v10.
+  - Test gelu_triton_v12 at the compiler-derived UB boundary block size.
