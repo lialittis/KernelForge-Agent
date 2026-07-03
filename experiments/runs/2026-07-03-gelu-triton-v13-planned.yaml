@@ -1,0 +1,93 @@
+id: 2026-07-03-gelu-triton-v13-planned
+date: 2026-07-03
+agent: codex
+machine: ascend-worker
+branch: main
+commit: null
+status: planned
+
+benchmark:
+  source: akg_kernels_bench_lite
+  source_commit: bea77cb38db5713056a7e06e5e8a0cbe9d26954b
+  task_id: t1/gelu
+  operator_name: gelu
+  operator_category: elementwise
+  reference_path: third_party/akg/akg_agents/benchmark/akg_kernels_bench_lite/t1/gelu.py
+
+environment:
+  hardware: Ascend 910
+  device_name: Ascend910B2C
+  cann_version: 8.5.1
+  python_version: 3.11.14
+  torch_version: 2.9.0+cpu
+  torch_npu_version: 2.9.0rc1
+  triton_version: 3.2.0
+  triton_ascend_version: 3.2.0
+  venv: /data/venvs/kf-triton-ascend
+
+generation:
+  model: manual
+  backend: triton_ascend
+  opspec_path: benchmarks/parsed/t1_gelu.yaml
+  sketch_path: benchmarks/parsed/t1_gelu.yaml#sketch
+  candidate_source_path: kernel_forge/candidates/gelu_triton_v13.py
+  candidate_path: outputs/submissions/gelu_triton_v13/gelu_triton_v13/t1/gelu.py
+  candidate_index: 13
+  repair_iteration: 12
+  repair_reason: reduce_program_count_with_sequential_chunks_under_ub_limit
+
+commands:
+  create_submission: bash scripts/create_gelu_triton_v13_submission.sh
+  backend_probe: >
+    python scripts/probe_gelu_triton_backend.py
+    --candidate outputs/submissions/gelu_triton_v13/gelu_triton_v13/t1/gelu.py
+    --shape 32 512 1024
+  benchmark: >
+    python third_party/akg/akg_agents/benchmark/akg_kernels_bench_lite/tools/run_bench.py
+    outputs/submissions/gelu_triton_v13
+    --team gelu_triton_v13
+    --bench-dir third_party/akg/akg_agents/benchmark/akg_kernels_bench_lite
+    --output outputs/results/gelu_triton_v13_triton_backend
+    --warmup 10
+    --iterations 100
+    --num-trials 3
+
+results:
+  runtime:
+    status: not_run
+    last_backend: null
+    last_error: null
+  correctness:
+    status: not_run
+    rtol: 0.01
+    atol: 0.01
+    max_abs_diff: null
+    max_rel_diff: null
+  performance:
+    status: not_run
+    warmup: 10
+    repeats: 100
+    num_trials: 3
+    baseline_latency_ms: 0.0438129500253126
+    solution_latency_ms: null
+    speedup_vs_baseline: null
+
+search:
+  method: sequential_chunk_tiling
+  knobs:
+    vector_block_size: 16384
+    chunks_per_program: 2
+    effective_elements_per_program: 32768
+    previous_best_single_block_size: 24576
+    failed_single_block_size: 32768
+
+notes: >
+  V13 keeps the per-vector block size at 16384, which compiled successfully in
+  v10, but each Triton program computes two sequential chunks. This tests
+  whether program-count overhead can be reduced further without asking the
+  compiler to allocate one 32768-wide UB tile.
+
+next:
+  - Probe v13 before benchmarking.
+  - If v13 fails with UB overflow, the compiler did not reuse chunk-local UB
+    buffers; keep v12 as the current best and switch to another strategy.

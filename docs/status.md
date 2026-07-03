@@ -97,6 +97,10 @@ GELU Triton performance tuning.
   `2097152` bits required versus `1572864` bits available.
 - Added `gelu_triton_v12`, which tests the compiler-derived UB boundary block
   size `24576`.
+- Ran `gelu_triton_v12`; it passed official correctness and improved over v10
+  with speedup `0.5764x` and weighted score `34.59`.
+- Added `gelu_triton_v13`, which keeps per-vector block size `16384` but
+  computes two sequential chunks per Triton program.
 
 ## In Progress
 
@@ -111,19 +115,19 @@ GELU Triton performance tuning.
 - `gelu_triton_v4` passes correctness but the framework tail repair makes it
   unusably slow.
 - `gelu_triton_v5` is pure Triton but still fails relative error.
-- `gelu_triton_v10` passes correctness and improves over v9, but is still much
+- `gelu_triton_v12` passes correctness and improves over v10, but is still much
   slower than the PyTorch baseline.
 - `gelu_triton_v11` cannot compile at block size `32768` because the tile
   exceeds available UB.
 
 ## Next Actions
 
-1. Generate `gelu_triton_v12` with
-   `bash scripts/create_gelu_triton_v12_submission.sh`.
-2. Probe v12 with `scripts/probe_gelu_triton_backend.py --candidate ...`.
-3. If v12 probes cleanly, run it through the official benchmark.
-4. If v12 fails, keep v10 as the current block-size winner and switch to
-   reducing UB footprint.
+1. Generate `gelu_triton_v13` with
+   `bash scripts/create_gelu_triton_v13_submission.sh`.
+2. Probe v13 with `scripts/probe_gelu_triton_backend.py --candidate ...`.
+3. If v13 probes cleanly, run it through the official benchmark.
+4. If v13 fails with UB overflow, keep v12 as the current GELU Triton winner
+   and switch to another strategy.
 
 ## Latest Handoff
 

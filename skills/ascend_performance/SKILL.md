@@ -45,6 +45,7 @@ gelu_triton_v8: correctness pass, speedup 0.2856x, block size 4096
 gelu_triton_v9: correctness pass, speedup 0.4869x, block size 8192
 gelu_triton_v10: correctness pass, speedup 0.5635x, block size 16384
 gelu_triton_v11: compile failure, UB overflow at block size 32768
+gelu_triton_v12: correctness pass, speedup 0.5764x, block size 24576
 ```
 
 First tuning axis:
@@ -57,3 +58,6 @@ First tuning axis:
   implies a boundary near `24576` elements.
 - If the boundary candidate fails, stop increasing block size and reduce UB
   footprint instead.
+- Once single-vector block size hits the UB boundary, try sequential chunks per
+  program with a smaller per-vector block to reduce program count without
+  increasing one vector tile.
