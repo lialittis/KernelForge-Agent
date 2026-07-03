@@ -48,6 +48,7 @@ gelu_triton_v11: compile failure, UB overflow at block size 32768
 gelu_triton_v12: correctness pass, speedup 0.5764x, block size 24576
 gelu_triton_v13: correctness pass, speedup 0.6059x, block size 16384 x 2 chunks
 gelu_triton_v14: correctness pass, speedup 0.5875x, block size 16384 x 3 chunks
+gelu_triton_v15: correctness pass, speedup 0.5858x, block size 24576 x 2 chunks
 ```
 
 First tuning axis:
@@ -68,3 +69,5 @@ First tuning axis:
   work per program can reduce parallelism.
 - If a higher chunk count regresses, combine the best successful chunk count
   with the best single-vector block size before abandoning the axis.
+- After the tiling axis plateaus, keep the best tiling fixed and test backend
+  math lowerings such as `tl.sigmoid` versus explicit reciprocal-exp sigmoid.

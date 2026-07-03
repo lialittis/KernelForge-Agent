@@ -1,10 +1,10 @@
-id: 2026-07-03-gelu-triton-v15-planned
+id: 2026-07-03-gelu-triton-v16-planned
 date: 2026-07-03
 agent: codex
 machine: ascend-worker
 branch: main
 commit: null
-status: pass_regressed
+status: planned
 
 benchmark:
   source: akg_kernels_bench_lite
@@ -30,66 +30,63 @@ generation:
   backend: triton_ascend
   opspec_path: benchmarks/parsed/t1_gelu.yaml
   sketch_path: benchmarks/parsed/t1_gelu.yaml#sketch
-  candidate_source_path: kernel_forge/candidates/gelu_triton_v15.py
-  candidate_path: outputs/submissions/gelu_triton_v15/gelu_triton_v15/t1/gelu.py
-  candidate_index: 15
-  repair_iteration: 14
-  repair_reason: combine_best_single_vector_block_with_best_chunk_count
+  candidate_source_path: kernel_forge/candidates/gelu_triton_v16.py
+  candidate_path: outputs/submissions/gelu_triton_v16/gelu_triton_v16/t1/gelu.py
+  candidate_index: 16
+  repair_iteration: 15
+  repair_reason: test_triton_sigmoid_intrinsic_after_tiling_axis_plateau
 
 commands:
-  create_submission: bash scripts/create_gelu_triton_v15_submission.sh
+  create_submission: bash scripts/create_gelu_triton_v16_submission.sh
   backend_probe: >
     python scripts/probe_gelu_triton_backend.py
-    --candidate outputs/submissions/gelu_triton_v15/gelu_triton_v15/t1/gelu.py
+    --candidate outputs/submissions/gelu_triton_v16/gelu_triton_v16/t1/gelu.py
     --shape 32 512 1024
   benchmark: >
     python third_party/akg/akg_agents/benchmark/akg_kernels_bench_lite/tools/run_bench.py
-    outputs/submissions/gelu_triton_v15
-    --team gelu_triton_v15
+    outputs/submissions/gelu_triton_v16
+    --team gelu_triton_v16
     --bench-dir third_party/akg/akg_agents/benchmark/akg_kernels_bench_lite
-    --output outputs/results/gelu_triton_v15_triton_backend
+    --output outputs/results/gelu_triton_v16_triton_backend
     --warmup 10
     --iterations 100
     --num-trials 3
 
 results:
   runtime:
-    status: triton_launch_inferred_from_benchmark
-    last_backend: triton_tanh_sigmoid_form_bs24576x2
+    status: not_run
+    last_backend: null
     last_error: null
   correctness:
-    status: pass
+    status: not_run
     rtol: 0.01
     atol: 0.01
     max_abs_diff: null
     max_rel_diff: null
   performance:
-    status: measured_regression
+    status: not_run
     warmup: 10
     repeats: 100
     num_trials: 3
     baseline_latency_ms: 0.0438129500253126
     solution_latency_ms: null
-    solution_latency_ms_estimate: 0.07479165248431649
-    speedup_vs_baseline: 0.5858
-    weighted_score: 35.15
-    comparison: slower_than_v13_and_v14
+    speedup_vs_baseline: null
 
 search:
-  method: sequential_chunk_tiling
+  method: math_lowering
   knobs:
-    vector_block_size: 24576
+    vector_block_size: 16384
     chunks_per_program: 2
-    effective_elements_per_program: 49152
-    previous_best_vector_block_size: 24576
-    previous_best_chunks_per_program: 2
+    sigmoid_lowering: tl.sigmoid
     previous_best_candidate: gelu_triton_v13
+    previous_best_sigmoid_lowering: reciprocal_exp
 
 notes: >
-  V15 combines the best single-vector block size from v12 with the best
-  sequential chunk count from v13. It has the same effective elements per
-  program as v14 but uses two larger chunks instead of three smaller chunks.
+  V16 keeps v13's best tiling but replaces x / (1 + exp(-2u)) with
+  x * sigmoid(2u). This tests whether Triton-Ascend lowers tl.sigmoid to a
+  faster or more stable backend intrinsic than the explicit reciprocal-exp form.
 
 next:
-  - Keep gelu_triton_v13 as the best tiling candidate.
-  - Test gelu_triton_v16 with Triton's sigmoid intrinsic.
+  - Probe v16 before benchmarking.
+  - If tl.sigmoid is unavailable or compiles poorly, keep v13 as the current
+    best GELU Triton candidate.

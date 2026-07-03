@@ -109,6 +109,10 @@ GELU Triton performance tuning.
   v13 with speedup `0.5875x` and weighted score `35.25`.
 - Added `gelu_triton_v15`, which combines v12's `24576` block size with v13's
   two sequential chunks per program.
+- Ran `gelu_triton_v15`; it passed official correctness but regressed versus
+  v13 with speedup `0.5858x` and weighted score `35.15`.
+- Added `gelu_triton_v16`, which keeps v13's tiling and tests Triton's
+  `tl.sigmoid` lowering instead of explicit reciprocal-exp sigmoid.
 
 ## In Progress
 
@@ -124,18 +128,17 @@ GELU Triton performance tuning.
   unusably slow.
 - `gelu_triton_v5` is pure Triton but still fails relative error.
 - `gelu_triton_v13` remains the current best GELU Triton candidate but is still
-  much
-  slower than the PyTorch baseline.
+  much slower than the PyTorch baseline.
 - `gelu_triton_v11` cannot compile at block size `32768` because the tile
   exceeds available UB.
 
 ## Next Actions
 
-1. Generate `gelu_triton_v15` with
-   `bash scripts/create_gelu_triton_v15_submission.sh`.
-2. Probe v15 with `scripts/probe_gelu_triton_backend.py --candidate ...`.
-3. If v15 probes cleanly, run it through the official benchmark.
-4. Compare v15 latency against v13 and v14.
+1. Generate `gelu_triton_v16` with
+   `bash scripts/create_gelu_triton_v16_submission.sh`.
+2. Probe v16 with `scripts/probe_gelu_triton_backend.py --candidate ...`.
+3. If v16 probes cleanly, run it through the official benchmark.
+4. Compare v16 latency against v13.
 
 ## Latest Handoff
 

@@ -5,11 +5,11 @@ and agents.
 
 ## Current Priorities
 
-1. Generate `gelu_triton_v15` with
-   `bash scripts/create_gelu_triton_v15_submission.sh`.
-2. Probe v15 with `python scripts/probe_gelu_triton_backend.py --candidate outputs/submissions/gelu_triton_v15/gelu_triton_v15/t1/gelu.py --shape 32 512 1024`.
-3. If the probe passes, run the official benchmark for `gelu_triton_v15`.
-4. Compare v15 latency against v13 and v14.
+1. Generate `gelu_triton_v16` with
+   `bash scripts/create_gelu_triton_v16_submission.sh`.
+2. Probe v16 with `python scripts/probe_gelu_triton_backend.py --candidate outputs/submissions/gelu_triton_v16/gelu_triton_v16/t1/gelu.py --shape 32 512 1024`.
+3. If the probe passes, run the official benchmark for `gelu_triton_v16`.
+4. Compare v16 latency against v13.
 5. Record the custom candidate experiment under `experiments/runs/`.
 6. Expand OpSpec extraction beyond GELU after the custom GELU loop is complete.
 7. Decide whether to commit `SketchSkill_AKG_项目书基础版.pdf`.
