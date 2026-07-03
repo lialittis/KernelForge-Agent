@@ -49,6 +49,7 @@ gelu_triton_v12: correctness pass, speedup 0.5764x, block size 24576
 gelu_triton_v13: correctness pass, speedup 0.6059x, block size 16384 x 2 chunks
 gelu_triton_v14: correctness pass, speedup 0.5875x, block size 16384 x 3 chunks
 gelu_triton_v15: correctness pass, speedup 0.5858x, block size 24576 x 2 chunks
+gelu_triton_v16: correctness pass, speedup 0.5373x, tl.sigmoid lowering
 ```
 
 First tuning axis:
@@ -71,3 +72,5 @@ First tuning axis:
   with the best single-vector block size before abandoning the axis.
 - After the tiling axis plateaus, keep the best tiling fixed and test backend
   math lowerings such as `tl.sigmoid` versus explicit reciprocal-exp sigmoid.
+- If `tl.sigmoid` regresses, test equivalent explicit lowerings such as `exp2`
+  before moving to a different operator or backend strategy.

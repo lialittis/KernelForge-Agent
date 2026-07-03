@@ -113,6 +113,10 @@ GELU Triton performance tuning.
   v13 with speedup `0.5858x` and weighted score `35.15`.
 - Added `gelu_triton_v16`, which keeps v13's tiling and tests Triton's
   `tl.sigmoid` lowering instead of explicit reciprocal-exp sigmoid.
+- Ran `gelu_triton_v16`; it passed official correctness but regressed versus
+  v13 with speedup `0.5373x` and weighted score `32.24`.
+- Added `gelu_triton_v17`, which keeps v13's tiling and tests an `exp2`-based
+  sigmoid lowering.
 
 ## In Progress
 
@@ -134,11 +138,11 @@ GELU Triton performance tuning.
 
 ## Next Actions
 
-1. Generate `gelu_triton_v16` with
-   `bash scripts/create_gelu_triton_v16_submission.sh`.
-2. Probe v16 with `scripts/probe_gelu_triton_backend.py --candidate ...`.
-3. If v16 probes cleanly, run it through the official benchmark.
-4. Compare v16 latency against v13.
+1. Generate `gelu_triton_v17` with
+   `bash scripts/create_gelu_triton_v17_submission.sh`.
+2. Probe v17 with `scripts/probe_gelu_triton_backend.py --candidate ...`.
+3. If v17 probes cleanly, run it through the official benchmark.
+4. Compare v17 latency against v13.
 
 ## Latest Handoff
 
