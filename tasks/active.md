@@ -5,17 +5,14 @@ and agents.
 
 ## Current Priorities
 
-1. Pull the latest project changes on the new Ascend worker.
-2. Reconstruct the worker environment with
-   `bash scripts/bootstrap_ascend_env.sh`.
-3. Generate `gelu_triton_v9` with
-   `bash scripts/create_gelu_triton_v9_submission.sh`.
-4. Probe v9 with `python scripts/probe_gelu_triton_backend.py --candidate outputs/submissions/gelu_triton_v9/gelu_triton_v9/t1/gelu.py --shape 32 512 1024`.
-5. Run the official benchmark for `gelu_triton_v9`.
-6. Compare v9 latency against v7 and v8 before trying larger blocks.
-7. Record the custom candidate experiment under `experiments/runs/`.
-8. Expand OpSpec extraction beyond GELU after the custom GELU loop is complete.
-9. Decide whether to commit `SketchSkill_AKG_项目书基础版.pdf`.
+1. Generate `gelu_triton_v10` with
+   `bash scripts/create_gelu_triton_v10_submission.sh`.
+2. Probe v10 with `python scripts/probe_gelu_triton_backend.py --candidate outputs/submissions/gelu_triton_v10/gelu_triton_v10/t1/gelu.py --shape 32 512 1024`.
+3. Run the official benchmark for `gelu_triton_v10`.
+4. Compare v10 latency against v8 and v9 before trying larger blocks.
+5. Record the custom candidate experiment under `experiments/runs/`.
+6. Expand OpSpec extraction beyond GELU after the custom GELU loop is complete.
+7. Decide whether to commit `SketchSkill_AKG_项目书基础版.pdf`.
 
 ## Research Questions
 

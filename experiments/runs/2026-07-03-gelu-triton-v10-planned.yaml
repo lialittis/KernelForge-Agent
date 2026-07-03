@@ -1,10 +1,10 @@
-id: 2026-07-01-gelu-triton-v9-planned
-date: 2026-07-01
+id: 2026-07-03-gelu-triton-v10-planned
+date: 2026-07-03
 agent: codex
 machine: ascend-worker
 branch: main
 commit: null
-status: pass_but_slow
+status: planned
 
 benchmark:
   source: akg_kernels_bench_lite
@@ -30,62 +30,59 @@ generation:
   backend: triton_ascend
   opspec_path: benchmarks/parsed/t1_gelu.yaml
   sketch_path: benchmarks/parsed/t1_gelu.yaml#sketch
-  candidate_source_path: kernel_forge/candidates/gelu_triton_v9.py
-  candidate_path: outputs/submissions/gelu_triton_v9/gelu_triton_v9/t1/gelu.py
-  candidate_index: 9
-  repair_iteration: 8
-  repair_reason: continue_block_size_tuning_after_v8_speedup_improvement
+  candidate_source_path: kernel_forge/candidates/gelu_triton_v10.py
+  candidate_path: outputs/submissions/gelu_triton_v10/gelu_triton_v10/t1/gelu.py
+  candidate_index: 10
+  repair_iteration: 9
+  repair_reason: continue_block_size_tuning_after_v9_speedup_improvement
 
 commands:
-  create_submission: bash scripts/create_gelu_triton_v9_submission.sh
+  create_submission: bash scripts/create_gelu_triton_v10_submission.sh
   backend_probe: >
     python scripts/probe_gelu_triton_backend.py
-    --candidate outputs/submissions/gelu_triton_v9/gelu_triton_v9/t1/gelu.py
+    --candidate outputs/submissions/gelu_triton_v10/gelu_triton_v10/t1/gelu.py
     --shape 32 512 1024
   benchmark: >
     python third_party/akg/akg_agents/benchmark/akg_kernels_bench_lite/tools/run_bench.py
-    outputs/submissions/gelu_triton_v9
-    --team gelu_triton_v9
+    outputs/submissions/gelu_triton_v10
+    --team gelu_triton_v10
     --bench-dir third_party/akg/akg_agents/benchmark/akg_kernels_bench_lite
-    --output outputs/results/gelu_triton_v9_triton_backend
+    --output outputs/results/gelu_triton_v10_triton_backend
     --warmup 10
     --iterations 100
     --num-trials 3
 
 results:
   runtime:
-    status: triton_launch
-    last_backend: triton_tanh_sigmoid_form_bs8192
+    status: not_run
+    last_backend: null
     last_error: null
   correctness:
-    status: pass
+    status: not_run
     rtol: 0.01
     atol: 0.01
-    max_abs_diff: 0.000000476837158203125
-    max_rel_diff: 0.000003661129085230641
-    allclose: true
+    max_abs_diff: null
+    max_rel_diff: null
   performance:
-    status: measured_slow
+    status: not_run
     warmup: 10
     repeats: 100
     num_trials: 3
     baseline_latency_ms: 0.0438129500253126
     solution_latency_ms: null
-    solution_latency_ms_estimate: 0.08998346688295872
-    speedup_vs_baseline: 0.4869
-    weighted_score: 29.22
-    interpretation: correct_pure_triton_and_faster_than_v8_but_still_slower_than_baseline
+    speedup_vs_baseline: null
 
 search:
   method: block_size_tuning
   knobs:
-    block_size: 8192
-    previous_block_size: 4096
+    block_size: 16384
+    previous_block_size: 8192
 
 notes: >
-  V9 keeps v8's stable tanh/sigmoid GELU formula and increases BLOCK_SIZE from
-  4096 to 8192. This tests whether the v7-to-v8 gain was mainly program-count
-  overhead reduction or whether larger vectors begin to hurt occupancy.
+  V10 keeps v9's stable tanh/sigmoid GELU formula and increases BLOCK_SIZE from
+  8192 to 16384. The v7->v8->v9 trend suggests reducing Triton program count is
+  still beneficial for this large contiguous elementwise case.
 
 next:
-  - Test gelu_triton_v10 with a larger block size.
+  - Run the v10 probe and official benchmark on the Ascend worker.
+  - Compare latency against v8 and v9 before trying a still larger block size.
