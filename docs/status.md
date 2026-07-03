@@ -1,6 +1,6 @@
 # Status
 
-Last updated: 2026-07-01
+Last updated: 2026-07-03
 
 ## Current Phase
 
@@ -79,6 +79,9 @@ GELU Triton performance tuning.
   with speedup `0.2856x` and weighted score `17.13`.
 - Added `gelu_triton_v9`, which keeps the v8 formula and increases block size
   from `4096` to `8192`.
+- Added `scripts/bootstrap_ascend_env.sh` to quickly reconstruct a fresh
+  Ascend worker environment with the pinned benchmark, system-site-packages
+  venv, Triton-Ascend backend dependencies, and diagnostics.
 
 ## In Progress
 
@@ -98,7 +101,8 @@ GELU Triton performance tuning.
 
 ## Next Actions
 
-1. Pull the latest commit on the Ascend worker.
+1. On the new Ascend worker, clone/pull this repository and run
+   `bash scripts/bootstrap_ascend_env.sh`.
 2. Generate `gelu_triton_v9` with
    `bash scripts/create_gelu_triton_v9_submission.sh`.
 3. Probe v9 with `scripts/probe_gelu_triton_backend.py --candidate ...`.
@@ -107,7 +111,7 @@ GELU Triton performance tuning.
 
 ## Latest Handoff
 
-Date: 2026-07-01
+Date: 2026-07-03
 Agent: Codex
 Branch: main
 Summary:
@@ -133,6 +137,8 @@ Summary:
 - Recorded `gelu_triton_v7` correctness pass and added `gelu_triton_v8`.
 - Recorded `gelu_triton_v8` correctness pass and performance improvement, then
   added `gelu_triton_v9`.
+- Added a one-command Ascend worker bootstrap script and documented it in the
+  README and development guide.
 
 Changed Files:
 - `docs/dev_guide.md`
@@ -150,6 +156,7 @@ Changed Files:
 - `scripts/create_gelu_triton_v7_submission.sh`
 - `scripts/create_gelu_triton_v8_submission.sh`
 - `scripts/create_gelu_triton_v9_submission.sh`
+- `scripts/bootstrap_ascend_env.sh`
 - `scripts/analyze_gelu_candidate_error.py`
 - `tasks/active.md`
 - `tests/test_gelu_triton_submission.py`
@@ -168,6 +175,7 @@ Verification:
 - `python -m py_compile kernel_forge/candidates/gelu_triton_v9.py`
 - `python -m py_compile scripts/analyze_gelu_candidate_error.py`
 - `bash scripts/create_gelu_triton_submission.sh`
+- `bash -n scripts/bootstrap_ascend_env.sh`
 - `pytest -q tests/test_gelu_triton_submission.py`
 
 Open Issues:
@@ -176,4 +184,5 @@ Open Issues:
 - Need to tune a correct pure Triton GELU implementation beyond `0.2856x`.
 
 Next Suggested Step:
-- Run the `gelu_triton_v9` probe and official benchmark on the Ascend worker.
+- Run `bash scripts/bootstrap_ascend_env.sh` on the new Ascend worker, then run
+  the `gelu_triton_v9` probe and official benchmark.

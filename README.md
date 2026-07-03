@@ -85,6 +85,14 @@ After cloning this repository, initialize the benchmark with:
 bash scripts/setup_benchmark_submodule.sh
 ```
 
+On a fresh Ascend worker, use the bootstrap script to recreate the benchmark,
+venv, Triton-Ascend backend, and diagnostics setup used by current
+experiments:
+
+```bash
+bash scripts/bootstrap_ascend_env.sh
+```
+
 The benchmark will be available at:
 
 ```text

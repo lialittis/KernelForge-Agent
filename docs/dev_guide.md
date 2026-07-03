@@ -83,6 +83,38 @@ git submodule update --init --depth 1 --filter=blob:none third_party/akg
 bash scripts/setup_benchmark_submodule.sh
 ```
 
+Fast path for reconstructing a known-good worker environment:
+
+```bash
+bash scripts/bootstrap_ascend_env.sh
+```
+
+The bootstrap script:
+
+- initializes the pinned AKG benchmark submodule
+- creates `/data/venvs/kf-triton-ascend` with `--system-site-packages`
+- sources `/usr/local/Ascend/ascend-toolkit/set_env.sh`
+- installs `triton-ascend==3.2.0` plus the Python dependencies needed by the
+  Triton-Ascend backend
+- runs `npu-smi info`, a `torch_npu` GELU smoke test, and
+  `scripts/diagnose_triton_ascend.py`
+
+Use environment variables if the rented machine differs:
+
+```bash
+ASCEND_VENV=/data/venvs/kf-triton-ascend \
+ASCEND_SET_ENV=/usr/local/Ascend/ascend-toolkit/set_env.sh \
+TRITON_ASCEND_VERSION=3.2.0 \
+bash scripts/bootstrap_ascend_env.sh
+```
+
+If packages are already installed and you only want the benchmark and
+diagnostics:
+
+```bash
+SKIP_PIP_INSTALL=1 bash scripts/bootstrap_ascend_env.sh
+```
+
 Source the Ascend runtime environment:
 
 ```bash
@@ -225,6 +257,15 @@ backend package and recheck:
 python -m pip install triton-ascend==3.2.0
 python scripts/diagnose_triton_ascend.py
 python scripts/probe_gelu_triton_backend.py
+```
+
+For the reconstructed worker environment, prefer the pinned bootstrap command
+above. It installs the extra packages that the Triton-Ascend backend needed in
+the previous Ascend worker:
+
+```text
+wheel pybind11 ninja cmake attrs==24.2.0 numpy==1.26.4 scipy==1.13.1
+decorator==5.1.1 psutil==6.0.0 pyyaml
 ```
 
 Do not treat benchmark speedup as custom-kernel speedup until the probe reports:
