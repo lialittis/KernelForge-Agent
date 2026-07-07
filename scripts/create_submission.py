@@ -28,6 +28,12 @@ def main() -> int:
         default="outputs/submissions",
         help="Directory that will contain team/team submission layout.",
     )
+    parser.add_argument(
+        "--layout",
+        choices=("nested", "flat"),
+        default="nested",
+        help="Use nested output-root/team/team layout or flat output-root/team layout.",
+    )
     args = parser.parse_args()
 
     if not TEAM_RE.match(args.team):
@@ -37,7 +43,11 @@ def main() -> int:
         mappings = [_parse_case_mapping(item) for item in args.case]
     except argparse.ArgumentTypeError as exc:
         parser.error(str(exc))
-    submission_root = ROOT / args.output_root / args.team / args.team
+    output_root = ROOT / args.output_root
+    if args.layout == "nested":
+        submission_root = output_root / args.team / args.team
+    else:
+        submission_root = output_root / args.team
     submission_root.mkdir(parents=True, exist_ok=True)
 
     cases_meta = []

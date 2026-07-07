@@ -5,21 +5,20 @@ and agents.
 
 ## Current Priorities
 
-1. Review the committed T1 non-matmul OpSpecs:
-   `benchmarks/parsed/t1_fused_silu_and_mul.yaml`,
-   `benchmarks/parsed/t1_sigmoid_scale_sum.yaml`, and
-   `benchmarks/parsed/t1_softmax.yaml`.
-2. Start the first non-GELU Pass@4 cycle for `t1/sigmoid_scale_sum`.
-3. Use `scripts/create_submission.py` for new candidate layouts instead of
-   adding another one-off shell generator.
+1. Sync the latest commits to the Ascend worker.
+2. Create the `t1/sigmoid_scale_sum` Pass@4 submissions:
+   `bash scripts/create_sigmoid_scale_sum_pass4_submissions.sh`.
+3. Probe at least one Triton candidate with
+   `scripts/probe_sigmoid_scale_sum_backend.py`.
 4. Run the official benchmark on the Ascend worker and import result JSON with
    `scripts/import_benchmark_result.py`.
-5. Record model/provider, prompt version, retrieved skills, and candidate index
+5. Summarize Pass@4 with `scripts/summarize_passn.py`.
+6. Record model/provider, prompt version, retrieved skills, and candidate index
    for every generated experiment.
-6. Promote reusable generation, repair, or tuning lessons into `skills/`.
-7. Draft `docs/technical_design.md` from the architecture, workflow, roadmap,
+7. Promote reusable generation, repair, or tuning lessons into `skills/`.
+8. Draft `docs/technical_design.md` from the architecture, workflow, roadmap,
    and competition alignment docs.
-8. Decide whether to commit `SketchSkill_AKG_项目书基础版.pdf`.
+9. Decide whether to commit `SketchSkill_AKG_项目书基础版.pdf`.
 
 ## Research Questions
 
