@@ -1,11 +1,11 @@
 # Status
 
-Last updated: 2026-07-03
+Last updated: 2026-07-07
 
 ## Current Phase
 
 T1 non-matmul benchmark pipeline: registry, OpSpec extraction, Sketch
-templates, result import, and reusable workflow.
+templates, Pass@N reporting, and first positive non-GELU NPU result.
 
 ## Completed
 
@@ -157,12 +157,27 @@ templates, result import, and reusable workflow.
 - Added `scripts/create_sigmoid_scale_sum_pass4_submissions.sh`,
   `scripts/probe_sigmoid_scale_sum_backend.py`, and
   `scripts/summarize_passn.py`.
-- Added planned experiment metadata at
-  `experiments/runs/2026-07-07-sigmoid-scale-sum-pass4-planned.yaml`.
+- Added completed experiment metadata at
+  `experiments/runs/2026-07-07-sigmoid-scale-sum-pass4.yaml`.
+- Synced the latest `main` branch to the Ascend worker at commit
+  `234b4bae5d5107773efc6bb136d459014ec565e7`.
+- Confirmed the Ascend worker environment:
+  `Ascend910B2C`, CANN `8.5.1`, Python `3.11.14`, torch `2.9.0+cpu`,
+  `torch_npu` `2.9.0rc1`, Triton-Ascend backend target `npu`.
+- Probed all four `t1/sigmoid_scale_sum` Pass@4 candidates; v2, v3, and v4
+  launched through real Triton-Ascend backend paths.
+- Ran the official AKG Bench Lite benchmark for `t1/sigmoid_scale_sum`:
+  - `sigmoid_scale_sum_v1`: pass, speedup `1.0006x`, score `60.01`
+  - `sigmoid_scale_sum_v2`: pass, speedup `2.0279x`, score `70.28`
+  - `sigmoid_scale_sum_v3`: pass, speedup `1.9367x`, score `69.37`
+  - `sigmoid_scale_sum_v4`: pass, speedup `1.5785x`, score `65.79`
+- Added Pass@4 report at
+  `experiments/reports/2026-07-07-sigmoid-scale-sum-pass4.yaml`.
+- Promoted the `sigmoid_scale_sum` row-reduction lesson into the Skill Library.
 
 ## In Progress
 
-- Building the repeatable Pass@4 workflow for the T1 non-matmul subset.
+- Expanding the repeatable Pass@4 workflow to the next supported T1 case.
 
 ## Blockers
 
@@ -171,29 +186,33 @@ templates, result import, and reusable workflow.
 - T2/T3 cases with symbolic shape setup are currently discovered by the
   registry but marked `parse_failed` until the extractor supports local shape
   variables and more complex input construction.
-- The `sigmoid_scale_sum` candidates have not been run on Ascend yet.
 - The first pluggable LLM adapter is not implemented yet; defer it until the
   deterministic T1 non-matmul loop is stable.
 - A formal submission-oriented technical design document still needs to be
   assembled from the architecture, workflow, roadmap, and competition alignment
   docs.
+- The current cloud SSH endpoint is served by `SSHPiper` and only advertises
+  password authentication. Local no-password SSH works only while a
+  `ControlMaster` session remains alive; durable automation needs either
+  provider-level key configuration or a manually opened persistent master
+  connection.
 
 ## Next Actions
 
-1. Sync the latest commits to the Ascend worker.
-2. Create `sigmoid_scale_sum` Pass@4 submissions with
-   `bash scripts/create_sigmoid_scale_sum_pass4_submissions.sh`.
-3. Run the generated candidates on the Ascend worker with the official
-   benchmark.
-4. Import the result JSON with `scripts/import_benchmark_result.py`.
-5. Promote reusable findings into the relevant `skills/` files.
-6. Keep model/provider information explicit in every generated experiment
+1. Start the next Pass@4 cycle on another supported T1 case, preferably
+   `t1/fused_silu_and_mul` before `t1/softmax`.
+2. Keep `sigmoid_scale_sum_v2` as the first positive non-GELU reduction
+   trajectory for retrieval and prompt examples.
+3. Add backend-probe fields to future generated experiment records by default.
+4. Keep model/provider information explicit in every generated experiment
    record.
-7. Draft `docs/technical_design.md` before final submission/report work.
+5. Draft `docs/technical_design.md` before final submission/report work.
+6. Implement the first pluggable LLM/provider adapter after one more non-GELU
+   deterministic loop is stable.
 
 ## Latest Handoff
 
-Date: 2026-07-03
+Date: 2026-07-07
 Agent: Codex
 Branch: main
 Summary:
@@ -212,6 +231,14 @@ Summary:
 - Added explicit competition alignment matrix and final evidence checklist.
 - Added `sigmoid_scale_sum` Pass@4 candidates, probe script, submission helper,
   Pass@N summarizer, experiment metadata, and tests.
+- Synced the latest commits to the Ascend worker and ran the official
+  `t1/sigmoid_scale_sum` benchmark.
+- Recorded Pass@4 = 4/4 and Pass@1 = true. Best candidate:
+  `sigmoid_scale_sum_v2`, speedup `2.0279x`, weighted score `70.28`.
+- Fixed Pass@N YAML report generation to avoid PyYAML anchors for
+  `best_candidate`.
+- Documented the SSH gateway behavior: key auth inside the container does not
+  bypass the password-only `SSHPiper` gateway.
 
 Changed Files:
 - `AGENTS.md`
@@ -227,7 +254,12 @@ Changed Files:
 - `docs/status.md`
 - `experiments/README.md`
 - `experiments/reports/gelu_tuning_summary.md`
-- `experiments/runs/2026-07-07-sigmoid-scale-sum-pass4-planned.yaml`
+- `experiments/reports/2026-07-07-sigmoid-scale-sum-pass4.yaml`
+- `experiments/runs/2026-07-07-sigmoid-scale-sum-pass4.yaml`
+- `kernel_forge/experiments/passn.py`
+- `skills/ascend_performance/SKILL.md`
+- `skills/reduction/SKILL.md`
+- `tests/test_sigmoid_scale_sum_pass4.py`
 - `experiments/runs/2026-07-03-gelu-triton-v18-planned.yaml`
 - `kernel_forge/candidates/sigmoid_scale_sum_v*.py`
 - `kernel_forge/benchmark/`
@@ -249,15 +281,17 @@ Verification:
 - `pytest -q tests/test_benchmark_registry_and_opspec.py tests/test_experiment_result_import.py tests/test_generic_submission.py`
 - `pytest -q tests/test_sigmoid_scale_sum_pass4.py tests/test_generic_submission.py tests/test_experiment_result_import.py`
 - `pytest -q tests/test_gelu_triton_submission.py`
+- Remote Ascend official benchmark for `t1/sigmoid_scale_sum`: Pass@4 = 4/4,
+  best speedup `2.0279x`.
+- `pytest -q tests/test_sigmoid_scale_sum_pass4.py`
 - `pytest -q`
 
 Open Issues:
 - The PDF is present as `SketchSkill_AKG_项目书基础版.pdf` but is currently
   untracked; decide whether to commit it as source material.
-- Need to run and evaluate first non-GELU Pass@4 candidates on Ascend.
 - Need to extend parsing for symbolic shape construction in T2/T3 cases.
 - Need to implement model/provider metadata flow before comparing LLMs.
 - Need to write the final technical design document for competition submission.
 
 Next Suggested Step:
-- Sync commits to the Ascend worker and run `t1/sigmoid_scale_sum` Pass@4.
+- Start the next deterministic Pass@4 cycle on `t1/fused_silu_and_mul`.

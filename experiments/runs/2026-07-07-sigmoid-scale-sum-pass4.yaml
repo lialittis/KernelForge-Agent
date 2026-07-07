@@ -1,10 +1,10 @@
-id: 2026-07-07-sigmoid-scale-sum-pass4-planned
+id: 2026-07-07-sigmoid-scale-sum-pass4
 date: 2026-07-07
 agent: codex
 machine: ascend-worker
 branch: main
-commit: null
-status: planned
+commit: 234b4bae5d5107773efc6bb136d459014ec565e7
+status: completed
 
 benchmark:
   source: akg_kernels_bench_lite
@@ -16,13 +16,14 @@ benchmark:
 
 environment:
   hardware: Ascend 910
-  device_name: null
-  cann_version: null
-  python_version: null
-  torch_version: null
-  torch_npu_version: null
-  triton_version: null
-  triton_ascend_version: null
+  device_name: Ascend910B2C
+  cann_version: "8.5.1"
+  python_version: "3.11.14"
+  torch_version: "2.9.0+cpu"
+  torch_npu_version: "2.9.0rc1"
+  triton_version: "3.2.0"
+  triton_package_metadata_version: "3.6.0"
+  triton_ascend_version: "3.2.0"
   venv: /data/venvs/kf-triton-ascend
 
 generation:
@@ -44,28 +45,32 @@ generation:
       team_name: sigmoid_scale_sum_v1
       candidate_source_path: kernel_forge/candidates/sigmoid_scale_sum_v1.py
       expected_backend: torch_reference
+      observed_backend: torch_reference
       strategy: reference_torch_expression
     - index: 2
       team_name: sigmoid_scale_sum_v2
       candidate_source_path: kernel_forge/candidates/sigmoid_scale_sum_v2.py
       expected_backend: triton_ascend
+      observed_backend: triton_row_reduce_bs8192
       strategy: one_row_per_program_single_8192_reduction_tile
     - index: 3
       team_name: sigmoid_scale_sum_v3
       candidate_source_path: kernel_forge/candidates/sigmoid_scale_sum_v3.py
       expected_backend: triton_ascend
+      observed_backend: triton_row_reduce_bs4096x2
       strategy: one_row_per_program_two_4096_reduction_chunks
     - index: 4
       team_name: sigmoid_scale_sum_v4
       candidate_source_path: kernel_forge/candidates/sigmoid_scale_sum_v4.py
       expected_backend: triton_ascend
+      observed_backend: triton_row_reduce_bs2048x4
       strategy: one_row_per_program_four_2048_reduction_chunks
 
 commands:
   create_submissions: bash scripts/create_sigmoid_scale_sum_pass4_submissions.sh
-  backend_probe_v2: >
+  backend_probe_all: >
     python scripts/probe_sigmoid_scale_sum_backend.py
-    --candidate outputs/submissions/sigmoid_scale_sum_pass4/sigmoid_scale_sum_v2/t1/sigmoid_scale_sum.py
+    --candidate outputs/submissions/sigmoid_scale_sum_pass4/<team>/t1/sigmoid_scale_sum.py
     --shape 1000 8192
   benchmark_all: >
     python third_party/akg/akg_agents/benchmark/akg_kernels_bench_lite/tools/run_bench.py
@@ -87,36 +92,41 @@ commands:
 
 results:
   correctness:
-    status: not_run
+    status: pass
     rtol: 0.01
     atol: 0.01
   pass_n:
-    pass_at_1: null
-    pass_at_4: null
-    passed_count: null
-    best_candidate: null
+    pass_at_1: true
+    pass_at_4: true
+    passed_count: 4
+    best_candidate: sigmoid_scale_sum_v2
   performance:
-    status: not_run
+    status: pass
     warmup: 10
     repeats: 100
     num_trials: 3
-    baseline_latency_ms: null
-    best_solution_latency_ms: null
-    best_speedup_vs_baseline: null
-    best_weighted_score: null
+    baseline_latency_ms: 0.0995
+    best_solution_latency_ms: 0.0491
+    best_speedup_vs_baseline: 2.0279
+    best_weighted_score: 70.28
 
 artifacts:
   submissions: outputs/submissions/sigmoid_scale_sum_pass4
   results: outputs/results/sigmoid_scale_sum_pass4
   pass4_report: experiments/reports/2026-07-07-sigmoid-scale-sum-pass4.yaml
 
-skill_updates: []
+skill_updates:
+  - skills/reduction/SKILL.md
+  - skills/ascend_performance/SKILL.md
 
 notes: >
-  First non-GELU Pass@4 cycle. This intentionally starts with manual candidate
-  variants to validate the deterministic OpSpec, Sketch, submission, benchmark,
-  and Pass@N reporting loop before adding a pluggable LLM provider.
+  First non-GELU Pass@4 cycle. It validated the deterministic OpSpec, Sketch,
+  submission, benchmark, backend probe, and Pass@N reporting loop. The best
+  candidate used one Triton program per row with a single 8192-element
+  reduction tile and beat the official PyTorch baseline by 2.0279x.
 
 next:
-  - Run on the Ascend worker and import the Pass@4 report.
-  - Promote any compile, numerical, or tuning lessons into skills.
+  - Use this as the first positive reduction bad-to-good trajectory.
+  - Repeat the Pass@4 workflow on another supported T1 case.
+  - Keep provider/model fields explicit when replacing manual candidates with
+    generated candidates.

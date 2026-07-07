@@ -107,6 +107,7 @@ def test_passn_summary_computes_pass_at_1_and_pass_at_4(tmp_path):
     assert summary["n"] == 4
     assert summary["passed_count"] == 2
     assert summary["best_candidate"]["team_name"] == "sigmoid_scale_sum_v2"
+    assert summary["best_candidate"] is not summary["candidates"][1]
     assert summary["candidates"][3]["status"] == "missing_result"
 
 
@@ -135,10 +136,13 @@ def test_passn_cli_writes_yaml(tmp_path):
         check=True,
     )
 
-    data = yaml.safe_load(output.read_text())
+    output_text = output.read_text()
+    data = yaml.safe_load(output_text)
     assert data["pass_at_1"] is True
     assert data["pass_at_n"] is True
     assert data["best_candidate"]["team_name"] == "sigmoid_scale_sum_v1"
+    assert "&id" not in output_text
+    assert "*id" not in output_text
 
 
 def _write_result(path: Path, passed: bool, speedup: float) -> None:

@@ -35,6 +35,26 @@ optimization on Ascend 910.
 
 ## Bad-To-Good Cases
 
+### Rowwise Reduction Can Beat Framework Baseline
+
+Observed for `t1/sigmoid_scale_sum`:
+
+```text
+sigmoid_scale_sum_v1: torch reference, pass, speedup 1.0006x
+sigmoid_scale_sum_v2: Triton one row/program, 8192 tile, pass, speedup 2.0279x
+sigmoid_scale_sum_v3: Triton one row/program, 2 x 4096 chunks, pass, speedup 1.9367x
+sigmoid_scale_sum_v4: Triton one row/program, 4 x 2048 chunks, pass, speedup 1.5785x
+```
+
+Performance rule:
+
+- When a rowwise reduction's full contiguous reduction axis fits in UB, prefer
+  a single full-axis reduction tile before trying sequential chunking.
+- If chunking is needed for UB pressure, benchmark each chunk count; smaller
+  chunks are not automatically faster.
+- Use backend probes to confirm the run used a real Triton path before
+  interpreting speedup as custom-kernel speedup.
+
 ### Correct GELU Triton Kernel Still Slower Than Framework
 
 Observed for `gelu_triton_v7` and improved through `gelu_triton_v10`:

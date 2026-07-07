@@ -83,6 +83,59 @@ git submodule update --init --depth 1 --filter=blob:none third_party/akg
 bash scripts/setup_benchmark_submodule.sh
 ```
 
+## SSH Automation Caveat
+
+Some rented Ascend containers are reached through a provider SSH gateway rather
+than a normal direct `sshd`. In the current worker, the server banner is
+`SSHPiper` and fresh connections advertise only password authentication:
+
+```text
+Authentications that can continue: password
+```
+
+In that setup, adding a public key to `~/.ssh/authorized_keys` inside the
+container is not enough to enable key auth from the local machine. A second
+command may appear passwordless only because it is reusing an existing
+`ControlMaster` connection.
+
+Use this key-only diagnostic from the local machine:
+
+```bash
+ssh -S none \
+  -o BatchMode=yes \
+  -o PasswordAuthentication=no \
+  -o KbdInteractiveAuthentication=no \
+  -o PreferredAuthentications=publickey \
+  -vvv ascend-kf true
+```
+
+If that reports password-only authentication, use one of these workflows:
+
+- Configure the public key at the provider/gateway layer if the platform
+  supports it.
+- Start a persistent master connection manually after one password login:
+
+```bash
+ssh -MNf ascend-kf
+ssh -O check ascend-kf
+```
+
+Keep `ControlPersist` long enough for the experiment session, for example:
+
+```sshconfig
+Host ascend-kf
+    ControlMaster auto
+    ControlPath ~/.ssh/cm-%r@%h:%p
+    ControlPersist 8h
+```
+
+Automation should use `BatchMode=yes` so it fails instead of hanging on a
+password prompt:
+
+```bash
+ssh -o BatchMode=yes ascend-kf 'cd /data/KernelForge-Agent && git rev-parse HEAD'
+```
+
 Fast path for reconstructing a known-good worker environment:
 
 ```bash

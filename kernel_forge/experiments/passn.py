@@ -51,11 +51,13 @@ def summarize_passn(
     passed = [row for row in rows if row["correctness"]]
     best = None
     if passed:
-        best = max(
-            passed,
-            key=lambda row: (
-                row["speedup"] if row["speedup"] is not None else -1.0,
-                row["weighted_score"] if row["weighted_score"] is not None else -1.0,
+        best = dict(
+            max(
+                passed,
+                key=lambda row: (
+                    row["speedup"] if row["speedup"] is not None else -1.0,
+                    row["weighted_score"] if row["weighted_score"] is not None else -1.0,
+                ),
             ),
         )
 
