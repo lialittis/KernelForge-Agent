@@ -5,11 +5,35 @@ from pathlib import Path
 from typing import Any
 
 from .opspec import OpSpec, TensorSpec, read_yaml
-from .sketch import build_gelu_sketch
+from .sketch import build_operator_sketch
 
 
 class ExtractionError(ValueError):
     """Raised when a benchmark case does not match supported extraction patterns."""
+
+
+SUPPORTED_OPSPEC_CASES = {
+    "t1/gelu",
+    "t1/fused_silu_and_mul",
+    "t1/sigmoid_scale_sum",
+    "t1/softmax",
+}
+
+CASE_CATEGORIES = {
+    "t1/gelu": "elementwise",
+    "t1/fused_silu_and_mul": "elementwise",
+    "t1/sigmoid_scale_sum": "reduction",
+    "t1/softmax": "reduction",
+    "t1/matmul_basic": "matmul_like",
+    "t1/matmul_biasadd": "matmul_like",
+    "t2/rope": "transpose_layout",
+    "t2/add_rmsnorm_cast": "normalization",
+    "t2/add_rmsnorm_quant": "normalization",
+    "t2/moe_topk_softmax": "reduction",
+    "t3/causal_conv1d": "unknown",
+    "t3/decode_mla": "matmul_like",
+    "t3/layernorm_gated": "normalization",
+}
 
 
 def extract_opspec(
@@ -18,71 +42,94 @@ def extract_opspec(
     experiment_path: str | Path | None = None,
     repo_root: str | Path | None = None,
     backend_target: str = "triton_ascend",
+    allow_unsupported: bool = False,
 ) -> dict[str, Any]:
-    case = Path(case_path)
-    root = Path(repo_root) if repo_root else Path.cwd()
-    source_path = _display_path(case, root)
-    module = ast.parse(case.read_text(encoding="utf-8"), filename=str(case))
+    parsed = inspect_case(case_path, repo_root=repo_root)
+    support = case_support(parsed["id"])
+    if support["status"] != "opspec_supported":
+        if allow_unsupported:
+            return _unsupported_metadata(parsed, support)
+        raise ExtractionError(f"Unsupported OpSpec case {parsed['id']}: {support['reason']}")
 
-    tier = case.parent.name
-    name = case.stem
-    if tier != "t1" or name != "gelu":
-        raise ExtractionError("v1 extractor only supports t1/gelu.py")
+    input_specs = parsed["inputs"]
+    init_inputs = parsed["init_inputs"]
+    forward_args = parsed["forward_args"]
+    expression = parsed["forward_expression"]
 
-    input_specs = _extract_get_inputs(module)
-    if len(input_specs) != 1:
-        raise ExtractionError("GELU extractor expects exactly one input tensor")
-    init_inputs = _extract_get_init_inputs(module)
-    if init_inputs != []:
-        raise ExtractionError("GELU extractor expects get_init_inputs() to return []")
-
-    forward_args, expression = _extract_forward_expression(module)
-    if forward_args != [input_specs[0].name]:
+    expected_args = [item.name for item in input_specs]
+    if forward_args != expected_args:
         raise ExtractionError(
-            f"Forward args {forward_args} do not match inputs {[item.name for item in input_specs]}"
+            f"Forward args {forward_args} do not match inputs {expected_args}"
         )
-    if expression != f"torch.nn.functional.gelu({input_specs[0].name})":
-        raise ExtractionError(f"Unsupported GELU expression: {expression}")
 
-    output = TensorSpec(
-        name="output",
-        shape=input_specs[0].shape,
-        dtype=input_specs[0].dtype,
-        layout=input_specs[0].layout,
-    )
+    outputs = _build_output_specs(parsed["id"], input_specs)
     performance = _build_performance(experiment_path)
     spec = OpSpec(
-        id=f"{tier}/{name}",
-        name=name,
-        tier=tier,
-        category="elementwise",
-        source_path=source_path,
+        id=parsed["id"],
+        name=parsed["name"],
+        tier=parsed["tier"],
+        category=classify_case(parsed["id"]),
+        source_path=parsed["source_path"],
         inputs=input_specs,
-        outputs=[output],
-        semantics={
-            "expression": expression,
-            "formula": "0.5 * x * (1 + erf(x / sqrt(2)))",
-            "broadcast": "none",
-            "reduction_axes": [],
-            "normalization_axes": [],
-            "layout_transform": "none",
-            "boundary_conditions": {"tail_mask_required": True},
-        },
-        validation={
-            "rtol": 1.0e-2,
-            "atol": 1.0e-2,
-            "max_error_required": None,
-            "shape_cases": [input_specs[0].shape],
-            "dtype_cases": [input_specs[0].dtype],
-        },
+        outputs=outputs,
+        semantics=_build_semantics(parsed["id"], expression, init_inputs),
+        validation=_build_validation(input_specs),
         performance=performance,
-        sketch=build_gelu_sketch(input_specs[0], backend_target),
+        sketch=build_operator_sketch(parsed["id"], input_specs, outputs, backend_target),
         submission={
-            "required_files": [f"{tier}/{name}.py"],
+            "required_files": [f"{parsed['tier']}/{parsed['name']}.py"],
             "entrypoint": "ModelNew",
         },
     )
     return spec.to_dict()
+
+
+def inspect_case(
+    case_path: str | Path,
+    *,
+    repo_root: str | Path | None = None,
+) -> dict[str, Any]:
+    case = Path(case_path)
+    root = Path(repo_root) if repo_root else Path.cwd()
+    module = ast.parse(case.read_text(encoding="utf-8"), filename=str(case))
+    tier = case.parent.name
+    name = case.stem
+    input_specs = _extract_get_inputs(module)
+    init_inputs = _extract_get_init_inputs(module)
+    forward_args, expression = _extract_forward_expression(module)
+    return {
+        "id": f"{tier}/{name}",
+        "name": name,
+        "tier": tier,
+        "category": classify_case(f"{tier}/{name}"),
+        "source_path": _display_path(case, root),
+        "reference_class": "Model",
+        "candidate_class": "ModelNew",
+        "inputs": input_specs,
+        "init_inputs": init_inputs,
+        "forward_args": forward_args,
+        "forward_expression": expression,
+    }
+
+
+def classify_case(case_id: str) -> str:
+    return CASE_CATEGORIES.get(case_id, "unknown")
+
+
+def case_support(case_id: str) -> dict[str, str]:
+    if case_id in SUPPORTED_OPSPEC_CASES:
+        return {
+            "status": "opspec_supported",
+            "reason": "covered by the initial T1 non-matmul extraction subset",
+        }
+    category = classify_case(case_id)
+    if category == "matmul_like":
+        reason = "matmul-like cases are deferred until non-matmul T1 infrastructure is stable"
+    elif case_id.startswith("t2/") or case_id.startswith("t3/"):
+        reason = "higher-tier cases are deferred until T1 extraction and reporting are stable"
+    else:
+        reason = "case is not covered by the current extraction templates"
+    return {"status": "unsupported", "reason": reason}
 
 
 def _display_path(path: Path, root: Path) -> str:
@@ -100,6 +147,8 @@ def _extract_get_inputs(module: ast.Module) -> list[TensorSpec]:
             target = node.targets[0]
             if isinstance(target, ast.Name):
                 tensor = _tensor_from_randn(target.id, node.value)
+                if tensor is None:
+                    tensor = _tensor_from_cat(target.id, node.value, tensors)
                 if tensor is not None:
                     tensors[target.id] = tensor
     returned = _extract_returned_names(fn)
@@ -111,10 +160,149 @@ def _extract_get_inputs(module: ast.Module) -> list[TensorSpec]:
 
 def _extract_get_init_inputs(module: ast.Module) -> list[Any]:
     fn = _find_function(module, "get_init_inputs")
+    assignments: dict[str, Any] = {}
     for node in fn.body:
+        if isinstance(node, ast.Assign) and len(node.targets) == 1:
+            target = node.targets[0]
+            if isinstance(target, ast.Name):
+                assignments[target.id] = ast.literal_eval(node.value)
         if isinstance(node, ast.Return):
-            return ast.literal_eval(node.value)
+            if not isinstance(node.value, ast.List):
+                raise ExtractionError("get_init_inputs() must return a list")
+            values = []
+            for element in node.value.elts:
+                if isinstance(element, ast.Name):
+                    if element.id not in assignments:
+                        raise ExtractionError(
+                            f"Unsupported get_init_inputs() name {element.id}"
+                        )
+                    values.append(assignments[element.id])
+                else:
+                    values.append(ast.literal_eval(element))
+            return values
     raise ExtractionError("get_init_inputs() has no return statement")
+
+
+def _build_output_specs(case_id: str, input_specs: list[TensorSpec]) -> list[TensorSpec]:
+    if case_id in {"t1/gelu", "t1/softmax"}:
+        first = input_specs[0]
+        return [
+            TensorSpec(
+                name="output",
+                shape=first.shape,
+                dtype=first.dtype,
+                layout=first.layout,
+            )
+        ]
+    if case_id == "t1/fused_silu_and_mul":
+        combined = input_specs[0]
+        if not combined.shape or combined.shape[-1] % 2 != 0:
+            raise ExtractionError("SwiGLU input last dimension must be even")
+        output_shape = [*combined.shape[:-1], combined.shape[-1] // 2]
+        return [
+            TensorSpec(
+                name="output",
+                shape=output_shape,
+                dtype=combined.dtype,
+                layout=combined.layout,
+            )
+        ]
+    if case_id == "t1/sigmoid_scale_sum":
+        x = input_specs[0]
+        if not x.shape:
+            raise ExtractionError("sigmoid_scale_sum expects at least one input axis")
+        return [
+            TensorSpec(
+                name="output",
+                shape=[*x.shape[:-1], 1],
+                dtype=x.dtype,
+                layout=x.layout,
+            )
+        ]
+    raise ExtractionError(f"No output inference rule for {case_id}")
+
+
+def _build_semantics(
+    case_id: str,
+    expression: str,
+    init_inputs: list[Any],
+) -> dict[str, Any]:
+    if case_id == "t1/gelu":
+        return {
+            "expression": expression,
+            "formula": "0.5 * x * (1 + erf(x / sqrt(2)))",
+            "broadcast": "none",
+            "reduction_axes": [],
+            "normalization_axes": [],
+            "layout_transform": "none",
+            "boundary_conditions": {"tail_mask_required": True},
+        }
+    if case_id == "t1/fused_silu_and_mul":
+        return {
+            "expression": expression,
+            "formula": "silu(combined[..., :H]) * combined[..., H:]",
+            "broadcast": "none",
+            "reduction_axes": [],
+            "normalization_axes": [],
+            "layout_transform": "split_last_dim",
+            "boundary_conditions": {"tail_mask_required": True},
+        }
+    if case_id == "t1/sigmoid_scale_sum":
+        return {
+            "expression": expression,
+            "formula": "sum(sigmoid(x * 2.0 + bias), dim=-1, keepdim=True)",
+            "broadcast": "bias broadcasts over the leading x axis",
+            "reduction_axes": [-1],
+            "normalization_axes": [],
+            "layout_transform": "none",
+            "boundary_conditions": {"tail_mask_required": True},
+        }
+    if case_id == "t1/softmax":
+        dim = init_inputs[0] if init_inputs else -1
+        return {
+            "expression": expression,
+            "formula": "exp(x - max(x, dim)) / sum(exp(x - max(x, dim)), dim)",
+            "broadcast": "none",
+            "reduction_axes": [dim],
+            "normalization_axes": [dim],
+            "layout_transform": "none",
+            "boundary_conditions": {"tail_mask_required": True},
+        }
+    return {"expression": expression}
+
+
+def _build_validation(input_specs: list[TensorSpec]) -> dict[str, Any]:
+    return {
+        "rtol": 1.0e-2,
+        "atol": 1.0e-2,
+        "max_error_required": None,
+        "shape_cases": [item.shape for item in input_specs],
+        "dtype_cases": sorted({item.dtype for item in input_specs}),
+    }
+
+
+def _unsupported_metadata(
+    parsed: dict[str, Any],
+    support: dict[str, str],
+) -> dict[str, Any]:
+    return {
+        "id": parsed["id"],
+        "name": parsed["name"],
+        "tier": parsed["tier"],
+        "category": parsed["category"],
+        "source_path": parsed["source_path"],
+        "reference_class": parsed["reference_class"],
+        "candidate_class": parsed["candidate_class"],
+        "support": support,
+        "inputs": [item.to_dict() for item in parsed["inputs"]],
+        "init_inputs": parsed["init_inputs"],
+        "forward_args": parsed["forward_args"],
+        "forward_expression": parsed["forward_expression"],
+        "submission": {
+            "required_files": [f"{parsed['tier']}/{parsed['name']}.py"],
+            "entrypoint": "ModelNew",
+        },
+    }
 
 
 def _extract_forward_expression(module: ast.Module) -> tuple[list[str], str]:
@@ -151,7 +339,10 @@ def _build_performance(experiment_path: str | Path | None) -> dict[str, Any]:
     performance["warmup"] = result_perf.get("warmup", performance["warmup"])
     performance["repeats"] = result_perf.get("repeats", performance["repeats"])
     performance["num_trials"] = result_perf.get("num_trials", performance["num_trials"])
-    performance["baseline_latency_ms"] = result_perf.get("baseline_median_latency_ms")
+    performance["baseline_latency_ms"] = result_perf.get(
+        "baseline_median_latency_ms",
+        result_perf.get("baseline_latency_ms"),
+    )
     return performance
 
 
@@ -166,8 +357,58 @@ def _tensor_from_randn(name: str, value: ast.AST) -> TensorSpec | None:
     return TensorSpec(name=name, shape=shape, dtype=dtype)
 
 
+def _tensor_from_cat(
+    name: str,
+    value: ast.AST,
+    tensors: dict[str, TensorSpec],
+) -> TensorSpec | None:
+    if not isinstance(value, ast.Call) or ast.unparse(value.func) != "torch.cat":
+        return None
+    if not value.args or not isinstance(value.args[0], ast.List):
+        raise ExtractionError("torch.cat input must be a list for benchmark parsing")
+    input_names = []
+    for element in value.args[0].elts:
+        if not isinstance(element, ast.Name):
+            raise ExtractionError("torch.cat inputs must be named tensors")
+        input_names.append(element.id)
+    if not input_names:
+        raise ExtractionError("torch.cat requires at least one tensor")
+    missing = [item for item in input_names if item not in tensors]
+    if missing:
+        raise ExtractionError(f"torch.cat inputs are not defined: {missing}")
+
+    input_specs = [tensors[item] for item in input_names]
+    rank = len(input_specs[0].shape)
+    dim = 0
+    for keyword in value.keywords:
+        if keyword.arg == "dim":
+            dim = _literal_int(keyword.value)
+    if dim < 0:
+        dim += rank
+    if dim < 0 or dim >= rank:
+        raise ExtractionError(f"torch.cat dim {dim} is out of range")
+
+    shape = list(input_specs[0].shape)
+    dtype = input_specs[0].dtype
+    for spec in input_specs[1:]:
+        if len(spec.shape) != rank:
+            raise ExtractionError("torch.cat inputs must have the same rank")
+        if spec.dtype != dtype:
+            raise ExtractionError("torch.cat inputs must have the same dtype")
+        for axis, size in enumerate(spec.shape):
+            if axis == dim:
+                continue
+            if shape[axis] != size:
+                raise ExtractionError("torch.cat non-concat dimensions must match")
+        shape[dim] += spec.shape[dim]
+    return TensorSpec(name=name, shape=shape, dtype=dtype)
+
+
 def _literal_int(node: ast.AST) -> int:
-    value = ast.literal_eval(node)
+    try:
+        value = ast.literal_eval(node)
+    except ValueError as exc:
+        raise ExtractionError(f"Expected integer shape literal, got {ast.unparse(node)}") from exc
     if not isinstance(value, int):
         raise ExtractionError(f"Expected integer shape literal, got {value!r}")
     return value
@@ -213,4 +454,3 @@ def _find_method(cls: ast.ClassDef, name: str) -> ast.FunctionDef:
         if isinstance(node, ast.FunctionDef) and node.name == name:
             return node
     raise ExtractionError(f"Missing method {cls.name}.{name}")
-

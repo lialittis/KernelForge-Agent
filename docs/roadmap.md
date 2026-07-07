@@ -3,6 +3,14 @@
 This roadmap follows the SketchSkill-AKG proposal. Update it after major
 experiment cycles.
 
+## Final Product Target
+
+The end goal is a model-agnostic SketchSkill-AKG agent system for Ascend 910
+operator generation, plus benchmark evidence that the system works across
+official AKG Bench Lite tasks. The final output should include both the
+pipeline and generated `ModelNew` submissions with correctness, Pass@1/Pass@4,
+latency, speedup, and skill write-back records.
+
 ## Milestone 1: Environment And Benchmark Reproduction
 
 Deliverables:
@@ -23,14 +31,15 @@ Exit criteria:
 
 Deliverables:
 
-- parser for `akg_kernels_bench_lite` or confirmed official task format
+- benchmark registry for all `akg_kernels_bench_lite` cases
 - structured OpSpec schema
 - parsed examples under `benchmarks/parsed/`
 - tests for representative task parsing
 
 Exit criteria:
 
-- At least three official tasks can be converted into stable OpSpec records.
+- At least four official T1 non-matmul tasks can be converted into stable
+  OpSpec records, and deferred cases are reported explicitly.
 
 ## Milestone 3: NPU-Aware Sketch
 
@@ -43,14 +52,16 @@ Deliverables:
 
 Exit criteria:
 
-- An OpSpec can be converted into a valid Sketch for at least three operator
-  categories.
+- An OpSpec can be converted into a valid Sketch for elementwise/fused
+  elementwise and rowwise reduction/softmax cases.
 
 ## Milestone 4: Triton-Ascend Generation Loop
 
 Deliverables:
 
 - AKG Agents integration path
+- pluggable LLM provider interface for Sketch, Code, Repair, and Skill Writer
+  agents
 - Triton-Ascend candidate generation
 - prompt templates
 - saved candidate metadata
@@ -59,7 +70,8 @@ Deliverables:
 Exit criteria:
 
 - The system can generate and evaluate at least one Triton-Ascend candidate
-  from OpSpec plus Sketch.
+  from OpSpec plus Sketch, with the model/provider recorded in experiment
+  metadata.
 
 ## Milestone 5: Correctness Repair And Pass@4
 
@@ -133,4 +145,6 @@ Deliverables:
 Exit criteria:
 
 - Results are reproducible from documented commands and experiment records.
-
+- The report clearly separates the system contribution from individual kernel
+  results and includes at least one model/backend comparison or ablation if
+  time permits.

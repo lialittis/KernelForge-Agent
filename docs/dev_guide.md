@@ -179,11 +179,34 @@ The script writes into `outputs/`, which is ignored by Git. That is intentional:
 the submission is a runtime artifact, while the script is the reproducible
 source.
 
-## Extracting GELU OpSpec
+## Extracting Benchmark Metadata
 
-The current parser milestone supports `t1/gelu.py`.
+The current parser milestone supports the first T1 non-matmul subset:
 
-Generate an OpSpec YAML from the official case file:
+```text
+t1/gelu
+t1/fused_silu_and_mul
+t1/sigmoid_scale_sum
+t1/softmax
+```
+
+Generate the full benchmark case registry:
+
+```bash
+python scripts/scan_benchmark_cases.py \
+  --output benchmarks/raw/akg_kernels_bench_lite_registry.yaml \
+  --repo-root .
+```
+
+Generate OpSpec and Sketch YAML for all supported cases:
+
+```bash
+python scripts/extract_opspec_batch.py \
+  --output-dir benchmarks/parsed \
+  --repo-root .
+```
+
+Generate a single OpSpec YAML from an official case file:
 
 ```bash
 python scripts/extract_opspec.py \
@@ -193,10 +216,13 @@ python scripts/extract_opspec.py \
   --output /tmp/t1_gelu.generated.yaml
 ```
 
-The committed canonical OpSpec is:
+The committed canonical OpSpecs are:
 
 ```text
 benchmarks/parsed/t1_gelu.yaml
+benchmarks/parsed/t1_fused_silu_and_mul.yaml
+benchmarks/parsed/t1_sigmoid_scale_sum.yaml
+benchmarks/parsed/t1_softmax.yaml
 ```
 
 Do not overwrite committed OpSpecs automatically. Generate to a temporary path,
@@ -220,6 +246,15 @@ Generate the official submission layout:
 
 ```bash
 bash scripts/create_gelu_triton_submission.sh
+```
+
+For new non-GELU candidates, prefer the generic materializer:
+
+```bash
+python scripts/create_submission.py \
+  --team <team_name> \
+  --candidate <candidate_label> \
+  --case t1/softmax=kernel_forge/candidates/<candidate_file>.py
 ```
 
 This writes:
@@ -464,6 +499,15 @@ Then summarize the run locally in:
 
 ```text
 experiments/runs/YYYY-MM-DD-gelu-manual-baseline.yaml
+```
+
+Prefer importing the official JSON mechanically:
+
+```bash
+python scripts/import_benchmark_result.py \
+  --result-json /tmp/manual_baseline_gelu/manual_baseline.json \
+  --experiment experiments/runs/YYYY-MM-DD-gelu-manual-baseline.yaml \
+  --in-place
 ```
 
 The experiment record should include:

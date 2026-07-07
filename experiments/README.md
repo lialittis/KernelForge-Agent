@@ -59,7 +59,9 @@ environment:
   python_version: null
 
 generation:
+  provider: null
   model: null
+  agent_role: null
   backend: triton_ascend
   prompt_version: null
   retrieved_skills: []
@@ -168,4 +170,3 @@ After an experiment, promote reusable findings into the relevant skill:
 - CUDA/Triton migration lessons into
   `skills/cuda_to_ascend_migration/SKILL.md`
 - benchmark harness lessons into `skills/benchmark_evaluation/SKILL.md`
-

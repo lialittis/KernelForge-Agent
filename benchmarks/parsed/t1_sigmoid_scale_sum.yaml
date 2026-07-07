@@ -1,0 +1,94 @@
+id: t1/sigmoid_scale_sum
+name: sigmoid_scale_sum
+tier: t1
+category: reduction
+source_path: third_party/akg/akg_agents/benchmark/akg_kernels_bench_lite/t1/sigmoid_scale_sum.py
+reference_class: Model
+candidate_class: ModelNew
+inputs:
+- name: x
+  shape:
+  - 1000
+  - 8192
+  dtype: float32
+  layout: contiguous
+- name: bias
+  shape:
+  - 8192
+  dtype: float32
+  layout: contiguous
+outputs:
+- name: output
+  shape:
+  - 1000
+  - 1
+  dtype: float32
+  layout: contiguous
+semantics:
+  expression: torch.sum(t3, dim=-1, keepdim=True)
+  formula: sum(sigmoid(x * 2.0 + bias), dim=-1, keepdim=True)
+  broadcast: bias broadcasts over the leading x axis
+  reduction_axes:
+  - -1
+  normalization_axes: []
+  layout_transform: none
+  boundary_conditions:
+    tail_mask_required: true
+validation:
+  rtol: 0.01
+  atol: 0.01
+  max_error_required: null
+  shape_cases:
+  - - 1000
+    - 8192
+  - - 8192
+  dtype_cases:
+  - float32
+performance:
+  metric: median_latency_ms
+  warmup: 10
+  repeats: 100
+  num_trials: 3
+  baseline_latency_ms: null
+  baseline_source: official_reference_model
+sketch:
+  operator_category: reduction
+  compute_pattern: sigmoid_scale_sum_row_reduction
+  parallel_axes:
+  - outer_rows
+  tile_plan:
+    strategy: rowwise_last_dim_tiling
+    shape:
+    - 1000
+    - 8192
+    tunable: true
+  memory_plan:
+    inputs:
+    - x
+    - bias
+    input: row_contiguous_global_read
+    output: contiguous_global_write
+    intermediate: local_vector_reduction
+  pipeline_plan:
+    stages:
+    - load_x_and_bias
+    - compute_sigmoid
+    - row_sum
+    - store
+  boundary_mask:
+    required: true
+    reason: row count or reduction width may not align with backend tile size
+  accumulation_dtype: float32
+  backend_target: triton_ascend
+  performance_knobs:
+    row_tile: null
+    reduction_tile: null
+    num_warps_or_cores: null
+  known_risks:
+  - broadcast_bias_correctness
+  - reduction_accuracy
+  - row_boundary_mapping
+submission:
+  required_files:
+  - t1/sigmoid_scale_sum.py
+  entrypoint: ModelNew

@@ -11,11 +11,20 @@ task description to OpSpec, NPU-aware Sketch, backend candidate code,
 correctness verification, hardware profiling, search, and Skill Library
 write-back.
 
+The final product is the reusable SketchSkill-AKG agent pipeline plus its
+benchmark evidence. Individual optimized kernels are outputs of the system, not
+the system itself.
+
 ## Main Path
 
 Use **AKG Agents + Triton-Ascend** as the initial path because it is expected to
 match the benchmark repository and can provide the fastest end-to-end
 prototype.
+
+Use a strong coding/reasoning LLM as the default generation and repair backend,
+but keep it behind a replaceable provider interface. The pipeline should be
+able to compare Codex/GPT-5-class models with local/open code models later
+using the same OpSpec, Sketch, skills, benchmark harness, and result importer.
 
 Enhancement paths are intentionally narrower:
 
@@ -26,6 +35,26 @@ Enhancement paths are intentionally narrower:
 - MLIR/AscendNPU IR as a long-term alignment target for structured lowering.
 - CUDA/Triton implementations as migration knowledge sources, not as direct
   line-by-line translation targets.
+
+## LLM Usage Rules
+
+Use LLMs for:
+
+- Sketch planning when deterministic templates are insufficient.
+- Triton-Ascend candidate generation.
+- Repair reasoning from compiler, runtime, shape, dtype, and numerical errors.
+- Skill write-back summaries from verified experiment trajectories.
+
+Do not use LLMs as the source of truth for:
+
+- benchmark discovery or AST parsing when project parsers can extract it
+- correctness comparison
+- score calculation
+- result import
+- hardware measurement
+- best-candidate selection
+
+Those steps should be deterministic and testable so model comparisons are fair.
 
 ## Core Loop
 
@@ -254,4 +283,3 @@ KernelForge-Agent/
 - Keep generated artifacts out of Git unless they are small, curated examples.
 - Update the relevant `skills/*/SKILL.md` file when a repair or optimization
   lesson becomes reusable.
-

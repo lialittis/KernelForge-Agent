@@ -102,3 +102,21 @@ Interpretation:
 - Avoid computing tanh-approximate GELU as `0.5 * x * (1 + tanh(u))` when
   `u << 0`; that reintroduces cancellation. Use the equivalent stable form
   `x / (1 + exp(-2u))`.
+
+### Triton JIT Rejects Ordinary Python Globals
+
+Observed in `gelu_triton_v17`:
+
+```text
+NameError: Cannot access global variable _NEG_TWO_LOG2E from within @jit'ed function.
+```
+
+Interpretation:
+
+- Triton-Ascend can reject constants captured as ordinary Python globals inside
+  `@triton.jit` functions.
+- Inline scalar constants in the JIT expression or pass them as constexpr
+  values.
+- Retest with a backend probe before benchmarking; in the GELU case,
+  `gelu_triton_v18` fixed this compile issue but still regressed in
+  performance versus `gelu_triton_v13`.

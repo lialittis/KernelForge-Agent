@@ -28,10 +28,19 @@ Benchmark task
 -> Skill Library write-back
 ```
 
+The final product is the reusable **SketchSkill-AKG agent system** plus
+benchmark evidence. Individual optimized kernels are generated outputs of that
+system, not the whole project.
+
 The initial main path is **AKG Agents + Triton-Ascend** for fast end-to-end
 benchmark coverage. Enhancement paths include TileLang-Ascend, Ascend C, legacy
 CCE/TBE knowledge, MLIR/AscendNPU IR alignment, and CUDA/Triton-to-Ascend
 knowledge migration.
+
+The default generation and repair backend should be a strong coding/reasoning
+LLM, such as a Codex/GPT-5-class agent, but the provider must stay replaceable
+so local/open code models can be compared later under the same OpSpec, Sketch,
+skill, benchmark, and result-import pipeline.
 
 ## Core Methods
 
@@ -57,6 +66,7 @@ work.
 - Architecture: `docs/architecture.md`
 - Workflow: `docs/project_workflow.md`
 - Dev guide: `docs/dev_guide.md`
+- Competition alignment: `docs/competition_alignment.md`
 - Benchmark spec: `docs/benchmark_spec.md`
 - Current status: `docs/status.md`
 - Roadmap: `docs/roadmap.md`
@@ -108,4 +118,50 @@ For a normal recursive clone, users can also run:
 ```bash
 git submodule update --init --depth 1 --filter=blob:none third_party/akg
 bash scripts/setup_benchmark_submodule.sh
+```
+
+## Benchmark Metadata Workflow
+
+The first supported automation subset is T1 non-matmul:
+
+```text
+t1/gelu
+t1/fused_silu_and_mul
+t1/sigmoid_scale_sum
+t1/softmax
+```
+
+Scan the official benchmark into a case registry:
+
+```bash
+python scripts/scan_benchmark_cases.py \
+  --output benchmarks/raw/akg_kernels_bench_lite_registry.yaml \
+  --repo-root .
+```
+
+Generate parsed OpSpecs and Sketches for supported cases:
+
+```bash
+python scripts/extract_opspec_batch.py \
+  --output-dir benchmarks/parsed \
+  --repo-root .
+```
+
+Create an official submission layout from any tracked candidate source:
+
+```bash
+python scripts/create_submission.py \
+  --team gelu_triton_v13 \
+  --candidate gelu_triton_v13 \
+  --case t1/gelu=kernel_forge/candidates/gelu_triton_v13.py
+```
+
+After an Ascend worker run, import the official benchmark JSON into either a
+summary YAML or an existing experiment record:
+
+```bash
+python scripts/import_benchmark_result.py \
+  --result-json outputs/results/gelu_triton_v13_triton_backend/gelu_triton_v13.json \
+  --experiment experiments/runs/2026-07-03-gelu-triton-v13-planned.yaml \
+  --in-place
 ```

@@ -19,6 +19,11 @@ def main() -> int:
     parser.add_argument("--experiment", default=None, help="Optional experiment YAML for performance enrichment.")
     parser.add_argument("--repo-root", default=".", help="Repository root used to make source paths relative.")
     parser.add_argument("--backend-target", default="triton_ascend", help="Sketch backend target.")
+    parser.add_argument(
+        "--allow-unsupported",
+        action="store_true",
+        help="Emit explicit unsupported-case metadata instead of failing.",
+    )
     args = parser.parse_args()
 
     spec = extract_opspec(
@@ -26,6 +31,7 @@ def main() -> int:
         experiment_path=args.experiment,
         repo_root=Path(args.repo_root),
         backend_target=args.backend_target,
+        allow_unsupported=args.allow_unsupported,
     )
     write_yaml(spec, args.output)
     return 0

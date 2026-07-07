@@ -51,6 +51,7 @@ gelu_triton_v14: correctness pass, speedup 0.5875x, block size 16384 x 3 chunks
 gelu_triton_v15: correctness pass, speedup 0.5858x, block size 24576 x 2 chunks
 gelu_triton_v16: correctness pass, speedup 0.5373x, tl.sigmoid lowering
 gelu_triton_v17: compile failure, non-constexpr global used inside @jit function
+gelu_triton_v18: correctness pass, speedup 0.5764x, inline exp2 lowering
 ```
 
 First tuning axis:
@@ -77,3 +78,6 @@ First tuning axis:
   before moving to a different operator or backend strategy.
 - Triton JIT functions cannot read ordinary Python globals reliably. Inline
   scalar constants in the JIT expression or pass them as constexpr values.
+- If a later math lowering compiles but does not beat the current best, freeze
+  the operator and move to the next benchmark subset. For GELU, v13 remains the
+  best tracked candidate and v18 did not justify more single-operator tuning.

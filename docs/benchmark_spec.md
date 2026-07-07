@@ -3,6 +3,9 @@
 This file is the project contract for official benchmark behavior. It should be
 updated whenever the official benchmark branch or runner behavior changes.
 
+For the requirement-by-requirement competition mapping, see
+`docs/competition_alignment.md`.
+
 ## Official Source
 
 - Repository: <https://atomgit.com/mindspore/akg.git>
@@ -244,6 +247,12 @@ documented default is 3, while this project will use `--pass-n 4` for Pass@4
 experiments unless the official scoring instruction says otherwise.
 
 ## Initial Task Classification
+
+The generated registry is tracked at:
+
+```text
+benchmarks/raw/akg_kernels_bench_lite_registry.yaml
+```
 
 | Case | Primary category | Notes |
 | --- | --- | --- |

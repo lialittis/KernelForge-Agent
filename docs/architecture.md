@@ -27,6 +27,48 @@ are:
 - optimized through hardware feedback when possible
 - recorded as reproducible experiments
 
+## Final Product
+
+The final product is not a single optimized kernel or a set of hand-written
+benchmark submissions. It is a reusable research prototype:
+
+**SketchSkill-AKG, a model-agnostic agent-driven operator generator for Ascend
+910 NPU benchmarks.**
+
+It should deliver two artifacts:
+
+1. System artifact: the reusable pipeline that ingests benchmark tasks,
+   extracts OpSpec, builds NPU-aware Sketches, retrieves skills, generates
+   candidates, verifies correctness, repairs failures, profiles on hardware,
+   searches tuning knobs, selects winners, and writes lessons back to skills.
+2. Benchmark artifact: generated `ModelNew` submissions and experiment reports
+   for official AKG Bench Lite cases, including correctness, Pass@1/Pass@4,
+   latency, speedup, score, and failure analysis.
+
+The research claim should be that the structured Sketch + Skill + hardware
+feedback pipeline is more reliable and interpretable than one-shot low-level
+kernel generation.
+
+## Agent And LLM Strategy
+
+SketchSkill-AKG owns the agent orchestration. The LLM is an interchangeable
+backend, not the product.
+
+Default stance:
+
+- Agent framework: project-owned SketchSkill orchestration.
+- Benchmark/harness base: AKG Agents and AKG Bench Lite.
+- Main code backend: Triton-Ascend.
+- Default LLM profile: a strong coding/reasoning model such as a
+  Codex/GPT-5-class agent.
+- Provider policy: keep the LLM backend pluggable so OpenAI/Codex-style models
+  and local/open code models can be compared later.
+
+LLMs should be used for Sketch planning, candidate code generation, repair
+reasoning, and skill summarization. Deterministic project code should handle
+AST parsing, schema validation, correctness checks, benchmark execution, score
+import, profiling data import, and result comparison whenever practical.
+
 ## System Pipeline
 
 ```text
@@ -243,4 +285,3 @@ rules, and bad-to-good cases over time.
 - Prioritize correctness before performance.
 - Keep search spaces small because NPU resources are finite.
 - Classify benchmarks by operator pattern before expanding coverage.
-

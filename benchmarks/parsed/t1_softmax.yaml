@@ -1,8 +1,8 @@
-id: t1/gelu
-name: gelu
+id: t1/softmax
+name: softmax
 tier: t1
-category: elementwise
-source_path: third_party/akg/akg_agents/benchmark/akg_kernels_bench_lite/t1/gelu.py
+category: reduction
+source_path: third_party/akg/akg_agents/benchmark/akg_kernels_bench_lite/t1/softmax.py
 reference_class: Model
 candidate_class: ModelNew
 inputs:
@@ -10,7 +10,7 @@ inputs:
   shape:
   - 32
   - 512
-  - 1024
+  - 4096
   dtype: float32
   layout: contiguous
 outputs:
@@ -18,15 +18,17 @@ outputs:
   shape:
   - 32
   - 512
-  - 1024
+  - 4096
   dtype: float32
   layout: contiguous
 semantics:
-  expression: torch.nn.functional.gelu(input_tensor)
-  formula: 0.5 * x * (1 + erf(x / sqrt(2)))
+  expression: torch.softmax(input_tensor, dim=self.dim)
+  formula: exp(x - max(x, dim)) / sum(exp(x - max(x, dim)), dim)
   broadcast: none
-  reduction_axes: []
-  normalization_axes: []
+  reduction_axes:
+  - -1
+  normalization_axes:
+  - -1
   layout_transform: none
   boundary_conditions:
     tail_mask_required: true
@@ -37,7 +39,7 @@ validation:
   shape_cases:
   - - 32
     - 512
-    - 1024
+    - 4096
   dtype_cases:
   - float32
 performance:
@@ -45,40 +47,47 @@ performance:
   warmup: 10
   repeats: 100
   num_trials: 3
-  baseline_latency_ms: 0.0438129500253126
+  baseline_latency_ms: null
   baseline_source: official_reference_model
 sketch:
-  operator_category: elementwise
-  compute_pattern: unary_pointwise_gelu
+  operator_category: reduction
+  compute_pattern: rowwise_softmax
   parallel_axes:
-  - flattened_output_elements
+  - outer_rows
   tile_plan:
-    strategy: contiguous_1d_tiling
+    strategy: rowwise_last_dim_tiling
     shape:
-    - 16777216
+    - 16384
+    - 4096
     tunable: true
   memory_plan:
-    input: contiguous_global_read
+    inputs:
+    - input_tensor
+    input: row_contiguous_global_read
     output: contiguous_global_write
-    intermediate: local_register_or_vector
+    intermediate: local_vector_reduction
   pipeline_plan:
     stages:
-    - load
-    - compute_gelu
+    - load_row
+    - max_reduce
+    - exp
+    - sum_reduce
+    - normalize
     - store
   boundary_mask:
     required: true
-    reason: flattened element count may not be divisible by backend tile size
+    reason: row count or reduction width may not align with backend tile size
   accumulation_dtype: float32
   backend_target: triton_ascend
   performance_knobs:
-    tile_size: null
-    vector_width: null
+    row_tile: null
+    reduction_tile: null
     num_warps_or_cores: null
   known_risks:
-  - backend_gelu_intrinsic_or_erf_availability
-  - tail_mask_correctness
+  - max_subtraction_numerical_stability
+  - reduction_accuracy
+  - row_boundary_mapping
 submission:
   required_files:
-  - t1/gelu.py
+  - t1/softmax.py
   entrypoint: ModelNew

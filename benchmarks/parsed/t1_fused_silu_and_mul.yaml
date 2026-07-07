@@ -1,33 +1,31 @@
-id: t1/gelu
-name: gelu
+id: t1/fused_silu_and_mul
+name: fused_silu_and_mul
 tier: t1
 category: elementwise
-source_path: third_party/akg/akg_agents/benchmark/akg_kernels_bench_lite/t1/gelu.py
+source_path: third_party/akg/akg_agents/benchmark/akg_kernels_bench_lite/t1/fused_silu_and_mul.py
 reference_class: Model
 candidate_class: ModelNew
 inputs:
-- name: input_tensor
+- name: combined
   shape:
-  - 32
-  - 512
-  - 1024
+  - 4096
+  - 8192
   dtype: float32
   layout: contiguous
 outputs:
 - name: output
   shape:
-  - 32
-  - 512
-  - 1024
+  - 4096
+  - 4096
   dtype: float32
   layout: contiguous
 semantics:
-  expression: torch.nn.functional.gelu(input_tensor)
-  formula: 0.5 * x * (1 + erf(x / sqrt(2)))
+  expression: torch_npu.npu_swiglu(combined, dim=-1)
+  formula: silu(combined[..., :H]) * combined[..., H:]
   broadcast: none
   reduction_axes: []
   normalization_axes: []
-  layout_transform: none
+  layout_transform: split_last_dim
   boundary_conditions:
     tail_mask_required: true
 validation:
@@ -35,9 +33,8 @@ validation:
   atol: 0.01
   max_error_required: null
   shape_cases:
-  - - 32
-    - 512
-    - 1024
+  - - 4096
+    - 8192
   dtype_cases:
   - float32
 performance:
@@ -45,30 +42,33 @@ performance:
   warmup: 10
   repeats: 100
   num_trials: 3
-  baseline_latency_ms: 0.0438129500253126
+  baseline_latency_ms: null
   baseline_source: official_reference_model
 sketch:
   operator_category: elementwise
-  compute_pattern: unary_pointwise_gelu
+  compute_pattern: fused_silu_and_mul
   parallel_axes:
   - flattened_output_elements
   tile_plan:
-    strategy: contiguous_1d_tiling
+    strategy: contiguous_1d_output_tiling
     shape:
     - 16777216
     tunable: true
   memory_plan:
+    inputs:
+    - combined
     input: contiguous_global_read
     output: contiguous_global_write
     intermediate: local_register_or_vector
   pipeline_plan:
     stages:
-    - load
-    - compute_gelu
+    - load_combined
+    - split_last_dim
+    - compute_silu_mul
     - store
   boundary_mask:
     required: true
-    reason: flattened element count may not be divisible by backend tile size
+    reason: flattened output element count may not be divisible by tile size
   accumulation_dtype: float32
   backend_target: triton_ascend
   performance_knobs:
@@ -76,9 +76,10 @@ sketch:
     vector_width: null
     num_warps_or_cores: null
   known_risks:
-  - backend_gelu_intrinsic_or_erf_availability
+  - last_dim_split_correctness
+  - torch_npu_intrinsic_reference_semantics
   - tail_mask_correctness
 submission:
   required_files:
-  - t1/gelu.py
+  - t1/fused_silu_and_mul.py
   entrypoint: ModelNew

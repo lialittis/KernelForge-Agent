@@ -4,7 +4,8 @@ Last updated: 2026-07-03
 
 ## Current Phase
 
-GELU Triton performance tuning.
+T1 non-matmul benchmark pipeline: registry, OpSpec extraction, Sketch
+templates, result import, and reusable workflow.
 
 ## Completed
 
@@ -122,34 +123,68 @@ GELU Triton performance tuning.
   PyTorch before testing `tl.exp2`.
 - Added `gelu_triton_v18`, which keeps v17's `exp2` lowering but inlines the
   numeric constant inside the JIT expression.
+- Ran `gelu_triton_v18`; it passed official correctness but regressed versus
+  v13 with speedup `0.5764x` and weighted score `34.58`.
+- Froze GELU-only tuning with `gelu_triton_v13` as the current best tracked
+  real Triton-Ascend candidate: speedup `0.6059x`, weighted score `36.35`.
+- Added the benchmark registry workflow for all 13 official
+  `akg_kernels_bench_lite` cases.
+- Generalized OpSpec extraction beyond GELU for the initial T1 non-matmul
+  subset:
+  - `t1/gelu`
+  - `t1/fused_silu_and_mul`
+  - `t1/sigmoid_scale_sum`
+  - `t1/softmax`
+- Added Sketch templates for elementwise, fused elementwise, rowwise reduction,
+  rowwise softmax, and unsupported placeholders.
+- Added generic submission materialization with `scripts/create_submission.py`.
+- Added benchmark result import tooling with
+  `scripts/import_benchmark_result.py`.
+- Added parsed OpSpecs for the four supported T1 non-matmul cases under
+  `benchmarks/parsed/`.
+- Added `experiments/reports/gelu_tuning_summary.md`.
+- Promoted GELU backend, numerical, debug, and tuning lessons into `skills/`.
+- Defined the final product as a model-agnostic SketchSkill-AKG agent system
+  plus benchmark evidence, with AKG Agents + Triton-Ascend as the main path and
+  a pluggable strong coding/reasoning LLM backend.
+- Added decision record
+  `docs/decisions/0004-define-final-product-and-llm-boundary.md`.
+- Added `docs/competition_alignment.md` to explicitly map competition
+  requirements to the SketchSkill-AKG design, implementation status, gaps, and
+  final evidence checklist.
 
 ## In Progress
 
-- Tuning the correct pure Triton GELU implementation for performance.
+- Building the repeatable Pass@4 workflow for the T1 non-matmul subset.
 
 ## Blockers
 
-- `gelu_triton_v1` launches as a real Triton-Ascend kernel but fails the
-  official benchmark's separate relative-error threshold.
-- `gelu_triton_v2` cannot test erfc-form GELU because `tl.erfc` is unavailable
-  in the active Triton-Ascend stack.
-- `gelu_triton_v4` passes correctness but the framework tail repair makes it
-  unusably slow.
-- `gelu_triton_v5` is pure Triton but still fails relative error.
-- `gelu_triton_v13` remains the current best GELU Triton candidate but is still
-  much slower than the PyTorch baseline.
-- `gelu_triton_v11` cannot compile at block size `32768` because the tile
-  exceeds available UB.
-- `gelu_triton_v17` cannot compile because Triton JIT cannot access normal
-  Python globals from inside `@jit` functions.
+- `gelu_triton_v13` remains much slower than the PyTorch baseline, so GELU is
+  not a good next single-operator tuning target without a new backend strategy.
+- T2/T3 cases with symbolic shape setup are currently discovered by the
+  registry but marked `parse_failed` until the extractor supports local shape
+  variables and more complex input construction.
+- No non-GELU Triton candidates have been generated yet for the new supported
+  OpSpecs.
+- The first pluggable LLM adapter is not implemented yet; defer it until the
+  deterministic T1 non-matmul loop is stable.
+- A formal submission-oriented technical design document still needs to be
+  assembled from the architecture, workflow, roadmap, and competition alignment
+  docs.
 
 ## Next Actions
 
-1. Generate `gelu_triton_v18` with
-   `bash scripts/create_gelu_triton_v18_submission.sh`.
-2. Probe v18 with `scripts/probe_gelu_triton_backend.py --candidate ...`.
-3. If v18 probes cleanly, run it through the official benchmark.
-4. Compare v18 latency against v13.
+1. Review the committed OpSpecs for `fused_silu_and_mul`,
+   `sigmoid_scale_sum`, and `softmax`.
+2. Start Pass@4 candidate generation for one new T1 non-matmul case, preferably
+   `sigmoid_scale_sum` because it exercises broadcast plus rowwise reduction.
+3. Run the generated candidates on the Ascend worker with the official
+   benchmark.
+4. Import the result JSON with `scripts/import_benchmark_result.py`.
+5. Promote reusable findings into the relevant `skills/` files.
+6. Keep model/provider information explicit in every generated experiment
+   record.
+7. Draft `docs/technical_design.md` before final submission/report work.
 
 ## Latest Handoff
 
@@ -157,79 +192,59 @@ Date: 2026-07-03
 Agent: Codex
 Branch: main
 Summary:
-- Added a tracked `gelu_triton_v1` candidate source.
-- Added a submission generator for the official benchmark layout.
-- Documented the Ascend worker backend probe and benchmark command.
-- Added tests that validate the candidate source and generated package shape
-  without requiring NPU hardware.
-- Recorded the first `gelu_triton_v1` official benchmark result:
-  correctness pass, speedup `1.0176x`, weighted score `60.18`.
-- Recorded the backend probe result: `torch_fallback_after_error` due to
-  Triton runtime reporting zero active drivers.
-- Added `scripts/diagnose_triton_ascend.py` for environment diagnostics.
-- Recorded the diagnostic result: `triton-ascend` is missing while `torch_npu`
-  and the Ascend device are available.
-- Recorded the first real Triton-Ascend launch for `gelu_triton_v1` and its
-  official correctness failure.
-- Added `gelu_triton_v2` and submission generator.
-- Recorded `gelu_triton_v2` fallback behavior because `tl.erfc` is unavailable.
-- Added `gelu_triton_v3` and submission generator.
-- Recorded v3/v4 repair results and added `gelu_triton_v5`.
-- Recorded `gelu_triton_v5` failure and added a worst-error analyzer.
-- Recorded `gelu_triton_v7` correctness pass and added `gelu_triton_v8`.
-- Recorded `gelu_triton_v8` correctness pass and performance improvement, then
-  added `gelu_triton_v9`.
-- Added a one-command Ascend worker bootstrap script and documented it in the
-  README and development guide.
-- Recorded the new worker `gelu_triton_v9` backend probe result:
-  `triton_tanh_sigmoid_form_bs8192`, correctness allclose.
-- Recorded `gelu_triton_v9` correctness pass and performance improvement, then
-  added `gelu_triton_v10`.
+- Closed the current GELU tuning loop. `gelu_triton_v13` remains the best
+  tracked real Triton-Ascend GELU candidate; `gelu_triton_v18` passed but
+  regressed.
+- Added a complete benchmark registry for all 13 official AKG Bench Lite cases.
+- Generalized OpSpec extraction and Sketch generation for the T1 non-matmul
+  subset.
+- Added generic submission creation and official benchmark result import tools.
+- Added parsed OpSpecs, a GELU tuning report, tests, and skill-library updates.
+- Added decision record 0004 to pin the final product and LLM/provider
+  boundary.
+- Updated architecture, workflow, roadmap, active tasks, AGENTS guidance, and
+  experiment schema to keep future work aligned with that product goal.
+- Added explicit competition alignment matrix and final evidence checklist.
 
 Changed Files:
+- `AGENTS.md`
+- `README.md`
+- `benchmarks/parsed/`
+- `benchmarks/raw/akg_kernels_bench_lite_registry.yaml`
+- `docs/architecture.md`
+- `docs/competition_alignment.md`
+- `docs/project_workflow.md`
 - `docs/dev_guide.md`
+- `docs/decisions/0004-define-final-product-and-llm-boundary.md`
+- `docs/roadmap.md`
 - `docs/status.md`
-- `experiments/runs/2026-07-01-gelu-triton-v1-planned.yaml`
-- `kernel_forge/candidates/`
-- `scripts/diagnose_triton_ascend.py`
-- `scripts/probe_gelu_triton_backend.py`
-- `scripts/create_gelu_triton_submission.sh`
-- `scripts/create_gelu_triton_v2_submission.sh`
-- `scripts/create_gelu_triton_v3_submission.sh`
-- `scripts/create_gelu_triton_v4_submission.sh`
-- `scripts/create_gelu_triton_v5_submission.sh`
-- `scripts/create_gelu_triton_v6_submission.sh`
-- `scripts/create_gelu_triton_v7_submission.sh`
-- `scripts/create_gelu_triton_v8_submission.sh`
-- `scripts/create_gelu_triton_v9_submission.sh`
-- `scripts/create_gelu_triton_v10_submission.sh`
-- `scripts/bootstrap_ascend_env.sh`
-- `scripts/analyze_gelu_candidate_error.py`
+- `experiments/README.md`
+- `experiments/reports/gelu_tuning_summary.md`
+- `experiments/runs/2026-07-03-gelu-triton-v18-planned.yaml`
+- `kernel_forge/benchmark/`
+- `kernel_forge/experiments/`
+- `scripts/create_submission.py`
+- `scripts/extract_opspec.py`
+- `scripts/extract_opspec_batch.py`
+- `scripts/import_benchmark_result.py`
+- `scripts/scan_benchmark_cases.py`
+- `skills/`
 - `tasks/active.md`
-- `tests/test_gelu_triton_submission.py`
+- `tests/`
 
 Verification:
-- `python -m py_compile kernel_forge/candidates/gelu_triton_v1.py tests/test_gelu_triton_submission.py`
-- `python -m py_compile scripts/probe_gelu_triton_backend.py`
-- `python -m py_compile scripts/diagnose_triton_ascend.py`
-- `python -m py_compile kernel_forge/candidates/gelu_triton_v2.py`
-- `python -m py_compile kernel_forge/candidates/gelu_triton_v3.py`
-- `python -m py_compile kernel_forge/candidates/gelu_triton_v4.py`
-- `python -m py_compile kernel_forge/candidates/gelu_triton_v5.py`
-- `python -m py_compile kernel_forge/candidates/gelu_triton_v6.py`
-- `python -m py_compile kernel_forge/candidates/gelu_triton_v7.py`
-- `python -m py_compile kernel_forge/candidates/gelu_triton_v8.py`
-- `python -m py_compile kernel_forge/candidates/gelu_triton_v9.py`
-- `python -m py_compile kernel_forge/candidates/gelu_triton_v10.py`
-- `python -m py_compile scripts/analyze_gelu_candidate_error.py`
-- `bash scripts/create_gelu_triton_submission.sh`
-- `bash -n scripts/bootstrap_ascend_env.sh`
+- `python -m py_compile kernel_forge/benchmark/extractor.py kernel_forge/benchmark/sketch.py kernel_forge/benchmark/registry.py kernel_forge/experiments/results.py scripts/scan_benchmark_cases.py scripts/extract_opspec.py scripts/extract_opspec_batch.py scripts/import_benchmark_result.py scripts/create_submission.py`
+- `pytest -q tests/test_benchmark_registry_and_opspec.py tests/test_experiment_result_import.py tests/test_generic_submission.py`
 - `pytest -q tests/test_gelu_triton_submission.py`
+- `pytest -q`
 
 Open Issues:
 - The PDF is present as `SketchSkill_AKG_项目书基础版.pdf` but is currently
   untracked; decide whether to commit it as source material.
-- Need to tune a correct pure Triton GELU implementation beyond `0.6059x`.
+- Need to generate first non-GELU Pass@4 candidates from the new OpSpecs.
+- Need to extend parsing for symbolic shape construction in T2/T3 cases.
+- Need to implement model/provider metadata flow before comparing LLMs.
+- Need to write the final technical design document for competition submission.
 
 Next Suggested Step:
-- Run the `gelu_triton_v18` probe on the Ascend worker.
+- Start Pass@4 candidate generation for `t1/sigmoid_scale_sum`.

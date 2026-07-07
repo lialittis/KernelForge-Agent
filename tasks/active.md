@@ -5,14 +5,21 @@ and agents.
 
 ## Current Priorities
 
-1. Generate `gelu_triton_v18` with
-   `bash scripts/create_gelu_triton_v18_submission.sh`.
-2. Probe v18 with `python scripts/probe_gelu_triton_backend.py --candidate outputs/submissions/gelu_triton_v18/gelu_triton_v18/t1/gelu.py --shape 32 512 1024`.
-3. If the probe passes, run the official benchmark for `gelu_triton_v18`.
-4. Compare v18 latency against v13.
-5. Record the custom candidate experiment under `experiments/runs/`.
-6. Expand OpSpec extraction beyond GELU after the custom GELU loop is complete.
-7. Decide whether to commit `SketchSkill_AKG_项目书基础版.pdf`.
+1. Review the committed T1 non-matmul OpSpecs:
+   `benchmarks/parsed/t1_fused_silu_and_mul.yaml`,
+   `benchmarks/parsed/t1_sigmoid_scale_sum.yaml`, and
+   `benchmarks/parsed/t1_softmax.yaml`.
+2. Start the first non-GELU Pass@4 cycle for `t1/sigmoid_scale_sum`.
+3. Use `scripts/create_submission.py` for new candidate layouts instead of
+   adding another one-off shell generator.
+4. Run the official benchmark on the Ascend worker and import result JSON with
+   `scripts/import_benchmark_result.py`.
+5. Record model/provider, prompt version, retrieved skills, and candidate index
+   for every generated experiment.
+6. Promote reusable generation, repair, or tuning lessons into `skills/`.
+7. Draft `docs/technical_design.md` from the architecture, workflow, roadmap,
+   and competition alignment docs.
+8. Decide whether to commit `SketchSkill_AKG_项目书基础版.pdf`.
 
 ## Research Questions
 
@@ -25,6 +32,9 @@ and agents.
   `--pass-n 3` unless overridden?
 - Which official cases are runnable without `torch_npu` dependencies on the
   available machine?
+- What is the minimum symbolic-shape parser needed for T2/T3 case metadata?
+- Which LLM provider adapter should be implemented first after the deterministic
+  T1 loop is stable?
 
 ## Coordination Rules
 

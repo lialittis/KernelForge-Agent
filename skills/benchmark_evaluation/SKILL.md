@@ -34,5 +34,23 @@ comparison, performance measurement, and experiment recording.
 
 ## Bad-To-Good Cases
 
-No recorded cases yet.
+### Separate Backend Proof From Benchmark Pass
 
+`gelu_triton_v1` initially passed the official benchmark with a small speedup,
+but the backend probe showed:
+
+```text
+last_backend: torch_fallback_after_error
+```
+
+Treat this as an environment/backend-support finding, not a custom kernel
+result. A benchmark pass is only a custom-kernel pass when the candidate has
+also shown that the intended backend launched.
+
+Recommended loop:
+
+- Run the backend probe for candidate-specific status.
+- Run the official benchmark for score and latency.
+- Import the benchmark JSON into an experiment record.
+- Record fallback, compile, runtime, correctness, and performance outcomes as
+  separate fields.

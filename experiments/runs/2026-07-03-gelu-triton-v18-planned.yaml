@@ -4,7 +4,7 @@ agent: codex
 machine: ascend-worker
 branch: main
 commit: null
-status: planned
+status: pass_but_slow
 
 benchmark:
   source: akg_kernels_bench_lite
@@ -54,23 +54,25 @@ commands:
 
 results:
   runtime:
-    status: not_run
-    last_backend: null
+    status: triton_launch_inferred_from_benchmark
+    last_backend: triton_exp2_inline_constant_bs16384x2
     last_error: null
   correctness:
-    status: not_run
+    status: pass
     rtol: 0.01
     atol: 0.01
     max_abs_diff: null
     max_rel_diff: null
   performance:
-    status: not_run
+    status: measured_slow
     warmup: 10
     repeats: 100
     num_trials: 3
     baseline_latency_ms: 0.0438129500253126
     solution_latency_ms: null
-    speedup_vs_baseline: null
+    speedup_vs_baseline: 0.5764
+    weighted_score: 34.58
+    interpretation: exp2_lowering_regressed_against_gelu_triton_v13
 
 search:
   method: math_lowering
@@ -85,7 +87,10 @@ notes: >
   V17 failed before testing exp2 lowering because Triton JIT could not access
   the Python global _NEG_TWO_LOG2E from inside a @jit function. V18 keeps the
   same exp2 expression but inlines the numeric constant inside the JIT code.
+  It passed official correctness on the Ascend worker, but regressed versus
+  gelu_triton_v13, so GELU tuning is frozen with v13 as the current best
+  tracked candidate.
 
 next:
-  - Probe v18 before benchmarking.
-  - If v18 compiles, compare its official benchmark result against v13.
+  - Stop iterating on GELU-only variants unless a new backend strategy is introduced.
+  - Move to the T1 non-matmul OpSpec, Sketch, and result-import pipeline.

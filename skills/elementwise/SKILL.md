@@ -40,5 +40,21 @@ reordering, matrix multiplication, or normalization over axes.
 
 ## Bad-To-Good Cases
 
-No recorded cases yet.
+### GELU Tanh-Approximate Stable Form
 
+For `t1/gelu`, the NPU reference behaved consistently with tanh-approximate
+GELU numerics. The cancellation-prone form:
+
+```text
+0.5 * x * (1 + tanh(u))
+```
+
+failed relative error in the far negative tail. The stable equivalent:
+
+```text
+x / (1 + exp(-2u))
+```
+
+passed correctness when implemented in Triton-Ascend. Use this lesson when an
+elementwise activation has tiny reference outputs and the benchmark checks
+relative error separately from absolute error.

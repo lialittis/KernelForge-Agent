@@ -1,0 +1,271 @@
+benchmark:
+  name: akg_kernels_bench_lite
+  path: third_party/akg/akg_agents/benchmark/akg_kernels_bench_lite
+summary:
+  total_cases: 13
+  by_tier:
+    t1: 6
+    t2: 4
+    t3: 3
+  by_category:
+    elementwise: 2
+    matmul_like: 3
+    normalization: 3
+    reduction: 3
+    transpose_layout: 1
+    unknown: 1
+  by_support:
+    opspec_supported: 4
+    parse_failed: 6
+    unsupported: 3
+cases:
+- id: t1/fused_silu_and_mul
+  name: fused_silu_and_mul
+  tier: t1
+  category: elementwise
+  source_path: third_party/akg/akg_agents/benchmark/akg_kernels_bench_lite/t1/fused_silu_and_mul.py
+  support:
+    status: opspec_supported
+    reason: covered by the initial T1 non-matmul extraction subset
+  inputs:
+  - name: combined
+    shape:
+    - 4096
+    - 8192
+    dtype: float32
+    layout: contiguous
+  init_inputs: []
+  forward_args:
+  - combined
+  forward_expression: torch_npu.npu_swiglu(combined, dim=-1)
+  reference_class: Model
+  candidate_class: ModelNew
+- id: t1/gelu
+  name: gelu
+  tier: t1
+  category: elementwise
+  source_path: third_party/akg/akg_agents/benchmark/akg_kernels_bench_lite/t1/gelu.py
+  support:
+    status: opspec_supported
+    reason: covered by the initial T1 non-matmul extraction subset
+  inputs:
+  - name: input_tensor
+    shape:
+    - 32
+    - 512
+    - 1024
+    dtype: float32
+    layout: contiguous
+  init_inputs: []
+  forward_args:
+  - input_tensor
+  forward_expression: torch.nn.functional.gelu(input_tensor)
+  reference_class: Model
+  candidate_class: ModelNew
+- id: t1/matmul_basic
+  name: matmul_basic
+  tier: t1
+  category: matmul_like
+  source_path: third_party/akg/akg_agents/benchmark/akg_kernels_bench_lite/t1/matmul_basic.py
+  support:
+    status: unsupported
+    reason: matmul-like cases are deferred until non-matmul T1 infrastructure is stable
+  inputs:
+  - name: a
+    shape:
+    - 32
+    - 8192
+    dtype: bfloat16
+    layout: contiguous
+  - name: b
+    shape:
+    - 8192
+    - 8192
+    dtype: bfloat16
+    layout: contiguous
+  init_inputs: []
+  forward_args:
+  - a
+  - b
+  forward_expression: torch.matmul(a, b)
+  reference_class: Model
+  candidate_class: ModelNew
+- id: t1/matmul_biasadd
+  name: matmul_biasadd
+  tier: t1
+  category: matmul_like
+  source_path: third_party/akg/akg_agents/benchmark/akg_kernels_bench_lite/t1/matmul_biasadd.py
+  support:
+    status: unsupported
+    reason: matmul-like cases are deferred until non-matmul T1 infrastructure is stable
+  inputs:
+  - name: a
+    shape:
+    - 4096
+    - 4096
+    dtype: float16
+    layout: contiguous
+  - name: b
+    shape:
+    - 4096
+    - 4096
+    dtype: float16
+    layout: contiguous
+  - name: bias
+    shape:
+    - 1
+    - 4096
+    dtype: float16
+    layout: contiguous
+  init_inputs: []
+  forward_args:
+  - a
+  - b
+  - bias
+  forward_expression: torch.matmul(a, b) + bias
+  reference_class: Model
+  candidate_class: ModelNew
+- id: t1/sigmoid_scale_sum
+  name: sigmoid_scale_sum
+  tier: t1
+  category: reduction
+  source_path: third_party/akg/akg_agents/benchmark/akg_kernels_bench_lite/t1/sigmoid_scale_sum.py
+  support:
+    status: opspec_supported
+    reason: covered by the initial T1 non-matmul extraction subset
+  inputs:
+  - name: x
+    shape:
+    - 1000
+    - 8192
+    dtype: float32
+    layout: contiguous
+  - name: bias
+    shape:
+    - 8192
+    dtype: float32
+    layout: contiguous
+  init_inputs: []
+  forward_args:
+  - x
+  - bias
+  forward_expression: torch.sum(t3, dim=-1, keepdim=True)
+  reference_class: Model
+  candidate_class: ModelNew
+- id: t1/softmax
+  name: softmax
+  tier: t1
+  category: reduction
+  source_path: third_party/akg/akg_agents/benchmark/akg_kernels_bench_lite/t1/softmax.py
+  support:
+    status: opspec_supported
+    reason: covered by the initial T1 non-matmul extraction subset
+  inputs:
+  - name: input_tensor
+    shape:
+    - 32
+    - 512
+    - 4096
+    dtype: float32
+    layout: contiguous
+  init_inputs:
+  - -1
+  forward_args:
+  - input_tensor
+  forward_expression: torch.softmax(input_tensor, dim=self.dim)
+  reference_class: Model
+  candidate_class: ModelNew
+- id: t2/add_rmsnorm_cast
+  name: add_rmsnorm_cast
+  tier: t2
+  category: normalization
+  source_path: third_party/akg/akg_agents/benchmark/akg_kernels_bench_lite/t2/add_rmsnorm_cast.py
+  support:
+    status: parse_failed
+    reason: 'ExtractionError: Expected integer shape literal, got batch_size'
+  inputs: []
+  init_inputs: []
+  forward_args: []
+  forward_expression: null
+- id: t2/add_rmsnorm_quant
+  name: add_rmsnorm_quant
+  tier: t2
+  category: normalization
+  source_path: third_party/akg/akg_agents/benchmark/akg_kernels_bench_lite/t2/add_rmsnorm_quant.py
+  support:
+    status: parse_failed
+    reason: 'ExtractionError: Expected integer shape literal, got batch_size'
+  inputs: []
+  init_inputs: []
+  forward_args: []
+  forward_expression: null
+- id: t2/moe_topk_softmax
+  name: moe_topk_softmax
+  tier: t2
+  category: reduction
+  source_path: third_party/akg/akg_agents/benchmark/akg_kernels_bench_lite/t2/moe_topk_softmax.py
+  support:
+    status: unsupported
+    reason: higher-tier cases are deferred until T1 extraction and reporting are stable
+  inputs:
+  - name: gating_logits
+    shape:
+    - 1024
+    - 8
+    dtype: float32
+    layout: contiguous
+  init_inputs:
+  - 2
+  forward_args:
+  - gating_logits
+  forward_expression: (top_k_probs, top_k_indices)
+  reference_class: Model
+  candidate_class: ModelNew
+- id: t2/rope
+  name: rope
+  tier: t2
+  category: transpose_layout
+  source_path: third_party/akg/akg_agents/benchmark/akg_kernels_bench_lite/t2/rope.py
+  support:
+    status: parse_failed
+    reason: 'ExtractionError: Expected integer shape literal, got batch'
+  inputs: []
+  init_inputs: []
+  forward_args: []
+  forward_expression: null
+- id: t3/causal_conv1d
+  name: causal_conv1d
+  tier: t3
+  category: unknown
+  source_path: third_party/akg/akg_agents/benchmark/akg_kernels_bench_lite/t3/causal_conv1d.py
+  support:
+    status: parse_failed
+    reason: 'ExtractionError: Expected integer shape literal, got batch'
+  inputs: []
+  init_inputs: []
+  forward_args: []
+  forward_expression: null
+- id: t3/decode_mla
+  name: decode_mla
+  tier: t3
+  category: matmul_like
+  source_path: third_party/akg/akg_agents/benchmark/akg_kernels_bench_lite/t3/decode_mla.py
+  support:
+    status: parse_failed
+    reason: 'ExtractionError: Expected integer shape literal, got batch'
+  inputs: []
+  init_inputs: []
+  forward_args: []
+  forward_expression: null
+- id: t3/layernorm_gated
+  name: layernorm_gated
+  tier: t3
+  category: normalization
+  source_path: third_party/akg/akg_agents/benchmark/akg_kernels_bench_lite/t3/layernorm_gated.py
+  support:
+    status: parse_failed
+    reason: 'ExtractionError: Expected integer shape literal, got batch'
+  inputs: []
+  init_inputs: []
+  forward_args: []
+  forward_expression: null

@@ -23,11 +23,28 @@ should move through OpSpec extraction, Sketch planning, retrieval, code
 generation, compile/run verification, repair, profiling, search, and Skill
 Library write-back.
 
+The final product is the reusable SketchSkill-AKG agent system plus benchmark
+evidence, not a single optimized kernel. Individual `ModelNew` implementations
+are generated outputs of the system.
+
+LLM policy:
+
+- Use project-owned SketchSkill orchestration as the agent framework.
+- Use AKG Agents and AKG Bench Lite as the benchmark/harness base.
+- Use Triton-Ascend as the initial code-generation backend.
+- Use a strong coding/reasoning model, such as a Codex/GPT-5-class agent, as
+  the default Sketch/Code/Repair/Skill Writer backend.
+- Keep the LLM provider replaceable so local/open code models can be compared
+  later under the same OpSpec, Sketch, skills, benchmark, and result pipeline.
+- Keep benchmark scanning, AST parsing, correctness checks, scoring, profiling
+  import, and best-candidate selection deterministic whenever practical.
+
 ## Source Of Truth
 
 - Architecture: `docs/architecture.md`
 - Development loop: `docs/dev_guide.md`
 - Project workflow: `docs/project_workflow.md`
+- Competition alignment: `docs/competition_alignment.md`
 - Benchmark requirements: `docs/benchmark_spec.md`
 - Current status: `docs/status.md`
 - Roadmap: `docs/roadmap.md`
@@ -48,8 +65,10 @@ Before starting work:
 3. Read `tasks/active.md`.
 4. Read `docs/architecture.md` for the current system design.
 5. Read `docs/dev_guide.md` if work will be run on a separate Ascend machine.
-6. Check recent decision records in `docs/decisions/`.
-7. Confirm whether your task touches benchmark research, harness code, agent
+6. Read `docs/competition_alignment.md` when work changes scope, reports, or
+   evaluation metrics.
+7. Check recent decision records in `docs/decisions/`.
+8. Confirm whether your task touches benchmark research, harness code, agent
    code, experiments, skills, or documentation.
 
 Recommended Git flow:
