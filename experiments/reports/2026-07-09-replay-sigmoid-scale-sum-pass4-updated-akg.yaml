@@ -1,0 +1,169 @@
+case: t1/sigmoid_scale_sum
+id: 2026-07-09-replay-sigmoid-scale-sum-pass4-updated-akg
+supersedes: experiments/reports/2026-07-08-replay-sigmoid-scale-sum-pass4.yaml
+akg_commit: 47aa428fcdc8c68f78d331dc578bc6c74fb9d91d
+project_commit: 215a6d6839111863e4a5d014e659ec56acd1d996
+provider: replay
+model: replay-v1
+prompt_version: code_agent.v1
+candidate_count: 4
+pass_at_1: true
+pass_at_n: true
+n: 4
+passed_count: 4
+best_candidate:
+  candidate_index: 2
+  team_name: sigmoid_scale_sum_replay_v2
+  result_path: outputs/results/replay_sigmoid_scale_sum_pass4_2026_07_09/sigmoid_scale_sum_replay_v2.json
+  status: pass
+  correctness: true
+  speedup: 1.9698
+  weighted_score: 69.7
+  error: null
+  max_abs_diff: 0.0
+  max_rel_diff: 0.0
+  baseline_ms: 0.0966
+  solution_ms: 0.049
+  observed_backend: triton_row_reduce_bs8192
+candidates:
+- candidate_index: 1
+  team_name: sigmoid_scale_sum_replay_v1
+  result_path: outputs/results/replay_sigmoid_scale_sum_pass4_2026_07_09/sigmoid_scale_sum_replay_v1.json
+  status: pass
+  correctness: true
+  speedup: 1.0005
+  weighted_score: 60.01
+  error: null
+  max_abs_diff: 0.0
+  max_rel_diff: 0.0
+  baseline_ms: 0.0965
+  solution_ms: 0.0964
+  observed_backend: torch_reference
+  provider_metadata:
+    replay_source_path: kernel_forge/candidates/sigmoid_scale_sum_v1.py
+    case_id: t1/sigmoid_scale_sum
+    candidate_index: 1
+  backend_probe:
+    output_device: npu:0
+    output_dtype: torch.float32
+    last_backend: torch_reference
+    last_error: null
+    allclose: true
+- candidate_index: 2
+  team_name: sigmoid_scale_sum_replay_v2
+  result_path: outputs/results/replay_sigmoid_scale_sum_pass4_2026_07_09/sigmoid_scale_sum_replay_v2.json
+  status: pass
+  correctness: true
+  speedup: 1.9698
+  weighted_score: 69.7
+  error: null
+  max_abs_diff: 0.0
+  max_rel_diff: 0.0
+  baseline_ms: 0.0966
+  solution_ms: 0.049
+  observed_backend: triton_row_reduce_bs8192
+  provider_metadata:
+    replay_source_path: kernel_forge/candidates/sigmoid_scale_sum_v2.py
+    case_id: t1/sigmoid_scale_sum
+    candidate_index: 2
+  backend_probe:
+    output_device: npu:0
+    output_dtype: torch.float32
+    last_backend: triton_row_reduce_bs8192
+    last_error: null
+    allclose: true
+- candidate_index: 3
+  team_name: sigmoid_scale_sum_replay_v3
+  result_path: outputs/results/replay_sigmoid_scale_sum_pass4_2026_07_09/sigmoid_scale_sum_replay_v3.json
+  status: pass
+  correctness: true
+  speedup: 1.861
+  weighted_score: 68.61
+  error: null
+  max_abs_diff: 0.0009765625
+  max_rel_diff: 2.3805573334811925e-07
+  baseline_ms: 0.0961
+  solution_ms: 0.0517
+  observed_backend: triton_row_reduce_bs4096x2
+  provider_metadata:
+    replay_source_path: kernel_forge/candidates/sigmoid_scale_sum_v3.py
+    case_id: t1/sigmoid_scale_sum
+    candidate_index: 3
+  backend_probe:
+    output_device: npu:0
+    output_dtype: torch.float32
+    last_backend: triton_row_reduce_bs4096x2
+    last_error: null
+    allclose: true
+- candidate_index: 4
+  team_name: sigmoid_scale_sum_replay_v4
+  result_path: outputs/results/replay_sigmoid_scale_sum_pass4_2026_07_09/sigmoid_scale_sum_replay_v4.json
+  status: pass
+  correctness: true
+  speedup: 1.5388
+  weighted_score: 65.39
+  error: null
+  max_abs_diff: 0.0009765625
+  max_rel_diff: 2.370963869680054e-07
+  baseline_ms: 0.0968
+  solution_ms: 0.0629
+  observed_backend: triton_row_reduce_bs2048x4
+  provider_metadata:
+    replay_source_path: kernel_forge/candidates/sigmoid_scale_sum_v4.py
+    case_id: t1/sigmoid_scale_sum
+    candidate_index: 4
+  backend_probe:
+    output_device: npu:0
+    output_dtype: torch.float32
+    last_backend: triton_row_reduce_bs2048x4
+    last_error: null
+    allclose: true
+comparison_to_previous:
+  previous_report: experiments/reports/2026-07-08-replay-sigmoid-scale-sum-pass4.yaml
+  previous_akg_commit: bea77cb38db5713056a7e06e5e8a0cbe9d26954b
+  outcome_change: none
+  best_candidate_change: none
+  interpretation: >
+    Pass@1 and Pass@4 still hold under the updated AKG runner. The best
+    candidate remains `sigmoid_scale_sum_replay_v2`, and replay remains aligned
+    with the manual positive reduction trajectory. Measured best speedup
+    decreased from `1.998x` to `1.9698x`.
+  score_deltas:
+  - candidate_index: 1
+    team_name: sigmoid_scale_sum_replay_v1
+    old_speedup: 1.0034
+    new_speedup: 1.0005
+    delta_speedup: -0.0029
+    old_weighted_score: 60.03
+    new_weighted_score: 60.01
+    delta_weighted_score: -0.02
+  - candidate_index: 2
+    team_name: sigmoid_scale_sum_replay_v2
+    old_speedup: 1.998
+    new_speedup: 1.9698
+    delta_speedup: -0.0282
+    old_weighted_score: 69.98
+    new_weighted_score: 69.7
+    delta_weighted_score: -0.28
+  - candidate_index: 3
+    team_name: sigmoid_scale_sum_replay_v3
+    old_speedup: 1.8731
+    new_speedup: 1.861
+    delta_speedup: -0.0121
+    old_weighted_score: 68.73
+    new_weighted_score: 68.61
+    delta_weighted_score: -0.12
+  - candidate_index: 4
+    team_name: sigmoid_scale_sum_replay_v4
+    old_speedup: 1.5451
+    new_speedup: 1.5388
+    delta_speedup: -0.0063
+    old_weighted_score: 65.45
+    new_weighted_score: 65.39
+    delta_weighted_score: -0.06
+notes: >
+  Rerun used the updated AKG standalone runner and preserved CANN's Python
+  paths with `export PYTHONPATH=/data/KernelForge-Agent:${PYTHONPATH:-}` after
+  sourcing `set_env.sh`. Replay generation used provider `replay`, model
+  `replay-v1`, prompt `code_agent.v1`, and the same provider metadata mapping
+  to the manual sigmoid templates.

@@ -20,7 +20,8 @@ and agents.
 6. Manual external action: send the updated project book with
    `docs/submission/project_book_email_zh.md`, then record the email
    date/status.
-7. Keep `replay` as the deterministic CI/regression provider.
+7. Keep `replay` as the deterministic CI/regression provider; updated-AKG
+   replay `t1/sigmoid_scale_sum` is the current replay baseline.
 8. Use completed manual Pass@4 cycles as retrieval examples:
    updated-AKG `sigmoid_scale_sum_v2` for a positive reduction trajectory and
    updated-AKG `fused_silu_and_mul_v3` for a correctness-positive but
@@ -37,8 +38,8 @@ and agents.
    replacing `PYTHONPATH`.
 11. Continue rerunning key Pass@4 reports under AKG commit
    `47aa428fcdc8c68f78d331dc578bc6c74fb9d91d` before final result claims;
-   manual `t1/sigmoid_scale_sum`, `t1/softmax`, and
-   `t1/fused_silu_and_mul` are done.
+   manual `t1/sigmoid_scale_sum`, `t1/softmax`, `t1/fused_silu_and_mul`, and
+   replay `t1/sigmoid_scale_sum` are done.
 12. Add backend-probe fields to future generated experiment records by default.
 13. Record model/provider, prompt version, retrieved skills, and candidate index
    for every generated experiment.

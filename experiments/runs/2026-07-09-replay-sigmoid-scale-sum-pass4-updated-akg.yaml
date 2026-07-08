@@ -1,0 +1,208 @@
+id: 2026-07-09-replay-sigmoid-scale-sum-pass4-updated-akg
+date: 2026-07-09
+agent: codex
+machine: ascend-worker
+branch: main
+commit: 215a6d6839111863e4a5d014e659ec56acd1d996
+status: completed
+
+benchmark:
+  source: akg_kernels_bench_lite
+  source_commit: 47aa428fcdc8c68f78d331dc578bc6c74fb9d91d
+  previous_source_commit: bea77cb38db5713056a7e06e5e8a0cbe9d26954b
+  task_id: t1/sigmoid_scale_sum
+  operator_name: sigmoid_scale_sum
+  operator_category: reduction
+  reference_path: third_party/akg/akg_agents/benchmark/akg_kernels_bench_lite/t1/sigmoid_scale_sum.py
+
+environment:
+  hardware: Ascend 910
+  device_name: Ascend910B2C
+  cann_version: "8.5.1"
+  python_version: "3.11.14"
+  torch_version: "2.9.0+cpu"
+  torch_npu_version: "2.9.0rc1"
+  triton_version: "3.2.0"
+  triton_package_metadata_version: "3.6.0"
+  triton_ascend_version: "3.2.0"
+  venv: /data/venvs/kf-triton-ascend
+
+generation:
+  provider: replay
+  model: replay-v1
+  agent_role: code_agent_replay
+  backend: triton_ascend
+  prompt_version: code_agent.v1
+  retrieved_skills:
+    - skills/reduction/SKILL.md
+    - skills/broadcast/SKILL.md
+    - skills/ascend_debug/SKILL.md
+    - skills/ascend_performance/SKILL.md
+    - skills/benchmark_evaluation/SKILL.md
+  opspec_path: benchmarks/parsed/t1_sigmoid_scale_sum.yaml
+  sketch_path: benchmarks/parsed/t1_sigmoid_scale_sum.yaml#sketch
+  pass_n: 4
+  candidates:
+    - index: 1
+      team_name: sigmoid_scale_sum_replay_v1
+      candidate_path: outputs/generated/2026-07-09-replay-sigmoid-scale-sum-pass4-updated-akg/candidates/sigmoid_scale_sum_replay_v1.py
+      submission_root: outputs/generated/2026-07-09-replay-sigmoid-scale-sum-pass4-updated-akg/submissions/sigmoid_scale_sum_replay_v1
+      provider: replay
+      model: replay-v1
+      prompt_version: code_agent.v1
+      observed_backend: torch_reference
+      provider_metadata:
+        replay_source_path: kernel_forge/candidates/sigmoid_scale_sum_v1.py
+        case_id: t1/sigmoid_scale_sum
+        candidate_index: 1
+    - index: 2
+      team_name: sigmoid_scale_sum_replay_v2
+      candidate_path: outputs/generated/2026-07-09-replay-sigmoid-scale-sum-pass4-updated-akg/candidates/sigmoid_scale_sum_replay_v2.py
+      submission_root: outputs/generated/2026-07-09-replay-sigmoid-scale-sum-pass4-updated-akg/submissions/sigmoid_scale_sum_replay_v2
+      provider: replay
+      model: replay-v1
+      prompt_version: code_agent.v1
+      observed_backend: triton_row_reduce_bs8192
+      provider_metadata:
+        replay_source_path: kernel_forge/candidates/sigmoid_scale_sum_v2.py
+        case_id: t1/sigmoid_scale_sum
+        candidate_index: 2
+    - index: 3
+      team_name: sigmoid_scale_sum_replay_v3
+      candidate_path: outputs/generated/2026-07-09-replay-sigmoid-scale-sum-pass4-updated-akg/candidates/sigmoid_scale_sum_replay_v3.py
+      submission_root: outputs/generated/2026-07-09-replay-sigmoid-scale-sum-pass4-updated-akg/submissions/sigmoid_scale_sum_replay_v3
+      provider: replay
+      model: replay-v1
+      prompt_version: code_agent.v1
+      observed_backend: triton_row_reduce_bs4096x2
+      provider_metadata:
+        replay_source_path: kernel_forge/candidates/sigmoid_scale_sum_v3.py
+        case_id: t1/sigmoid_scale_sum
+        candidate_index: 3
+    - index: 4
+      team_name: sigmoid_scale_sum_replay_v4
+      candidate_path: outputs/generated/2026-07-09-replay-sigmoid-scale-sum-pass4-updated-akg/candidates/sigmoid_scale_sum_replay_v4.py
+      submission_root: outputs/generated/2026-07-09-replay-sigmoid-scale-sum-pass4-updated-akg/submissions/sigmoid_scale_sum_replay_v4
+      provider: replay
+      model: replay-v1
+      prompt_version: code_agent.v1
+      observed_backend: triton_row_reduce_bs2048x4
+      provider_metadata:
+        replay_source_path: kernel_forge/candidates/sigmoid_scale_sum_v4.py
+        case_id: t1/sigmoid_scale_sum
+        candidate_index: 4
+
+commands:
+  generate: >
+    python scripts/generate_candidate.py
+    --opspec benchmarks/parsed/t1_sigmoid_scale_sum.yaml
+    --provider replay
+    --backend triton_ascend
+    --pass-n 4
+    --run-id 2026-07-09-replay-sigmoid-scale-sum-pass4-updated-akg
+    --output-root outputs/generated
+  benchmark_all: >
+    source /usr/local/Ascend/ascend-toolkit/set_env.sh &&
+    source /data/venvs/kf-triton-ascend/bin/activate &&
+    export PYTHONPATH=/data/KernelForge-Agent:${PYTHONPATH:-} &&
+    python third_party/akg/akg_agents/benchmark/akg_kernels_bench_lite/tools/run_bench.py
+    outputs/generated/2026-07-09-replay-sigmoid-scale-sum-pass4-updated-akg/submissions
+    --bench-dir third_party/akg/akg_agents/benchmark/akg_kernels_bench_lite
+    --output outputs/results/replay_sigmoid_scale_sum_pass4_2026_07_09
+    --warmup 10
+    --iterations 100
+    --num-trials 3
+  backend_probe_all: >
+    source /usr/local/Ascend/ascend-toolkit/set_env.sh &&
+    source /data/venvs/kf-triton-ascend/bin/activate &&
+    export PYTHONPATH=/data/KernelForge-Agent:${PYTHONPATH:-} &&
+    python scripts/probe_sigmoid_scale_sum_backend.py
+    --candidate outputs/generated/2026-07-09-replay-sigmoid-scale-sum-pass4-updated-akg/submissions/<team>/t1/sigmoid_scale_sum.py
+    --shape 1000 8192
+
+results:
+  correctness:
+    status: pass
+    rtol: 0.01
+    atol: 0.01
+  pass_n:
+    pass_at_1: true
+    pass_at_4: true
+    passed_count: 4
+    best_candidate: sigmoid_scale_sum_replay_v2
+  performance:
+    status: pass
+    warmup: 10
+    repeats: 100
+    num_trials: 3
+    baseline_latency_ms: 0.0966
+    best_solution_latency_ms: 0.049
+    best_speedup_vs_baseline: 1.9698
+    best_weighted_score: 69.7
+  completed_cases:
+    - candidate_index: 1
+      team_name: sigmoid_scale_sum_replay_v1
+      status: pass
+      correctness: true
+      baseline_latency_ms: 0.0965
+      solution_latency_ms: 0.0964
+      speedup_vs_baseline: 1.0005
+      weighted_score: 60.01
+      max_abs_diff: 0.0
+      max_rel_diff: 0.0
+      observed_backend: torch_reference
+    - candidate_index: 2
+      team_name: sigmoid_scale_sum_replay_v2
+      status: pass
+      correctness: true
+      baseline_latency_ms: 0.0966
+      solution_latency_ms: 0.049
+      speedup_vs_baseline: 1.9698
+      weighted_score: 69.7
+      max_abs_diff: 0.0
+      max_rel_diff: 0.0
+      observed_backend: triton_row_reduce_bs8192
+    - candidate_index: 3
+      team_name: sigmoid_scale_sum_replay_v3
+      status: pass
+      correctness: true
+      baseline_latency_ms: 0.0961
+      solution_latency_ms: 0.0517
+      speedup_vs_baseline: 1.861
+      weighted_score: 68.61
+      max_abs_diff: 0.0009765625
+      max_rel_diff: 2.3805573334811925e-07
+      observed_backend: triton_row_reduce_bs4096x2
+    - candidate_index: 4
+      team_name: sigmoid_scale_sum_replay_v4
+      status: pass
+      correctness: true
+      baseline_latency_ms: 0.0968
+      solution_latency_ms: 0.0629
+      speedup_vs_baseline: 1.5388
+      weighted_score: 65.39
+      max_abs_diff: 0.0009765625
+      max_rel_diff: 2.370963869680054e-07
+      observed_backend: triton_row_reduce_bs2048x4
+
+artifacts:
+  generated_root: outputs/generated/2026-07-09-replay-sigmoid-scale-sum-pass4-updated-akg
+  submissions: outputs/generated/2026-07-09-replay-sigmoid-scale-sum-pass4-updated-akg/submissions
+  results: outputs/results/replay_sigmoid_scale_sum_pass4_2026_07_09
+  generated_experiment: outputs/generated/2026-07-09-replay-sigmoid-scale-sum-pass4-updated-akg/experiment.yaml
+  pass4_report: experiments/reports/2026-07-09-replay-sigmoid-scale-sum-pass4-updated-akg.yaml
+
+skill_updates: []
+
+notes: >
+  Updated-AKG rebaseline of the deterministic replay Pass@4 workflow. The
+  outcome did not change versus the July 8 replay report: all four candidates
+  pass, Pass@1 and Pass@4 hold, and `sigmoid_scale_sum_replay_v2` remains best.
+  Backend probes confirmed the expected torch reference path for v1 and
+  Triton-Ascend row-reduction paths for v2, v3, and v4.
+
+next:
+  - Use this updated replay report as the deterministic CI/regression baseline
+    for `t1/sigmoid_scale_sum`.
+  - Run the first live provider Pass@4 generation when credentials and model
+    selection are available.
