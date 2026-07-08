@@ -216,6 +216,8 @@ templates, Pass@N reporting, and first positive non-GELU NPU result.
   failure modes without real network calls or credentials.
 - Added decision record
   `docs/decisions/0006-add-openai-responses-provider.md`.
+- Pushed and synced the live provider adapter to the Ascend worker at commit
+  `18f4b42e6c7a2acb1eefcd659084f09b60681be3`.
 
 ## In Progress
 
@@ -266,6 +268,8 @@ Summary:
 - Kept credentials environment-driven and test coverage network-free through an
   injectable HTTP poster.
 - Documented the live generation command and provider environment variables.
+- Pushed `main` and fast-forwarded the Ascend worker checkout to commit
+  `18f4b42e6c7a2acb1eefcd659084f09b60681be3`.
 
 Changed Files:
 - `docs/decisions/0006-add-openai-responses-provider.md`
@@ -283,6 +287,11 @@ Verification:
 - `pytest -q`
 - `git diff --check`
 - `python scripts/generate_candidate.py --opspec benchmarks/parsed/t1_sigmoid_scale_sum.yaml --provider replay --backend triton_ascend --pass-n 1 --run-id replay-provider-smoke --output-root /tmp/kf-generated-smoke`
+- Remote Ascend sync: `git pull --ff-only origin main`, resulting HEAD
+  `18f4b42e6c7a2acb1eefcd659084f09b60681be3`.
+- Remote Ascend compile and replay smoke:
+  `python -m py_compile kernel_forge/agents/provider.py scripts/generate_candidate.py`
+  plus `python scripts/generate_candidate.py --opspec benchmarks/parsed/t1_sigmoid_scale_sum.yaml --provider replay --backend triton_ascend --pass-n 1 --run-id replay-provider-remote-smoke --output-root /tmp/kf-generated-smoke`.
 
 Open Issues:
 - The PDF is present as `SketchSkill_AKG_项目书基础版.pdf` but is currently
@@ -291,8 +300,9 @@ Open Issues:
 - Need to run the first real live-provider generation and compare it with
   replay/manual Pass@4 results.
 - Need to write the final technical design document for competition submission.
+- The Ascend worker venv currently lacks `pytest`; remote verification used
+  `py_compile` and replay generation instead of unit tests.
 
 Next Suggested Step:
-- Commit and sync the live provider adapter, then run the first real
-  `provider=openai` generation cycle when credentials and model selection are
-  available.
+- Run the first real `provider=openai` generation cycle when credentials and
+  model selection are available.
