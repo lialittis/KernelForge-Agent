@@ -40,6 +40,29 @@ reordering, matrix multiplication, or normalization over axes.
 
 ## Bad-To-Good Cases
 
+### Split-Last-Dim Fused SwiGLU Indexing
+
+For `t1/fused_silu_and_mul`, the input is `[4096, 8192]` and the output is
+`[4096, 4096]`. Each output element maps to:
+
+```text
+row = flat_offset // hidden_size
+col = flat_offset - row * hidden_size
+x = combined[row, col]
+y = combined[row, hidden_size + col]
+out = silu(x) * y
+```
+
+Lessons:
+
+- Preserve the split-last-dimension semantics from the OpSpec. Do not treat the
+  two logical inputs as interleaved.
+- The explicit Triton expression
+  `x * (1 / (1 + exp(-x))) * y` matched `torch_npu.npu_swiglu` within the
+  official tolerance.
+- Backend probes are still required: a candidate can pass via torch fallback
+  after compile failure unless `_last_backend` is checked.
+
 ### GELU Tanh-Approximate Stable Form
 
 For `t1/gelu`, the NPU reference behaved consistently with tanh-approximate

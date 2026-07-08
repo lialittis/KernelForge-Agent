@@ -136,6 +136,11 @@ password prompt:
 ssh -o BatchMode=yes ascend-kf 'cd /data/KernelForge-Agent && git rev-parse HEAD'
 ```
 
+Avoid scripting password entry into a pseudo-terminal. If input is sent before
+the actual password prompt disables echo, the password can appear in terminal
+logs. Prefer opening the master connection manually, then let agents use only
+`BatchMode=yes` commands over that existing connection.
+
 Fast path for reconstructing a known-good worker environment:
 
 ```bash

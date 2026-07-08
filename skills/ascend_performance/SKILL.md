@@ -35,6 +35,28 @@ optimization on Ascend 910.
 
 ## Bad-To-Good Cases
 
+### Fused NPU Intrinsic Can Dominate Custom Triton Pointwise
+
+Observed for `t1/fused_silu_and_mul`:
+
+```text
+fused_silu_and_mul_v1: torch_npu.npu_swiglu, pass, speedup 1.0027x
+fused_silu_and_mul_v2: Triton bs8192, pass, speedup 0.0033x
+fused_silu_and_mul_v3: Triton bs4096, pass, speedup 0.0033x
+fused_silu_and_mul_v4: Triton bs4096 x 2 chunks, pass, speedup 0.0033x
+```
+
+Performance rule:
+
+- If the official baseline is already a fused NPU intrinsic, a naive custom
+  Triton pointwise implementation may be useful for correctness evidence but
+  poor for performance.
+- Do not spend many tuning cycles on this pattern unless testing a different
+  backend, a substantially different memory strategy, or a generated candidate
+  with a concrete reason to beat the intrinsic.
+- Record it as a negative performance trajectory so the Retriever can avoid
+  over-prioritizing similar manual Triton sketches.
+
 ### Rowwise Reduction Can Beat Framework Baseline
 
 Observed for `t1/sigmoid_scale_sum`:

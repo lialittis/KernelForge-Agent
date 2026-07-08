@@ -178,13 +178,26 @@ templates, Pass@N reporting, and first positive non-GELU NPU result.
   `t1/fused_silu_and_mul`: one reference candidate and three Triton-Ascend
   flattened-output tiling variants.
 - Added `scripts/create_fused_silu_and_mul_pass4_submissions.sh`,
-  `scripts/probe_fused_silu_and_mul_backend.py`, and planned experiment
-  metadata at
-  `experiments/runs/2026-07-08-fused-silu-and-mul-pass4-planned.yaml`.
+  `scripts/probe_fused_silu_and_mul_backend.py`, and experiment metadata for
+  the fused Pass@4 cycle.
+- Repaired early `fused_silu_and_mul` UB-overflow variants by reducing tile
+  pressure from `16384` and `8192 x 2` to `4096` and `4096 x 2`.
+- Ran the official AKG Bench Lite benchmark for `t1/fused_silu_and_mul`:
+  - `fused_silu_and_mul_v1`: pass, speedup `1.0027x`, score `60.03`
+  - `fused_silu_and_mul_v2`: pass, speedup `0.0033x`, score `0.2`
+  - `fused_silu_and_mul_v3`: pass, speedup `0.0033x`, score `0.2`
+  - `fused_silu_and_mul_v4`: pass, speedup `0.0033x`, score `0.2`
+- Added completed experiment metadata at
+  `experiments/runs/2026-07-08-fused-silu-and-mul-pass4.yaml` and Pass@4
+  report at
+  `experiments/reports/2026-07-08-fused-silu-and-mul-pass4.yaml`.
+- Promoted the fused SwiGLU split-indexing, UB-pressure, and negative
+  performance lessons into the Skill Library.
 
 ## In Progress
 
-- Running the `t1/fused_silu_and_mul` Pass@4 candidate batch on Ascend.
+- Implementing the first pluggable LLM/provider adapter for the generation
+  loop.
 
 ## Blockers
 
@@ -206,94 +219,63 @@ templates, Pass@N reporting, and first positive non-GELU NPU result.
 
 ## Next Actions
 
-1. Start the next Pass@4 cycle on another supported T1 case, preferably
-   `t1/fused_silu_and_mul` before `t1/softmax`.
-2. Sync the fused candidate batch to the Ascend worker and run probes plus the
-   official benchmark.
+1. Implement the first pluggable LLM/provider adapter for Sketch/Code/Repair
+   experiments.
+2. Use the completed manual Pass@4 cycles as retrieval examples:
+   `sigmoid_scale_sum_v2` for a positive reduction trajectory and
+   `fused_silu_and_mul` for a correctness-positive but performance-negative
+   fused-elementwise trajectory.
 3. Keep `sigmoid_scale_sum_v2` as the first positive non-GELU reduction
    trajectory for retrieval and prompt examples.
 4. Add backend-probe fields to future generated experiment records by default.
 5. Keep model/provider information explicit in every generated experiment
    record.
 6. Draft `docs/technical_design.md` before final submission/report work.
-7. Implement the first pluggable LLM/provider adapter after one more non-GELU
-   deterministic loop is stable.
+7. Run `t1/softmax` only after the provider adapter can generate or repair
+   candidates through the same deterministic evaluation loop.
 
 ## Latest Handoff
 
-Date: 2026-07-07
+Date: 2026-07-08
 Agent: Codex
 Branch: main
 Summary:
-- Closed the current GELU tuning loop. `gelu_triton_v13` remains the best
-  tracked real Triton-Ascend GELU candidate; `gelu_triton_v18` passed but
-  regressed.
-- Added a complete benchmark registry for all 13 official AKG Bench Lite cases.
-- Generalized OpSpec extraction and Sketch generation for the T1 non-matmul
-  subset.
-- Added generic submission creation and official benchmark result import tools.
-- Added parsed OpSpecs, a GELU tuning report, tests, and skill-library updates.
-- Added decision record 0004 to pin the final product and LLM/provider
-  boundary.
-- Updated architecture, workflow, roadmap, active tasks, AGENTS guidance, and
-  experiment schema to keep future work aligned with that product goal.
-- Added explicit competition alignment matrix and final evidence checklist.
-- Added `sigmoid_scale_sum` Pass@4 candidates, probe script, submission helper,
-  Pass@N summarizer, experiment metadata, and tests.
-- Synced the latest commits to the Ascend worker and ran the official
-  `t1/sigmoid_scale_sum` benchmark.
-- Recorded Pass@4 = 4/4 and Pass@1 = true. Best candidate:
-  `sigmoid_scale_sum_v2`, speedup `2.0279x`, weighted score `70.28`.
-- Fixed Pass@N YAML report generation to avoid PyYAML anchors for
-  `best_candidate`.
-- Documented the SSH gateway behavior: key auth inside the container does not
-  bypass the password-only `SSHPiper` gateway.
+- Completed the `t1/fused_silu_and_mul` deterministic Pass@4 cycle.
+- Added four fused SwiGLU candidates, submission helper, backend probe, tests,
+  and experiment metadata.
+- Repaired early Triton UB-overflow variants by reducing tile pressure from
+  `16384` and `8192 x 2` to `4096` and `4096 x 2`.
+- Ran all fused candidates on the Ascend worker with the official benchmark.
+  Pass@1 = true and Pass@4 = 4/4.
+- Best overall candidate was the reference `torch_npu.npu_swiglu` path:
+  `fused_silu_and_mul_v1`, speedup `1.0027x`, score `60.03`.
+- All custom Triton variants launched and passed correctness, but were much
+  slower than the fused NPU intrinsic, around `0.0033x` speedup.
+- Promoted split-last-dim indexing, UB-pressure, and negative-performance
+  fused-elementwise lessons into the Skill Library.
 
 Changed Files:
-- `AGENTS.md`
-- `README.md`
-- `benchmarks/parsed/`
-- `benchmarks/raw/akg_kernels_bench_lite_registry.yaml`
-- `docs/architecture.md`
-- `docs/competition_alignment.md`
-- `docs/project_workflow.md`
 - `docs/dev_guide.md`
-- `docs/decisions/0004-define-final-product-and-llm-boundary.md`
-- `docs/roadmap.md`
 - `docs/status.md`
-- `experiments/README.md`
-- `experiments/reports/gelu_tuning_summary.md`
-- `experiments/reports/2026-07-07-sigmoid-scale-sum-pass4.yaml`
-- `experiments/runs/2026-07-07-sigmoid-scale-sum-pass4.yaml`
-- `kernel_forge/experiments/passn.py`
+- `experiments/reports/2026-07-08-fused-silu-and-mul-pass4.yaml`
+- `experiments/runs/2026-07-08-fused-silu-and-mul-pass4.yaml`
+- `kernel_forge/candidates/fused_silu_and_mul_v*.py`
+- `scripts/create_fused_silu_and_mul_pass4_submissions.sh`
+- `scripts/probe_fused_silu_and_mul_backend.py`
+- `skills/ascend_debug/SKILL.md`
 - `skills/ascend_performance/SKILL.md`
-- `skills/reduction/SKILL.md`
-- `tests/test_sigmoid_scale_sum_pass4.py`
-- `experiments/runs/2026-07-03-gelu-triton-v18-planned.yaml`
-- `kernel_forge/candidates/sigmoid_scale_sum_v*.py`
-- `kernel_forge/benchmark/`
-- `kernel_forge/experiments/`
-- `scripts/create_submission.py`
-- `scripts/create_sigmoid_scale_sum_pass4_submissions.sh`
-- `scripts/extract_opspec.py`
-- `scripts/extract_opspec_batch.py`
-- `scripts/import_benchmark_result.py`
-- `scripts/probe_sigmoid_scale_sum_backend.py`
-- `scripts/scan_benchmark_cases.py`
-- `scripts/summarize_passn.py`
-- `skills/`
+- `skills/elementwise/SKILL.md`
 - `tasks/active.md`
-- `tests/`
+- `tests/test_fused_silu_and_mul_pass4.py`
 
 Verification:
-- `python -m py_compile kernel_forge/benchmark/extractor.py kernel_forge/benchmark/sketch.py kernel_forge/benchmark/registry.py kernel_forge/experiments/results.py scripts/scan_benchmark_cases.py scripts/extract_opspec.py scripts/extract_opspec_batch.py scripts/import_benchmark_result.py scripts/create_submission.py`
-- `pytest -q tests/test_benchmark_registry_and_opspec.py tests/test_experiment_result_import.py tests/test_generic_submission.py`
-- `pytest -q tests/test_sigmoid_scale_sum_pass4.py tests/test_generic_submission.py tests/test_experiment_result_import.py`
-- `pytest -q tests/test_gelu_triton_submission.py`
-- Remote Ascend official benchmark for `t1/sigmoid_scale_sum`: Pass@4 = 4/4,
-  best speedup `2.0279x`.
-- `pytest -q tests/test_sigmoid_scale_sum_pass4.py`
+- `pytest -q tests/test_fused_silu_and_mul_pass4.py`
 - `pytest -q`
+- Remote backend probes for `fused_silu_and_mul_v1` through
+  `fused_silu_and_mul_v4`: all correctness probes passed; v2-v4 used real
+  Triton paths after the UB-pressure repair.
+- Remote Ascend official benchmark for `t1/fused_silu_and_mul`: Pass@4 = 4/4,
+  best overall speedup `1.0027x`, best custom Triton speedup `0.0033x`.
 
 Open Issues:
 - The PDF is present as `SketchSkill_AKG_项目书基础版.pdf` but is currently
@@ -303,4 +285,5 @@ Open Issues:
 - Need to write the final technical design document for competition submission.
 
 Next Suggested Step:
-- Start the next deterministic Pass@4 cycle on `t1/fused_silu_and_mul`.
+- Implement the first pluggable LLM/provider adapter for Sketch/Code/Repair
+  experiments, using the completed manual Pass@4 cycles as retrieval examples.

@@ -1,0 +1,68 @@
+case: t1/fused_silu_and_mul
+candidate_count: 4
+pass_at_1: true
+pass_at_n: true
+n: 4
+passed_count: 4
+best_candidate:
+  candidate_index: 1
+  team_name: fused_silu_and_mul_v1
+  result_path: outputs/results/fused_silu_and_mul_pass4/fused_silu_and_mul_v1.json
+  status: pass
+  correctness: true
+  speedup: 1.0027
+  weighted_score: 60.03
+  error: null
+  max_abs_diff: 0.0
+  max_rel_diff: 0.0
+  baseline_ms: 0.0531
+  solution_ms: 0.053
+candidates:
+- candidate_index: 1
+  team_name: fused_silu_and_mul_v1
+  result_path: outputs/results/fused_silu_and_mul_pass4/fused_silu_and_mul_v1.json
+  status: pass
+  correctness: true
+  speedup: 1.0027
+  weighted_score: 60.03
+  error: null
+  max_abs_diff: 0.0
+  max_rel_diff: 0.0
+  baseline_ms: 0.0531
+  solution_ms: 0.053
+- candidate_index: 2
+  team_name: fused_silu_and_mul_v2
+  result_path: outputs/results/fused_silu_and_mul_pass4/fused_silu_and_mul_v2.json
+  status: pass
+  correctness: true
+  speedup: 0.0033
+  weighted_score: 0.2
+  error: null
+  max_abs_diff: 1.9073486328125e-06
+  max_rel_diff: 2.3566336437852442e-07
+  baseline_ms: 0.0532
+  solution_ms: 16.0138
+- candidate_index: 3
+  team_name: fused_silu_and_mul_v3
+  result_path: outputs/results/fused_silu_and_mul_pass4/fused_silu_and_mul_v3.json
+  status: pass
+  correctness: true
+  speedup: 0.0033
+  weighted_score: 0.2
+  error: null
+  max_abs_diff: 9.5367431640625e-07
+  max_rel_diff: 2.3753985090024798e-07
+  baseline_ms: 0.0532
+  solution_ms: 15.8982
+- candidate_index: 4
+  team_name: fused_silu_and_mul_v4
+  result_path: outputs/results/fused_silu_and_mul_pass4/fused_silu_and_mul_v4.json
+  status: pass
+  correctness: true
+  speedup: 0.0033
+  weighted_score: 0.2
+  error: null
+  max_abs_diff: 9.5367431640625e-07
+  max_rel_diff: 2.3671773874411883e-07
+  baseline_ms: 0.0532
+  solution_ms: 15.974

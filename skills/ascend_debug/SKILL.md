@@ -120,3 +120,25 @@ Interpretation:
 - Retest with a backend probe before benchmarking; in the GELU case,
   `gelu_triton_v18` fixed this compile issue but still regressed in
   performance versus `gelu_triton_v13`.
+
+### Fused Elementwise Tile Too Large Causes UB Overflow
+
+Observed in early `fused_silu_and_mul` candidates:
+
+```text
+block size 16384: ub overflow, requires 3145728 bits while 1572864 bits available
+block size 8192 x 2 chunks: ub overflow, requires about 2097152-2228224 bits while 1572864 bits available
+```
+
+Interpretation:
+
+- Fused elementwise kernels with multiple loads and activation intermediates
+  can exceed UB capacity at smaller tile sizes than a simple pointwise kernel.
+- Sequential chunks inside one program can still increase live UB pressure if
+  the compiler keeps chunk temporaries live.
+
+First fix:
+
+- Reduce the per-vector tile size and reprobe before changing the math.
+- For this case, block size `4096` and `4096 x 2` chunks both compiled and
+  passed correctness as real Triton paths.
