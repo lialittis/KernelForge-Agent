@@ -74,3 +74,24 @@ Evaluation rule:
   environment can be repaired or documented later.
 - Continue running independent single-case teams so one environment failure
   does not prevent measurements for other operators.
+
+### Rebaseline After Runner Updates
+
+When the benchmark runner changes, rerun baseline reports before using them as
+evidence for new generation work.
+
+Observed in the AKG Bench Lite update from
+`bea77cb38db5713056a7e06e5e8a0cbe9d26954b` to
+`47aa428fcdc8c68f78d331dc578bc6c74fb9d91d`: operator files were unchanged,
+but standalone `run_bench.py` changed correctness protocol to independent
+seeded reference/solution inputs, three correctness trials, and NaN/Inf
+rejection.
+
+Evaluation rule:
+
+- Treat pre-update benchmark reports as historical, not active baselines.
+- Write an append-only replacement report that names the prior report it
+  supersedes.
+- Compare pass/fail status and score deltas, because timing noise or stricter
+  correctness can change next-step priorities even when the operator files did
+  not change.

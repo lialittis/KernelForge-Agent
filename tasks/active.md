@@ -26,15 +26,17 @@ and agents.
    `fused_silu_and_mul` for a correctness-positive but performance-negative
    fused-elementwise trajectory, and `softmax_v4` for a correctness-positive
    but still-slower rowwise softmax trajectory.
-9. Use `experiments/reports/2026-07-08-remaining-reference-preeval.yaml` as
-   the deterministic reference baseline for all remaining AKG Bench Lite cases.
+9. Use
+   `experiments/reports/2026-07-09-remaining-reference-preeval-updated-akg.yaml`
+   as the deterministic reference baseline for all remaining AKG Bench Lite
+   cases under the current runner.
 10. Repair or document the current `t3/causal_conv1d` environment failure:
-   official reference `F.conv1d` cannot initialize CANN/TBE because Python
-   module `tbe` is missing.
-11. Rerun key reports under AKG commit
+   official reference `F.conv1d` cannot initialize the NPU ACL/TBE compile path
+   because Python module `tbe` is missing.
+11. Rerun key Pass@4 reports under AKG commit
    `47aa428fcdc8c68f78d331dc578bc6c74fb9d91d` before final result claims,
-   because standalone `run_bench.py` now uses three seeded correctness trials
-   and independent reference/solution inputs.
+   because standalone `run_bench.py` now uses three seeded correctness trials,
+   independent reference/solution inputs, and NaN/Inf rejection.
 12. Add backend-probe fields to future generated experiment records by default.
 13. Record model/provider, prompt version, retrieved skills, and candidate index
    for every generated experiment.

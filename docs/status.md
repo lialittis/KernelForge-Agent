@@ -272,6 +272,24 @@ External PR and email submission are manual user actions.
   - `t3/layernorm_gated`: pass, speedup `0.9999x`, score `119.99`
 - Promoted the `causal_conv1d` reference-path environment failure lesson into
   the benchmark evaluation Skill Library.
+- Re-ran the remaining-reference pre-evaluation after updating AKG to commit
+  `47aa428fcdc8c68f78d331dc578bc6c74fb9d91d`; the active baseline is now
+  `experiments/reports/2026-07-09-remaining-reference-preeval-updated-akg.yaml`.
+- The updated-runner outcome is unchanged at the pass/fail level: eight cases
+  pass and `t3/causal_conv1d` still fails before candidate comparison in the
+  official reference path because CANN/TBE initialization cannot import Python
+  module `tbe`.
+- Updated remaining-reference scores under the current runner:
+  - `t1/matmul_basic`: pass, speedup `1.0036x`, score `60.04`
+  - `t1/matmul_biasadd`: pass, speedup `0.891x`, score `53.46`
+  - `t2/add_rmsnorm_cast`: pass, speedup `0.9984x`, score `89.86`
+  - `t2/add_rmsnorm_quant`: pass, speedup `0.9996x`, score `89.96`
+  - `t2/moe_topk_softmax`: pass, speedup `1.0002x`, score `90.0`
+  - `t2/rope`: pass, speedup `1.01x`, score `90.15`
+  - `t3/causal_conv1d`: environment/runtime failure in the official reference
+    path while initializing the NPU ACL/TBE compile path
+  - `t3/decode_mla`: pass, speedup `0.9983x`, score `119.79`
+  - `t3/layernorm_gated`: pass, speedup `0.9893x`, score `118.71`
 - Added the base project-book source and PDF under `pdfs/`.
 - Drafted the Chinese full project book at `docs/project_book_full_zh.md`,
   using the base project book plus current code architecture, provider
@@ -333,11 +351,13 @@ External PR and email submission are manual user actions.
    `fused_silu_and_mul` for a correctness-positive but performance-negative
    fused-elementwise trajectory, and `softmax_v4` for a correctness-positive
    but still-slower rowwise softmax trajectory.
-10. Use the remaining-reference pre-eval report as the baseline for all
-    remaining AKG Bench Lite operators before live provider generation.
-11. Rerun key Pass@4 and reference pre-evaluation reports under updated AKG
-    commit `47aa428fcdc8c68f78d331dc578bc6c74fb9d91d` before final result
-    claims, because the standalone correctness protocol changed.
+10. Use
+    `experiments/reports/2026-07-09-remaining-reference-preeval-updated-akg.yaml`
+    as the baseline for all remaining AKG Bench Lite operators before live
+    provider generation.
+11. Rerun key Pass@4 reports under updated AKG commit
+    `47aa428fcdc8c68f78d331dc578bc6c74fb9d91d` before final result claims,
+    because the standalone correctness protocol changed.
 12. Add backend-probe fields to future generated experiment records by default.
 13. Keep model/provider information explicit in every generated experiment
    record.
@@ -346,61 +366,46 @@ External PR and email submission are manual user actions.
 
 ## Latest Handoff
 
-Date: 2026-07-08
+Date: 2026-07-09
 Agent: Codex
 Branch: main
 Summary:
-- Updated the AKG `third_party/akg` submodule from
-  `bea77cb38db5713056a7e06e5e8a0cbe9d26954b` to latest `br_agents` commit
-  `47aa428fcdc8c68f78d331dc578bc6c74fb9d91d`.
-- Verified the AKG Bench Lite operator files and generated registry did not
-  change; only the official runner docs and `tools/run_bench.py` changed.
-- Documented the new standalone runner behavior: independent seeded
-  reference/solution inputs, three correctness trials, and NaN/Inf rejection.
+- Re-ran the nine-case remaining-reference pre-evaluation on the Ascend worker
+  after updating AKG to `47aa428fcdc8c68f78d331dc578bc6c74fb9d91d`.
+- Outcome status did not change from the July 8 run: eight cases pass and
+  `t3/causal_conv1d` fails in the official reference path before candidate
+  comparison.
+- Made
+  `experiments/reports/2026-07-09-remaining-reference-preeval-updated-akg.yaml`
+  the active baseline for remaining AKG Bench Lite operators under the current
+  runner.
 
 Changed Files:
-- `README.md`
-- `docs/benchmark_spec.md`
-- `docs/decisions/0007-update-akg-br-agents-pin.md`
-- `docs/project_book_full_zh.md`
 - `docs/status.md`
-- `docs/technical_design.md`
-- `scripts/setup_benchmark_submodule.sh`
+- `experiments/reports/2026-07-09-remaining-reference-preeval-updated-akg.yaml`
+- `experiments/runs/2026-07-09-remaining-reference-preeval-updated-akg.yaml`
+- `skills/benchmark_evaluation/SKILL.md`
 - `tasks/active.md`
-- `third_party/akg`
 
 Verification:
-- `git ls-remote https://atomgit.com/mindspore/akg.git refs/heads/br_agents`
-  returned `47aa428fcdc8c68f78d331dc578bc6c74fb9d91d`.
-- `git -C third_party/akg diff --name-status
-  bea77cb38db5713056a7e06e5e8a0cbe9d26954b..47aa428fcdc8c68f78d331dc578bc6c74fb9d91d
-  -- akg_agents/benchmark/akg_kernels_bench_lite`
-  showed only `RUNNER.md` and `tools/run_bench.py`.
-- `python scripts/scan_benchmark_cases.py --output /private/tmp/akg_registry_new.yaml --repo-root .`
-- `diff -u benchmarks/raw/akg_kernels_bench_lite_registry.yaml /private/tmp/akg_registry_new.yaml`
-- `python scripts/extract_opspec_batch.py --output-dir /private/tmp/akg_opspec_new --repo-root .`
-- Parsed OpSpecs were not overwritten; the only generated difference was that
-  a temporary GELU extraction without historical experiment input had
-  `baseline_latency_ms: null`.
+- `ssh -o BatchMode=yes ascend-kf 'cd /data/KernelForge-Agent && OUTPUT_ROOT=outputs/submissions/remaining_reference_2026_07_09 bash scripts/create_remaining_reference_submissions.sh'`
+- `ssh -o BatchMode=yes ascend-kf 'bash -c '\''source /usr/local/Ascend/ascend-toolkit/set_env.sh && source /data/venvs/kf-triton-ascend/bin/activate && PYTHONPATH=/data/KernelForge-Agent python /data/KernelForge-Agent/third_party/akg/akg_agents/benchmark/akg_kernels_bench_lite/tools/run_bench.py /data/KernelForge-Agent/outputs/submissions/remaining_reference_2026_07_09 --bench-dir /data/KernelForge-Agent/third_party/akg/akg_agents/benchmark/akg_kernels_bench_lite --output /data/KernelForge-Agent/outputs/results/remaining_reference_2026_07_09 --warmup 10 --iterations 100 --num-trials 3'\'''`
+- Result summary: 9 total, 8 pass, 1 environment/runtime failure.
 
 Open Issues:
 - GitLink PR is not opened yet; this is a manual user action.
 - The project-book email has not been sent yet; this is a manual user action.
 - After the PR is opened, rerun the exporter with `--pr-link <GitLink PR URL>`
   and attach that final output to the email.
-- The local worktree contains untracked softmax and remaining-reference
-  experiment artifacts from separate development cycles; the current package
-  helper intentionally excludes unrelated untracked files until they are
-  explicitly accepted for submission.
 - Need to extend parsing for symbolic shape construction in T2/T3 cases.
 - Need to repair or document the current Ascend worker's missing `tbe` module
   for the `t3/causal_conv1d` official reference path.
-- Need to rerun important benchmark reports under the updated AKG runner before
-  treating previous speed/correctness numbers as final.
+- Need to rerun important Pass@4 benchmark reports under the updated AKG runner
+  before treating previous speed/correctness numbers as final.
 - Need to run the first real live-provider generation and compare it with
   replay/manual Pass@4 results when credentials/model selection are available.
 
 Next Suggested Step:
-- Sync the updated AKG submodule pin to the Ascend worker, then rerun the
-  minimal reference pre-evaluation or a representative Pass@4 batch under the
-  new runner to quantify result changes.
+- Triage the Ascend worker CANN/TBE Python environment for `t3/causal_conv1d`,
+  or document the environment gap as a benchmark limitation, before spending
+  live AI-generation budget on that operator.
