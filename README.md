@@ -85,7 +85,7 @@ inspected `br_agents` commit:
 ```text
 repo:   https://atomgit.com/mindspore/akg.git
 branch: br_agents
-commit: bea77cb38db5713056a7e06e5e8a0cbe9d26954b
+commit: 47aa428fcdc8c68f78d331dc578bc6c74fb9d91d
 path:   akg_agents/benchmark/akg_kernels_bench_lite
 ```
 

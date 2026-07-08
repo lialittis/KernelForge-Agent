@@ -64,3 +64,27 @@ Lessons:
   reduced performance.
 - Preserve `keepdim=True` output shape explicitly; for this case the output is
   `[1000, 1]`, not `[1000]`.
+
+### Rowwise Softmax Needs More Than A Naive Full-Row Triton Kernel
+
+Observed for `t1/softmax` with input shape `[32, 512, 4096]` and reduction over
+the last dimension:
+
+```text
+softmax_v1: torch reference, pass, speedup 1.0006x
+softmax_v2: Triton one row/program, 4096 tile, pass, speedup 0.7315x
+softmax_v3: Triton two rows/program, sequential 4096 tiles, pass, speedup 0.8871x
+softmax_v4: Triton four rows/program, sequential 4096 tiles, pass, speedup 0.9225x
+```
+
+Lessons:
+
+- The stable rowwise softmax formula `exp(x - max(x)) / sum(exp(x - max(x)))`
+  is numerically safe for the official tolerance when implemented with
+  float32 Triton reductions.
+- Reducing launch/program count by handling multiple rows per program improved
+  latency, but the naive Triton implementation still did not beat the torch
+  baseline.
+- For future softmax attempts, prioritize memory-traffic reduction, backend
+  softmax primitives, or a different lowering strategy before only increasing
+  rows per program.

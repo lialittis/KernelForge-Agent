@@ -3,7 +3,7 @@ set -euo pipefail
 
 AKG_REPO_URL="https://atomgit.com/mindspore/akg.git"
 AKG_BRANCH="br_agents"
-AKG_COMMIT="bea77cb38db5713056a7e06e5e8a0cbe9d26954b"
+AKG_COMMIT="47aa428fcdc8c68f78d331dc578bc6c74fb9d91d"
 AKG_SUBMODULE_PATH="third_party/akg"
 BENCHMARK_PATH="akg_agents/benchmark/akg_kernels_bench_lite"
 

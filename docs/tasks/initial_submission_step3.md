@@ -13,6 +13,11 @@ The urgent remaining initial-round task is Step 3: start project development,
 improve the project book, submit project code through a PR to the GitLink
 competition repository, and email the updated project book.
 
+Current agent scope: prepare all local materials needed for the PR and email.
+The user will manually open the GitLink PR and send the external email; Codex
+should not perform those external submission actions unless explicitly asked
+again.
+
 Live LLM generation is not blocking this stage because no OpenAI API key is
 currently available. The Step 3 package should emphasize the implemented
 deterministic pipeline, benchmark evidence, skill library, prompts, and the
@@ -39,6 +44,7 @@ as:
 ```text
 projects/<team-name>/SketchSkill-AKG/
   README.md
+  PROJECT_README.md
   docs/
   kernel_forge/
   prompts/
@@ -53,6 +59,8 @@ compiled artifacts, or local virtual environments.
 Include these minimum files:
 
 - project/package `README.md`
+- `PROJECT_README.md` if the package README replaces the repository's normal
+  development README
 - `docs/technical_design.md`
 - `docs/competition_alignment.md`
 - `docs/architecture.md`
@@ -154,6 +162,49 @@ The Step 3 task is complete when:
   current deterministic benchmark flow,
 - the package clearly explains that live LLM generation is provider-pluggable
   and not required for the current prototype evidence.
+
+## Current Package Helper
+
+Use the tracked helper to build the PR-ready file tree:
+
+```bash
+python scripts/prepare_gitlink_package.py \
+  --team operator-alchemists \
+  --output-root outputs/gitlink_package
+```
+
+The helper writes:
+
+```text
+outputs/gitlink_package/projects/operator-alchemists/SketchSkill-AKG/
+```
+
+It includes tracked source, docs, prompts, skills, scripts, tests, Benchmark
+metadata, concise experiment records, and explicitly listed Step 3 draft
+artifacts. It installs `docs/submission/package_readme_zh.md` as the package
+root `README.md` and preserves the repository's normal development README as
+`PROJECT_README.md`. Runtime outputs, raw logs, caches, virtual environments,
+credentials, and unrelated untracked files remain excluded.
+
+The current PR and email drafts are tracked under:
+
+```text
+docs/submission/gitlink_pr_title.txt
+docs/submission/gitlink_pr_body.md
+docs/submission/package_readme_zh.md
+docs/submission/project_book_email_zh.md
+docs/submission/step3_completion_audit.md
+```
+
+Use the tracked exporter to build a standalone Markdown project-book attachment:
+
+```bash
+python scripts/export_project_book.py \
+  --output outputs/submission/project_book_full_zh.md
+```
+
+After the PR is opened, rerun it with `--pr-link <GitLink PR URL>` to fill the
+PR link into the exported project book.
 
 ## Deferred Until After Step 3
 

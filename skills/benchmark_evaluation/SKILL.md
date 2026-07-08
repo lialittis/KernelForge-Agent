@@ -54,3 +54,23 @@ Recommended loop:
 - Import the benchmark JSON into an experiment record.
 - Record fallback, compile, runtime, correctness, and performance outcomes as
   separate fields.
+
+### Reference Pre-Eval Can Reveal Environment Failures
+
+Observed in the remaining-reference pre-evaluation run for AKG Bench Lite:
+
+```text
+t3/causal_conv1d: official reference failed in F.conv1d before candidate
+comparison because CANN/TBE initialization could not import Python module
+`tbe`.
+```
+
+Evaluation rule:
+
+- When the official reference itself fails, categorize the case as an
+  environment or benchmark-runtime failure, not as a candidate correctness
+  failure.
+- Keep the JSON result and traceback path in the experiment record so the
+  environment can be repaired or documented later.
+- Continue running independent single-case teams so one environment failure
+  does not prevent measurements for other operators.

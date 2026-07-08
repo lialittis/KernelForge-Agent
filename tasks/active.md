@@ -5,27 +5,40 @@ and agents.
 
 ## Current Priorities
 
-1. Complete the initial-round Step 3 submission package described in
-   `docs/tasks/initial_submission_step3.md`.
-2. Draft `docs/technical_design.md` from the architecture, workflow, roadmap,
-   competition alignment docs, and completed benchmark evidence.
-3. Create a PR/package README for the GitLink submission package.
-4. Add a packaging checklist or helper that copies only source, docs, prompts,
-   skills, scripts, and concise experiment records.
-5. Update the project book from basic version to improved submission version.
-6. Open the GitLink PR and record the PR link.
-7. Email the updated project book to `contact@public.mindspore.cn` and record
-   the email date/status.
-8. Keep `replay` as the deterministic CI/regression provider.
-9. Use completed manual Pass@4 cycles as retrieval examples:
+1. Keep the local initial-round Step 3 materials ready for manual PR/email
+   submission, as described in `docs/tasks/initial_submission_step3.md`.
+2. Review `docs/project_book_full_zh.md` only for final human wording or
+   team-specific edits before submission.
+3. Use `scripts/export_project_book.py` to regenerate the project book for
+   email after the manual PR link exists.
+4. Use `scripts/prepare_gitlink_package.py`,
+   `docs/submission/package_readme_zh.md`, and
+   `docs/submission_package_readme.md` to regenerate the GitLink PR package.
+5. Manual external action: open the GitLink PR with
+   `docs/submission/gitlink_pr_title.txt` and
+   `docs/submission/gitlink_pr_body.md`.
+6. Manual external action: send the updated project book with
+   `docs/submission/project_book_email_zh.md`, then record the email
+   date/status.
+7. Keep `replay` as the deterministic CI/regression provider.
+8. Use completed manual Pass@4 cycles as retrieval examples:
    `sigmoid_scale_sum_v2` for a positive reduction trajectory and
    `fused_silu_and_mul` for a correctness-positive but performance-negative
-   fused-elementwise trajectory.
-10. Add backend-probe fields to future generated experiment records by default.
-11. Record model/provider, prompt version, retrieved skills, and candidate index
+   fused-elementwise trajectory, and `softmax_v4` for a correctness-positive
+   but still-slower rowwise softmax trajectory.
+9. Use `experiments/reports/2026-07-08-remaining-reference-preeval.yaml` as
+   the deterministic reference baseline for all remaining AKG Bench Lite cases.
+10. Repair or document the current `t3/causal_conv1d` environment failure:
+   official reference `F.conv1d` cannot initialize CANN/TBE because Python
+   module `tbe` is missing.
+11. Rerun key reports under AKG commit
+   `47aa428fcdc8c68f78d331dc578bc6c74fb9d91d` before final result claims,
+   because standalone `run_bench.py` now uses three seeded correctness trials
+   and independent reference/solution inputs.
+12. Add backend-probe fields to future generated experiment records by default.
+13. Record model/provider, prompt version, retrieved skills, and candidate index
    for every generated experiment.
-12. Promote reusable generation, repair, or tuning lessons into `skills/`.
-13. Decide whether to commit `SketchSkill_AKG_项目书基础版.pdf`.
+14. Promote reusable generation, repair, or tuning lessons into `skills/`.
 
 ## Research Questions
 
@@ -38,6 +51,8 @@ and agents.
 - Should project experiments use Pass@4, or match the AKG Agents runner default
   `--pass-n 3` unless overridden?
 - What is the minimum symbolic-shape parser needed for T2/T3 case metadata?
+- Does the Ascend worker need an additional CANN/TBE Python path or package to
+  run the official `t3/causal_conv1d` reference?
 - Which live model should be the first measured `openai` provider backend for
   generated candidates after the initial submission package is done?
 - Can the cloud SSH gateway be configured for provider-level key auth, or do

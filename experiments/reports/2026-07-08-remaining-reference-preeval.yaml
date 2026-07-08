@@ -1,0 +1,121 @@
+id: 2026-07-08-remaining-reference-preeval
+case_set: remaining_reference_operators
+candidate_count: 9
+official_runner:
+  result_root: outputs/results/remaining_reference
+  warmup: 10
+  iterations: 100
+  num_trials: 3
+summary:
+  total_cases: 9
+  passed: 8
+  failed: 1
+  correctness_failures: 0
+  runtime_failures: 1
+  timeout_failures: 0
+cases:
+- case: t1/matmul_basic
+  team_name: reference_t1_matmul_basic
+  status: pass
+  failure_category: null
+  correctness: true
+  max_abs_diff: 0.0
+  max_rel_diff: 0.0
+  baseline_ms: 0.0721
+  solution_ms: 0.072
+  speedup: 1.0012
+  weighted_score: 60.01
+- case: t1/matmul_biasadd
+  team_name: reference_t1_matmul_biasadd
+  status: pass
+  failure_category: null
+  correctness: true
+  max_abs_diff: 0.0
+  max_rel_diff: 0.0
+  baseline_ms: 0.4446
+  solution_ms: 0.4995
+  speedup: 0.8901
+  weighted_score: 53.41
+- case: t2/add_rmsnorm_cast
+  team_name: reference_t2_add_rmsnorm_cast
+  status: pass
+  failure_category: null
+  correctness: true
+  max_abs_diff: 0.0
+  max_rel_diff: 0.0
+  baseline_ms: 4.8117
+  solution_ms: 4.8121
+  speedup: 0.9999
+  weighted_score: 89.99
+- case: t2/add_rmsnorm_quant
+  team_name: reference_t2_add_rmsnorm_quant
+  status: pass
+  failure_category: null
+  correctness: true
+  max_abs_diff: 0.0
+  max_rel_diff: 0.0
+  baseline_ms: 9.2852
+  solution_ms: 9.2871
+  speedup: 0.9998
+  weighted_score: 89.98
+- case: t2/moe_topk_softmax
+  team_name: reference_t2_moe_topk_softmax
+  status: pass
+  failure_category: null
+  correctness: true
+  max_abs_diff: 0.0
+  max_rel_diff: 0.0
+  baseline_ms: 0.1296
+  solution_ms: 0.1292
+  speedup: 1.003
+  weighted_score: 90.05
+- case: t2/rope
+  team_name: reference_t2_rope
+  status: pass
+  failure_category: null
+  correctness: true
+  max_abs_diff: 0.0
+  max_rel_diff: 0.0
+  baseline_ms: 0.3576
+  solution_ms: 0.3574
+  speedup: 1.0006
+  weighted_score: 90.01
+- case: t3/causal_conv1d
+  team_name: reference_t3_causal_conv1d
+  status: error
+  failure_category: environment_error
+  correctness: false
+  max_abs_diff: null
+  max_rel_diff: null
+  baseline_ms: null
+  solution_ms: null
+  speedup: null
+  weighted_score: 0.0
+  error_summary: "Official reference failed in F.conv1d because CANN/TBE initialization could not import Python module 'tbe'."
+- case: t3/decode_mla
+  team_name: reference_t3_decode_mla
+  status: pass
+  failure_category: null
+  correctness: true
+  max_abs_diff: 0.0
+  max_rel_diff: 0.0
+  baseline_ms: 40.034
+  solution_ms: 40.0186
+  speedup: 1.0004
+  weighted_score: 120.01
+- case: t3/layernorm_gated
+  team_name: reference_t3_layernorm_gated
+  status: pass
+  failure_category: null
+  correctness: true
+  max_abs_diff: 0.0
+  max_rel_diff: 0.0
+  baseline_ms: 1.0845
+  solution_ms: 1.0846
+  speedup: 0.9999
+  weighted_score: 119.99
+notes: >
+  This deterministic reference run completed official benchmark execution for
+  every remaining AKG Bench Lite operator. The only failed case failed in the
+  official reference path before candidate comparison, so it is categorized as
+  an environment/runtime issue rather than a generated-candidate failure.

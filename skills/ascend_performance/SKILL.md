@@ -77,6 +77,27 @@ Performance rule:
 - Use backend probes to confirm the run used a real Triton path before
   interpreting speedup as custom-kernel speedup.
 
+### Rowwise Softmax May Be Correct But Slightly Slower Than Framework
+
+Observed for `t1/softmax`:
+
+```text
+softmax_v1: torch reference, pass, speedup 1.0006x
+softmax_v2: Triton row softmax, 1 row/program, pass, speedup 0.7315x
+softmax_v3: Triton row softmax, 2 rows/program, pass, speedup 0.8871x
+softmax_v4: Triton row softmax, 4 rows/program, pass, speedup 0.9225x
+```
+
+Performance rule:
+
+- For full-row softmax over a 4096-wide contiguous axis, sequentially handling
+  more rows per Triton program can reduce overhead and improve latency.
+- Passing correctness is not enough to justify more tuning if the framework
+  baseline is already near the custom kernel and the remaining knob only
+  changes rows per program.
+- Treat this as a performance-negative trajectory unless a new candidate
+  changes the lowering strategy, memory traffic, or backend primitive.
+
 ### Correct GELU Triton Kernel Still Slower Than Framework
 
 Observed for `gelu_triton_v7` and improved through `gelu_triton_v10`:

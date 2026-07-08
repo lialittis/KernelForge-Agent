@@ -1,11 +1,12 @@
 # Status
 
-Last updated: 2026-07-08
+Last updated: 2026-07-09
 
 ## Current Phase
 
-T1 non-matmul benchmark pipeline: registry, OpSpec extraction, Sketch
-templates, Pass@N reporting, and first positive non-GELU NPU result.
+Initial-round Step 3 local submission materials are ready: Chinese project
+book, technical design, GitLink PR package, and email-ready report materials.
+External PR and email submission are manual user actions.
 
 ## Completed
 
@@ -21,10 +22,21 @@ templates, Pass@N reporting, and first positive non-GELU NPU result.
   - multi-backend enhancement strategy
 - Confirmed the official benchmark source:
   `https://atomgit.com/mindspore/akg.git`, branch `br_agents`, path
-  `akg_agents/benchmark/akg_kernels_bench_lite`, inspected at commit
-  `bea77cb38db5713056a7e06e5e8a0cbe9d26954b`.
+  `akg_agents/benchmark/akg_kernels_bench_lite`.
 - Added the AKG repository as a pinned Git submodule at `third_party/akg` and
   configured local sparse checkout for `akg_kernels_bench_lite`.
+- Updated the AKG submodule pin from
+  `bea77cb38db5713056a7e06e5e8a0cbe9d26954b` to latest `br_agents` commit
+  `47aa428fcdc8c68f78d331dc578bc6c74fb9d91d` after being told the previous
+  branch revision might have runner problems.
+- Confirmed the updated benchmark case files and generated case registry are
+  unchanged; only `RUNNER.md` and `tools/run_bench.py` changed under
+  `akg_kernels_bench_lite`.
+- Recorded the runner behavior change: standalone `run_bench.py` now uses
+  independent seeded reference/solution inputs, three correctness trials, and
+  NaN/Inf rejection before performance measurement.
+- Added decision record
+  `docs/decisions/0007-update-akg-br-agents-pin.md`.
 - Added `scripts/setup_benchmark_submodule.sh` for new machines.
 - Added `docs/dev_guide.md` to document the local-development plus Ascend-worker
   experiment loop.
@@ -218,11 +230,72 @@ templates, Pass@N reporting, and first positive non-GELU NPU result.
   `docs/decisions/0006-add-openai-responses-provider.md`.
 - Pushed and synced the live provider adapter to the Ascend worker at commit
   `18f4b42e6c7a2acb1eefcd659084f09b60681be3`.
+- Added the first softmax Pass@4 candidate batch for `t1/softmax`: one torch
+  reference candidate and three Triton-Ascend rowwise softmax variants.
+- Added `scripts/create_softmax_pass4_submissions.sh`,
+  `scripts/probe_softmax_backend.py`, completed experiment metadata at
+  `experiments/runs/2026-07-08-softmax-pass4.yaml`, and Pass@4 report at
+  `experiments/reports/2026-07-08-softmax-pass4.yaml`.
+- Probed all four `t1/softmax` Pass@4 candidates on Ascend; v2, v3, and v4
+  launched through real Triton-Ascend backend paths with low numerical error.
+- Ran the official AKG Bench Lite benchmark for `t1/softmax`:
+  - `softmax_v1`: pass, speedup `1.0006x`, score `60.01`
+  - `softmax_v2`: pass, speedup `0.7315x`, score `43.89`
+  - `softmax_v3`: pass, speedup `0.8871x`, score `53.22`
+  - `softmax_v4`: pass, speedup `0.9225x`, score `55.35`
+- Promoted the softmax rowwise-correct but performance-negative lesson into
+  the Skill Library.
+- Added deterministic reference `ModelNew` candidates for the 9 remaining AKG
+  Bench Lite cases:
+  - `t1/matmul_basic`
+  - `t1/matmul_biasadd`
+  - `t2/rope`
+  - `t2/add_rmsnorm_cast`
+  - `t2/add_rmsnorm_quant`
+  - `t2/moe_topk_softmax`
+  - `t3/causal_conv1d`
+  - `t3/decode_mla`
+  - `t3/layernorm_gated`
+- Added `scripts/create_remaining_reference_submissions.sh`,
+  `experiments/runs/2026-07-08-remaining-reference-preeval.yaml`, and
+  `experiments/reports/2026-07-08-remaining-reference-preeval.yaml`.
+- Ran the official AKG Bench Lite benchmark for the remaining reference set:
+  - `t1/matmul_basic`: pass, speedup `1.0012x`, score `60.01`
+  - `t1/matmul_biasadd`: pass, speedup `0.8901x`, score `53.41`
+  - `t2/add_rmsnorm_cast`: pass, speedup `0.9999x`, score `89.99`
+  - `t2/add_rmsnorm_quant`: pass, speedup `0.9998x`, score `89.98`
+  - `t2/moe_topk_softmax`: pass, speedup `1.003x`, score `90.05`
+  - `t2/rope`: pass, speedup `1.0006x`, score `90.01`
+  - `t3/causal_conv1d`: environment/runtime failure in the official
+    reference path because CANN/TBE initialization could not import `tbe`
+  - `t3/decode_mla`: pass, speedup `1.0004x`, score `120.01`
+  - `t3/layernorm_gated`: pass, speedup `0.9999x`, score `119.99`
+- Promoted the `causal_conv1d` reference-path environment failure lesson into
+  the benchmark evaluation Skill Library.
+- Added the base project-book source and PDF under `pdfs/`.
+- Drafted the Chinese full project book at `docs/project_book_full_zh.md`,
+  using the base project book plus current code architecture, provider
+  workflow, benchmark evidence, risks, roadmap, and Step 3 submission plan.
+- Added the Step 3 technical design document at `docs/technical_design.md`.
+- Added the GitLink package README, PR text, email text, and checklist at
+  `docs/submission_package_readme.md`.
+- Added standalone PR and email drafts under `docs/submission/`.
+- Added the Chinese GitLink package root README source at
+  `docs/submission/package_readme_zh.md`; the package helper installs it as
+  `README.md` and preserves the project development README as
+  `PROJECT_README.md`.
+- Added `scripts/export_project_book.py` to create a standalone Markdown
+  project-book attachment from the full project book, technical design, and
+  package notes.
+- Added `scripts/prepare_gitlink_package.py` to assemble a clean Step 3
+  GitLink package under `outputs/gitlink_package/`.
+- Added `docs/submission/step3_completion_audit.md` to record local
+  deliverable status, verification commands, and manual PR/email actions.
 
 ## In Progress
 
-- Preparing the first live `--provider openai` generation cycle, then official
-  Ascend verification through the existing Pass@N loop.
+- No automatic external submission action is in progress. Local Step 3
+  materials are ready for manual review, PR creation, and email sending.
 
 ## Blockers
 
@@ -231,9 +304,10 @@ templates, Pass@N reporting, and first positive non-GELU NPU result.
 - T2/T3 cases with symbolic shape setup are currently discovered by the
   registry but marked `parse_failed` until the extractor supports local shape
   variables and more complex input construction.
-- A formal submission-oriented technical design document still needs to be
-  assembled from the architecture, workflow, roadmap, and competition alignment
-  docs.
+- `t3/causal_conv1d` fails in the official reference path on the current
+  Ascend worker because CANN/TBE initialization cannot import Python module
+  `tbe`; this should be repaired or documented before treating causal Conv1D
+  as a model/candidate failure.
 - The current cloud SSH endpoint is served by `SSHPiper` and only advertises
   password authentication. Local no-password SSH works only while a
   `ControlMaster` session remains alive; durable automation needs either
@@ -242,20 +316,33 @@ templates, Pass@N reporting, and first positive non-GELU NPU result.
 
 ## Next Actions
 
-1. Run a first live `provider=openai` Pass@4 generation cycle for
+1. Manually review `docs/project_book_full_zh.md` for Chinese wording and
+   team-specific details.
+2. Manually copy the generated GitLink package into the GitLink fork and open
+   the PR.
+3. Rerun `scripts/export_project_book.py --pr-link <GitLink PR URL>` after the
+   PR exists.
+4. Manually email the updated project book to `contact@public.mindspore.cn`.
+5. Record the PR link, email date, and submission status in `docs/status.md`.
+6. Run a first live `provider=openai` Pass@4 generation cycle for
    `t1/sigmoid_scale_sum` once credentials and model selection are available.
-2. Keep `replay` as the deterministic CI/regression provider.
-3. Import live generated benchmark results after Ascend verification.
-4. Use the completed manual Pass@4 cycles as retrieval examples:
+7. Keep `replay` as the deterministic CI/regression provider.
+8. Import live generated benchmark results after Ascend verification.
+9. Use the completed manual Pass@4 cycles as retrieval examples:
    `sigmoid_scale_sum_v2` for a positive reduction trajectory and
    `fused_silu_and_mul` for a correctness-positive but performance-negative
-   fused-elementwise trajectory.
-5. Add backend-probe fields to future generated experiment records by default.
-6. Keep model/provider information explicit in every generated experiment
+   fused-elementwise trajectory, and `softmax_v4` for a correctness-positive
+   but still-slower rowwise softmax trajectory.
+10. Use the remaining-reference pre-eval report as the baseline for all
+    remaining AKG Bench Lite operators before live provider generation.
+11. Rerun key Pass@4 and reference pre-evaluation reports under updated AKG
+    commit `47aa428fcdc8c68f78d331dc578bc6c74fb9d91d` before final result
+    claims, because the standalone correctness protocol changed.
+12. Add backend-probe fields to future generated experiment records by default.
+13. Keep model/provider information explicit in every generated experiment
    record.
-7. Draft `docs/technical_design.md` before final submission/report work.
-8. Run `t1/softmax` only after the provider adapter can generate or repair
-   candidates through the same deterministic evaluation loop.
+14. Compare the standalone `tools/run_bench.py` path with the AKG Agents
+   `run_torch_bench_lite.py` path on one completed Pass@4 case.
 
 ## Latest Handoff
 
@@ -263,46 +350,57 @@ Date: 2026-07-08
 Agent: Codex
 Branch: main
 Summary:
-- Added the first live `openai` provider adapter behind the already-tested
-  replay provider boundary.
-- Kept credentials environment-driven and test coverage network-free through an
-  injectable HTTP poster.
-- Documented the live generation command and provider environment variables.
-- Pushed `main` and fast-forwarded the Ascend worker checkout to commit
-  `18f4b42e6c7a2acb1eefcd659084f09b60681be3`.
+- Updated the AKG `third_party/akg` submodule from
+  `bea77cb38db5713056a7e06e5e8a0cbe9d26954b` to latest `br_agents` commit
+  `47aa428fcdc8c68f78d331dc578bc6c74fb9d91d`.
+- Verified the AKG Bench Lite operator files and generated registry did not
+  change; only the official runner docs and `tools/run_bench.py` changed.
+- Documented the new standalone runner behavior: independent seeded
+  reference/solution inputs, three correctness trials, and NaN/Inf rejection.
 
 Changed Files:
-- `docs/decisions/0006-add-openai-responses-provider.md`
-- `docs/project_workflow.md`
+- `README.md`
+- `docs/benchmark_spec.md`
+- `docs/decisions/0007-update-akg-br-agents-pin.md`
+- `docs/project_book_full_zh.md`
 - `docs/status.md`
-- `kernel_forge/agents/__init__.py`
-- `kernel_forge/agents/provider.py`
-- `scripts/generate_candidate.py`
+- `docs/technical_design.md`
+- `scripts/setup_benchmark_submodule.sh`
 - `tasks/active.md`
-- `tests/test_agent_generation_workflow.py`
+- `third_party/akg`
 
 Verification:
-- `pytest -q tests/test_agent_generation_workflow.py`
-- `python -m py_compile kernel_forge/agents/provider.py scripts/generate_candidate.py`
-- `pytest -q`
-- `git diff --check`
-- `python scripts/generate_candidate.py --opspec benchmarks/parsed/t1_sigmoid_scale_sum.yaml --provider replay --backend triton_ascend --pass-n 1 --run-id replay-provider-smoke --output-root /tmp/kf-generated-smoke`
-- Remote Ascend sync: `git pull --ff-only origin main`, resulting HEAD
-  `18f4b42e6c7a2acb1eefcd659084f09b60681be3`.
-- Remote Ascend compile and replay smoke:
-  `python -m py_compile kernel_forge/agents/provider.py scripts/generate_candidate.py`
-  plus `python scripts/generate_candidate.py --opspec benchmarks/parsed/t1_sigmoid_scale_sum.yaml --provider replay --backend triton_ascend --pass-n 1 --run-id replay-provider-remote-smoke --output-root /tmp/kf-generated-smoke`.
+- `git ls-remote https://atomgit.com/mindspore/akg.git refs/heads/br_agents`
+  returned `47aa428fcdc8c68f78d331dc578bc6c74fb9d91d`.
+- `git -C third_party/akg diff --name-status
+  bea77cb38db5713056a7e06e5e8a0cbe9d26954b..47aa428fcdc8c68f78d331dc578bc6c74fb9d91d
+  -- akg_agents/benchmark/akg_kernels_bench_lite`
+  showed only `RUNNER.md` and `tools/run_bench.py`.
+- `python scripts/scan_benchmark_cases.py --output /private/tmp/akg_registry_new.yaml --repo-root .`
+- `diff -u benchmarks/raw/akg_kernels_bench_lite_registry.yaml /private/tmp/akg_registry_new.yaml`
+- `python scripts/extract_opspec_batch.py --output-dir /private/tmp/akg_opspec_new --repo-root .`
+- Parsed OpSpecs were not overwritten; the only generated difference was that
+  a temporary GELU extraction without historical experiment input had
+  `baseline_latency_ms: null`.
 
 Open Issues:
-- The PDF is present as `SketchSkill_AKG_项目书基础版.pdf` but is currently
-  untracked; decide whether to commit it as source material.
+- GitLink PR is not opened yet; this is a manual user action.
+- The project-book email has not been sent yet; this is a manual user action.
+- After the PR is opened, rerun the exporter with `--pr-link <GitLink PR URL>`
+  and attach that final output to the email.
+- The local worktree contains untracked softmax and remaining-reference
+  experiment artifacts from separate development cycles; the current package
+  helper intentionally excludes unrelated untracked files until they are
+  explicitly accepted for submission.
 - Need to extend parsing for symbolic shape construction in T2/T3 cases.
+- Need to repair or document the current Ascend worker's missing `tbe` module
+  for the `t3/causal_conv1d` official reference path.
+- Need to rerun important benchmark reports under the updated AKG runner before
+  treating previous speed/correctness numbers as final.
 - Need to run the first real live-provider generation and compare it with
-  replay/manual Pass@4 results.
-- Need to write the final technical design document for competition submission.
-- The Ascend worker venv currently lacks `pytest`; remote verification used
-  `py_compile` and replay generation instead of unit tests.
+  replay/manual Pass@4 results when credentials/model selection are available.
 
 Next Suggested Step:
-- Run the first real `provider=openai` generation cycle when credentials and
-  model selection are available.
+- Sync the updated AKG submodule pin to the Ascend worker, then rerun the
+  minimal reference pre-evaluation or a representative Pass@4 batch under the
+  new runner to quantify result changes.

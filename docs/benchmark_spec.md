@@ -12,10 +12,21 @@ For the requirement-by-requirement competition mapping, see
 - Web path:
   <https://atomgit.com/mindspore/akg/tree/br_agents/akg_agents/benchmark/akg_kernels_bench_lite>
 - Branch: `br_agents`
-- Inspected commit: `bea77cb38db5713056a7e06e5e8a0cbe9d26954b`
+- Inspected commit: `47aa428fcdc8c68f78d331dc578bc6c74fb9d91d`
 - Benchmark path: `akg_agents/benchmark/akg_kernels_bench_lite`
 - Local submodule path:
   `third_party/akg/akg_agents/benchmark/akg_kernels_bench_lite`
+
+Change note:
+
+- The previous project pin was
+  `bea77cb38db5713056a7e06e5e8a0cbe9d26954b`.
+- The update to `47aa428fcdc8c68f78d331dc578bc6c74fb9d91d` changed
+  `RUNNER.md` and `tools/run_bench.py`; the benchmark case files and scanned
+  case registry are unchanged.
+- The standalone runner now regenerates independent seeded inputs for
+  reference and solution paths, runs three correctness trials, and fails on
+  NaN/Inf in reference, solution, or diff tensors.
 
 Recommended inspection command:
 
@@ -139,6 +150,8 @@ The benchmark validates:
 - output count
 - exact shape match
 - numerical closeness
+- absence of NaN/Inf in reference output, solution output, and computed diffs
+- three seeded correctness trials per case in the standalone runner
 
 Default tolerance:
 
@@ -159,6 +172,11 @@ A case passes correctness only if:
 ```text
 max_abs_diff <= atol and max_rel_diff <= rtol
 ```
+
+The updated standalone runner uses strict AND semantics for those two
+thresholds on every trial. It also regenerates reference and solution inputs
+with the same seed instead of sharing one input object, which avoids in-place or
+stateful behavior in one path contaminating the other path.
 
 ## Performance Measurement
 

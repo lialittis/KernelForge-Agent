@@ -1,0 +1,172 @@
+id: 2026-07-08-remaining-reference-preeval
+date: 2026-07-08
+agent: codex
+machine: ascend-worker
+branch: main
+commit: 4038e8d8f8ed8ba4e1c38a5606eebdebdd45aa32
+status: completed_with_environment_failure
+
+benchmark:
+  source: akg_kernels_bench_lite
+  source_commit: bea77cb38db5713056a7e06e5e8a0cbe9d26954b
+  task_id: remaining_reference_set
+  operator_name: remaining_reference_set
+  operator_category: mixed
+
+environment:
+  hardware: Ascend 910
+  device_name: Ascend910B2C
+  cann_version: "8.5.1"
+  python_version: "3.11.14"
+  torch_version: "2.9.0+cpu"
+  torch_npu_version: "2.9.0rc1"
+  triton_version: "3.2.0"
+  triton_package_metadata_version: "3.6.0"
+  triton_ascend_version: "3.2.0"
+  venv: /data/venvs/kf-triton-ascend
+
+generation:
+  provider: manual
+  model: manual
+  agent_role: deterministic_reference_preeval
+  backend: torch_or_torch_npu_reference
+  prompt_version: null
+  retrieved_skills:
+    - skills/benchmark_evaluation/SKILL.md
+  pass_n: 1
+  candidates:
+    - team_name: reference_t1_matmul_basic
+      case: t1/matmul_basic
+      candidate_source_path: kernel_forge/candidates/reference_matmul_basic.py
+      expected_backend: torch_matmul
+    - team_name: reference_t1_matmul_biasadd
+      case: t1/matmul_biasadd
+      candidate_source_path: kernel_forge/candidates/reference_matmul_biasadd.py
+      expected_backend: torch_matmul_plus_bias
+    - team_name: reference_t2_rope
+      case: t2/rope
+      candidate_source_path: kernel_forge/candidates/reference_rope.py
+      expected_backend: torch_npu_npu_rotary_mul
+    - team_name: reference_t2_add_rmsnorm_cast
+      case: t2/add_rmsnorm_cast
+      candidate_source_path: kernel_forge/candidates/reference_add_rmsnorm_cast.py
+      expected_backend: torch_reference
+    - team_name: reference_t2_add_rmsnorm_quant
+      case: t2/add_rmsnorm_quant
+      candidate_source_path: kernel_forge/candidates/reference_add_rmsnorm_quant.py
+      expected_backend: torch_reference
+    - team_name: reference_t2_moe_topk_softmax
+      case: t2/moe_topk_softmax
+      candidate_source_path: kernel_forge/candidates/reference_moe_topk_softmax.py
+      expected_backend: torch_reference
+    - team_name: reference_t3_causal_conv1d
+      case: t3/causal_conv1d
+      candidate_source_path: kernel_forge/candidates/reference_causal_conv1d.py
+      expected_backend: torch_conv1d_reference
+    - team_name: reference_t3_decode_mla
+      case: t3/decode_mla
+      candidate_source_path: kernel_forge/candidates/reference_decode_mla.py
+      expected_backend: torch_reference_loop
+    - team_name: reference_t3_layernorm_gated
+      case: t3/layernorm_gated
+      candidate_source_path: kernel_forge/candidates/reference_layernorm_gated.py
+      expected_backend: torch_reference
+
+commands:
+  create_submissions: bash scripts/create_remaining_reference_submissions.sh
+  benchmark_all: >
+    python third_party/akg/akg_agents/benchmark/akg_kernels_bench_lite/tools/run_bench.py
+    outputs/submissions/remaining_reference
+    --bench-dir third_party/akg/akg_agents/benchmark/akg_kernels_bench_lite
+    --output outputs/results/remaining_reference
+    --warmup 10
+    --iterations 100
+    --num-trials 3
+
+results:
+  status: completed
+  total_cases: 9
+  passed_cases: 8
+  failed_cases:
+    - case: t3/causal_conv1d
+      team_name: reference_t3_causal_conv1d
+      failure_category: environment_error
+      status: error
+      summary: "Official reference failed in F.conv1d because CANN/TBE initialization could not import Python module 'tbe'."
+  completed_cases:
+    - case: t1/matmul_basic
+      team_name: reference_t1_matmul_basic
+      status: pass
+      baseline_latency_ms: 0.0721
+      solution_latency_ms: 0.072
+      speedup_vs_baseline: 1.0012
+      weighted_score: 60.01
+    - case: t1/matmul_biasadd
+      team_name: reference_t1_matmul_biasadd
+      status: pass
+      baseline_latency_ms: 0.4446
+      solution_latency_ms: 0.4995
+      speedup_vs_baseline: 0.8901
+      weighted_score: 53.41
+    - case: t2/add_rmsnorm_cast
+      team_name: reference_t2_add_rmsnorm_cast
+      status: pass
+      baseline_latency_ms: 4.8117
+      solution_latency_ms: 4.8121
+      speedup_vs_baseline: 0.9999
+      weighted_score: 89.99
+    - case: t2/add_rmsnorm_quant
+      team_name: reference_t2_add_rmsnorm_quant
+      status: pass
+      baseline_latency_ms: 9.2852
+      solution_latency_ms: 9.2871
+      speedup_vs_baseline: 0.9998
+      weighted_score: 89.98
+    - case: t2/moe_topk_softmax
+      team_name: reference_t2_moe_topk_softmax
+      status: pass
+      baseline_latency_ms: 0.1296
+      solution_latency_ms: 0.1292
+      speedup_vs_baseline: 1.003
+      weighted_score: 90.05
+    - case: t2/rope
+      team_name: reference_t2_rope
+      status: pass
+      baseline_latency_ms: 0.3576
+      solution_latency_ms: 0.3574
+      speedup_vs_baseline: 1.0006
+      weighted_score: 90.01
+    - case: t3/decode_mla
+      team_name: reference_t3_decode_mla
+      status: pass
+      baseline_latency_ms: 40.034
+      solution_latency_ms: 40.0186
+      speedup_vs_baseline: 1.0004
+      weighted_score: 120.01
+    - case: t3/layernorm_gated
+      team_name: reference_t3_layernorm_gated
+      status: pass
+      baseline_latency_ms: 1.0845
+      solution_latency_ms: 1.0846
+      speedup_vs_baseline: 0.9999
+      weighted_score: 119.99
+
+artifacts:
+  submissions: outputs/submissions/remaining_reference
+  results: outputs/results/remaining_reference
+  report: experiments/reports/2026-07-08-remaining-reference-preeval.yaml
+
+notes: >
+  Deterministic pre-evaluation batch for the 9 AKG Bench Lite cases that had
+  not yet received a reference candidate in this repository. Eight cases passed
+  the official benchmark. `t3/causal_conv1d` failed in the official reference
+  path due missing CANN/TBE Python module support for the NPU conv1d compile
+  path, so it is an environment/runtime failure rather than a candidate
+  correctness failure.
+
+next:
+  - Fix or document the CANN/TBE environment gap for `t3/causal_conv1d`.
+  - Add parser support for symbolic shape variables so these reference results
+    can be tied to full OpSpec records.
+  - Use the passed reference measurements as pre-AI baselines for provider
+    generated candidates.
