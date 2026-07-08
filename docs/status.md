@@ -215,6 +215,17 @@ External PR and email submission are manual user actions.
   `experiments/reports/2026-07-08-fused-silu-and-mul-pass4.yaml`.
 - Promoted the fused SwiGLU split-indexing, UB-pressure, and negative
   performance lessons into the Skill Library.
+- Re-ran the `t1/fused_silu_and_mul` Pass@4 report under updated AKG commit
+  `47aa428fcdc8c68f78d331dc578bc6c74fb9d91d` with CANN's `PYTHONPATH`
+  preserved; all four candidates still pass, v1 remains best overall, and v3
+  remains the best Triton-Ascend candidate.
+- Updated-AKG `t1/fused_silu_and_mul` Pass@4 scores:
+  - `fused_silu_and_mul_v1`: pass, speedup `1.5387x`, score `65.39`
+  - `fused_silu_and_mul_v2`: pass, speedup `0.007x`, score `0.42`
+  - `fused_silu_and_mul_v3`: pass, speedup `0.0071x`, score `0.42`
+  - `fused_silu_and_mul_v4`: pass, speedup `0.007x`, score `0.42`
+- Added updated-AKG report at
+  `experiments/reports/2026-07-09-fused-silu-and-mul-pass4-updated-akg.yaml`.
 - Added the first pluggable provider scaffold with deterministic replay
   generation for `t1/sigmoid_scale_sum` Pass@4.
 - Added prompt templates for Code, Repair, and Skill Writer agents.
@@ -366,9 +377,10 @@ External PR and email submission are manual user actions.
 8. Import live generated benchmark results after Ascend verification.
 9. Use the completed manual Pass@4 cycles as retrieval examples:
    updated-AKG `sigmoid_scale_sum_v2` for a positive reduction trajectory and
-   `fused_silu_and_mul` for a correctness-positive but performance-negative
-   fused-elementwise trajectory, and updated-AKG `softmax_v4` for a
-   correctness-positive but still-slower rowwise softmax trajectory.
+   updated-AKG `fused_silu_and_mul_v3` for a correctness-positive but
+   performance-negative fused-elementwise trajectory, and updated-AKG
+   `softmax_v4` for a correctness-positive but still-slower rowwise softmax
+   trajectory.
 10. Use
     `experiments/reports/2026-07-09-remaining-reference-preeval-updated-akg.yaml`
     as the baseline for all remaining AKG Bench Lite operators before live
@@ -376,7 +388,8 @@ External PR and email submission are manual user actions.
     CANN's `PYTHONPATH` entries are preserved.
 11. Continue rerunning key Pass@4 reports under updated AKG commit
     `47aa428fcdc8c68f78d331dc578bc6c74fb9d91d` before final result claims;
-    `t1/sigmoid_scale_sum` and `t1/softmax` have been rebaselined.
+    `t1/sigmoid_scale_sum`, `t1/softmax`, and `t1/fused_silu_and_mul` have
+    been rebaselined.
 12. Add backend-probe fields to future generated experiment records by default.
 13. Keep model/provider information explicit in every generated experiment
    record.
@@ -389,28 +402,28 @@ Date: 2026-07-09
 Agent: Codex
 Branch: main
 Summary:
-- Re-ran the four-candidate `t1/softmax` Pass@4 batch under AKG
+- Re-ran the four-candidate `t1/fused_silu_and_mul` Pass@4 batch under AKG
   `47aa428fcdc8c68f78d331dc578bc6c74fb9d91d` on the Ascend worker with CANN's
   `PYTHONPATH` preserved.
 - Pass@1 and Pass@4 still hold: all four candidates pass.
-- The active conclusion is unchanged: torch reference `softmax_v1` remains best
-  overall at `0.9993x`; `softmax_v4` remains the best Triton-Ascend candidate
-  at `0.9169x`, still below baseline.
+- The active conclusion is unchanged: `fused_silu_and_mul_v1` remains best
+  overall via `torch_npu.npu_swiglu` at `1.5387x`; `fused_silu_and_mul_v3`
+  remains the best Triton-Ascend candidate at only `0.0071x`.
 
 Changed Files:
 - `docs/status.md`
-- `experiments/reports/2026-07-09-softmax-pass4-updated-akg.yaml`
-- `experiments/runs/2026-07-09-softmax-pass4-updated-akg.yaml`
+- `experiments/reports/2026-07-09-fused-silu-and-mul-pass4-updated-akg.yaml`
+- `experiments/runs/2026-07-09-fused-silu-and-mul-pass4-updated-akg.yaml`
 - `tasks/active.md`
 
 Verification:
-- `ssh -o BatchMode=yes ascend-kf 'cd /data/KernelForge-Agent && OUTPUT_ROOT=outputs/submissions/softmax_pass4_2026_07_09 bash scripts/create_softmax_pass4_submissions.sh'`
-- `ssh -o BatchMode=yes ascend-kf 'bash -lc '\''cd /data/KernelForge-Agent && source /usr/local/Ascend/ascend-toolkit/set_env.sh >/dev/null 2>&1 && source /data/venvs/kf-triton-ascend/bin/activate && export PYTHONPATH=/data/KernelForge-Agent:${PYTHONPATH:-} && python third_party/akg/akg_agents/benchmark/akg_kernels_bench_lite/tools/run_bench.py outputs/submissions/softmax_pass4_2026_07_09 --bench-dir third_party/akg/akg_agents/benchmark/akg_kernels_bench_lite --output outputs/results/softmax_pass4_2026_07_09 --warmup 10 --iterations 100 --num-trials 3'\'''`
-- Backend probes confirmed: v1 `torch_reference`, v2
-  `triton_row_softmax_bs4096_rpp1`, v3 `triton_row_softmax_bs4096_rpp2`, v4
-  `triton_row_softmax_bs4096_rpp4`.
+- `ssh -o BatchMode=yes ascend-kf 'cd /data/KernelForge-Agent && OUTPUT_ROOT=outputs/submissions/fused_silu_and_mul_pass4_2026_07_09 bash scripts/create_fused_silu_and_mul_pass4_submissions.sh'`
+- `ssh -o BatchMode=yes ascend-kf 'bash -lc '\''cd /data/KernelForge-Agent && source /usr/local/Ascend/ascend-toolkit/set_env.sh >/dev/null 2>&1 && source /data/venvs/kf-triton-ascend/bin/activate && export PYTHONPATH=/data/KernelForge-Agent:${PYTHONPATH:-} && python third_party/akg/akg_agents/benchmark/akg_kernels_bench_lite/tools/run_bench.py outputs/submissions/fused_silu_and_mul_pass4_2026_07_09 --bench-dir third_party/akg/akg_agents/benchmark/akg_kernels_bench_lite --output outputs/results/fused_silu_and_mul_pass4_2026_07_09 --warmup 10 --iterations 100 --num-trials 3'\'''`
+- Backend probes confirmed: v1 `torch_npu_npu_swiglu`, v2
+  `triton_flat_swiglu_bs8192`, v3 `triton_flat_swiglu_bs4096`, v4
+  `triton_flat_swiglu_bs4096x2`.
 - Result summary: Pass@1 true, Pass@4 true, 4/4 pass, best candidate
-  `softmax_v1`, best Triton candidate `softmax_v4`.
+  `fused_silu_and_mul_v1`, best Triton candidate `fused_silu_and_mul_v3`.
 
 Open Issues:
 - GitLink PR is not opened yet; this is a manual user action.
@@ -418,13 +431,13 @@ Open Issues:
 - After the PR is opened, rerun the exporter with `--pr-link <GitLink PR URL>`
   and attach that final output to the email.
 - Need to extend parsing for symbolic shape construction in T2/T3 cases.
-- Need to rerun important Pass@4 benchmark reports under the updated AKG runner
-  before treating previous speed/correctness numbers as final.
+- Need to decide whether replay-generated Pass@4 reports also require
+  updated-AKG rebaseline, or whether manual Pass@4 evidence is sufficient
+  before live-provider generation.
 - Need to run the first real live-provider generation and compare it with
   replay/manual Pass@4 results when credentials/model selection are available.
 
 Next Suggested Step:
-- Rerun the next key Pass@4 report under AKG
-  `47aa428fcdc8c68f78d331dc578bc6c74fb9d91d` with CANN's `PYTHONPATH`
-  preserved; `t1/fused_silu_and_mul` is the next useful candidate because it
-  was correctness-positive but strongly performance-negative.
+- Decide whether to rebaseline the replay-generated `t1/sigmoid_scale_sum`
+  Pass@4 report under the updated AKG runner, or move to the first live
+  provider generation cycle now that the key manual Pass@4 reports are current.
