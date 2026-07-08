@@ -1,0 +1,167 @@
+id: 2026-07-09-softmax-pass4-updated-akg
+date: 2026-07-09
+agent: codex
+machine: ascend-worker
+branch: main
+commit: 81b1bbf1c9637cd56a4b20e9ceabf0ebf965e2f7
+status: completed
+
+benchmark:
+  source: akg_kernels_bench_lite
+  source_commit: 47aa428fcdc8c68f78d331dc578bc6c74fb9d91d
+  previous_source_commit: bea77cb38db5713056a7e06e5e8a0cbe9d26954b
+  task_id: t1/softmax
+  operator_name: softmax
+  operator_category: reduction
+  reference_path: third_party/akg/akg_agents/benchmark/akg_kernels_bench_lite/t1/softmax.py
+
+environment:
+  hardware: Ascend 910
+  device_name: Ascend910B2C
+  cann_version: "8.5.1"
+  python_version: "3.11.14"
+  torch_version: "2.9.0+cpu"
+  torch_npu_version: "2.9.0rc1"
+  triton_version: "3.2.0"
+  triton_package_metadata_version: "3.6.0"
+  triton_ascend_version: "3.2.0"
+  venv: /data/venvs/kf-triton-ascend
+
+generation:
+  provider: manual
+  model: manual
+  agent_role: code_agent_pass4_seed
+  backend: triton_ascend
+  prompt_version: null
+  retrieved_skills:
+    - skills/reduction/SKILL.md
+    - skills/ascend_debug/SKILL.md
+    - skills/ascend_performance/SKILL.md
+  opspec_path: benchmarks/parsed/t1_softmax.yaml
+  sketch_path: benchmarks/parsed/t1_softmax.yaml#sketch
+  pass_n: 4
+  candidates:
+    - index: 1
+      team_name: softmax_v1
+      candidate_source_path: kernel_forge/candidates/softmax_v1.py
+      expected_backend: torch_reference
+      observed_backend: torch_reference
+      strategy: reference_torch_softmax
+    - index: 2
+      team_name: softmax_v2
+      candidate_source_path: kernel_forge/candidates/softmax_v2.py
+      expected_backend: triton_ascend
+      observed_backend: triton_row_softmax_bs4096_rpp1
+      strategy: one_row_per_program_single_4096_softmax_tile
+    - index: 3
+      team_name: softmax_v3
+      candidate_source_path: kernel_forge/candidates/softmax_v3.py
+      expected_backend: triton_ascend
+      observed_backend: triton_row_softmax_bs4096_rpp2
+      strategy: two_rows_per_program_sequential_4096_softmax_tiles
+    - index: 4
+      team_name: softmax_v4
+      candidate_source_path: kernel_forge/candidates/softmax_v4.py
+      expected_backend: triton_ascend
+      observed_backend: triton_row_softmax_bs4096_rpp4
+      strategy: four_rows_per_program_sequential_4096_softmax_tiles
+
+commands:
+  create_submissions: >
+    OUTPUT_ROOT=outputs/submissions/softmax_pass4_2026_07_09
+    bash scripts/create_softmax_pass4_submissions.sh
+  benchmark_all: >
+    source /usr/local/Ascend/ascend-toolkit/set_env.sh &&
+    source /data/venvs/kf-triton-ascend/bin/activate &&
+    export PYTHONPATH=/data/KernelForge-Agent:${PYTHONPATH:-} &&
+    python third_party/akg/akg_agents/benchmark/akg_kernels_bench_lite/tools/run_bench.py
+    outputs/submissions/softmax_pass4_2026_07_09
+    --bench-dir third_party/akg/akg_agents/benchmark/akg_kernels_bench_lite
+    --output outputs/results/softmax_pass4_2026_07_09
+    --warmup 10
+    --iterations 100
+    --num-trials 3
+  backend_probe_all: >
+    source /usr/local/Ascend/ascend-toolkit/set_env.sh &&
+    source /data/venvs/kf-triton-ascend/bin/activate &&
+    export PYTHONPATH=/data/KernelForge-Agent:${PYTHONPATH:-} &&
+    python scripts/probe_softmax_backend.py
+    --candidate outputs/submissions/softmax_pass4_2026_07_09/<team>/t1/softmax.py
+    --shape 32 512 4096
+
+results:
+  correctness:
+    status: pass
+    rtol: 0.01
+    atol: 0.01
+  pass_n:
+    pass_at_1: true
+    pass_at_4: true
+    passed_count: 4
+    best_candidate: softmax_v1
+    best_triton_candidate: softmax_v4
+  performance:
+    status: pass
+    warmup: 10
+    repeats: 100
+    num_trials: 3
+    baseline_latency_ms: 0.4518
+    best_solution_latency_ms: 0.4521
+    best_speedup_vs_baseline: 0.9993
+    best_weighted_score: 59.96
+    best_triton_latency_ms: 0.4932
+    best_triton_speedup_vs_baseline: 0.9169
+    best_triton_weighted_score: 55.01
+  completed_cases:
+    - candidate_index: 1
+      team_name: softmax_v1
+      status: pass
+      correctness: true
+      baseline_latency_ms: 0.4518
+      solution_latency_ms: 0.4521
+      speedup_vs_baseline: 0.9993
+      weighted_score: 59.96
+      observed_backend: torch_reference
+    - candidate_index: 2
+      team_name: softmax_v2
+      status: pass
+      correctness: true
+      baseline_latency_ms: 0.4518
+      solution_latency_ms: 0.6198
+      speedup_vs_baseline: 0.729
+      weighted_score: 43.74
+      observed_backend: triton_row_softmax_bs4096_rpp1
+    - candidate_index: 3
+      team_name: softmax_v3
+      status: pass
+      correctness: true
+      baseline_latency_ms: 0.4512
+      solution_latency_ms: 0.5087
+      speedup_vs_baseline: 0.887
+      weighted_score: 53.22
+      observed_backend: triton_row_softmax_bs4096_rpp2
+    - candidate_index: 4
+      team_name: softmax_v4
+      status: pass
+      correctness: true
+      baseline_latency_ms: 0.4522
+      solution_latency_ms: 0.4932
+      speedup_vs_baseline: 0.9169
+      weighted_score: 55.01
+      observed_backend: triton_row_softmax_bs4096_rpp4
+
+artifacts:
+  submissions: outputs/submissions/softmax_pass4_2026_07_09
+  results: outputs/results/softmax_pass4_2026_07_09
+  pass4_report: experiments/reports/2026-07-09-softmax-pass4-updated-akg.yaml
+
+notes: >
+  Updated-AKG rebaseline of the manual softmax Pass@4 cycle. The outcome did
+  not change: all four candidates pass, torch reference `softmax_v1` remains
+  best overall, and `softmax_v4` remains the best Triton-Ascend candidate but
+  still slower than the official reference.
+
+next:
+  - Keep softmax as a correctness-positive but performance-negative trajectory.
+  - Rerun the remaining key Pass@4 reports under the same runner and preserved
+    CANN `PYTHONPATH` pattern.

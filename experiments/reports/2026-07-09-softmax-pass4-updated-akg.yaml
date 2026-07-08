@@ -1,0 +1,162 @@
+case: t1/softmax
+id: 2026-07-09-softmax-pass4-updated-akg
+supersedes: experiments/reports/2026-07-08-softmax-pass4.yaml
+akg_commit: 47aa428fcdc8c68f78d331dc578bc6c74fb9d91d
+project_commit: 81b1bbf1c9637cd56a4b20e9ceabf0ebf965e2f7
+candidate_count: 4
+pass_at_1: true
+pass_at_n: true
+n: 4
+passed_count: 4
+best_candidate:
+  candidate_index: 1
+  team_name: softmax_v1
+  result_path: outputs/results/softmax_pass4_2026_07_09/softmax_v1.json
+  status: pass
+  correctness: true
+  speedup: 0.9993
+  weighted_score: 59.96
+  error: null
+  max_abs_diff: 0.0
+  max_rel_diff: 0.0
+  baseline_ms: 0.4518
+  solution_ms: 0.4521
+  observed_backend: torch_reference
+best_triton_candidate:
+  candidate_index: 4
+  team_name: softmax_v4
+  result_path: outputs/results/softmax_pass4_2026_07_09/softmax_v4.json
+  status: pass
+  correctness: true
+  speedup: 0.9169
+  weighted_score: 55.01
+  error: null
+  max_abs_diff: 5.587935447692871e-09
+  max_rel_diff: 3.5468568171381776e-07
+  baseline_ms: 0.4522
+  solution_ms: 0.4932
+  observed_backend: triton_row_softmax_bs4096_rpp4
+candidates:
+- candidate_index: 1
+  team_name: softmax_v1
+  result_path: outputs/results/softmax_pass4_2026_07_09/softmax_v1.json
+  status: pass
+  correctness: true
+  speedup: 0.9993
+  weighted_score: 59.96
+  error: null
+  max_abs_diff: 0.0
+  max_rel_diff: 0.0
+  baseline_ms: 0.4518
+  solution_ms: 0.4521
+  observed_backend: torch_reference
+  backend_probe:
+    output_device: npu:0
+    output_dtype: torch.float32
+    last_error: null
+    allclose: true
+- candidate_index: 2
+  team_name: softmax_v2
+  result_path: outputs/results/softmax_pass4_2026_07_09/softmax_v2.json
+  status: pass
+  correctness: true
+  speedup: 0.729
+  weighted_score: 43.74
+  error: null
+  max_abs_diff: 5.587935447692871e-09
+  max_rel_diff: 3.5468568171381776e-07
+  baseline_ms: 0.4518
+  solution_ms: 0.6198
+  observed_backend: triton_row_softmax_bs4096_rpp1
+  backend_probe:
+    output_device: npu:0
+    output_dtype: torch.float32
+    last_error: null
+    allclose: true
+- candidate_index: 3
+  team_name: softmax_v3
+  result_path: outputs/results/softmax_pass4_2026_07_09/softmax_v3.json
+  status: pass
+  correctness: true
+  speedup: 0.887
+  weighted_score: 53.22
+  error: null
+  max_abs_diff: 5.587935447692871e-09
+  max_rel_diff: 3.5468568171381776e-07
+  baseline_ms: 0.4512
+  solution_ms: 0.5087
+  observed_backend: triton_row_softmax_bs4096_rpp2
+  backend_probe:
+    output_device: npu:0
+    output_dtype: torch.float32
+    last_error: null
+    allclose: true
+- candidate_index: 4
+  team_name: softmax_v4
+  result_path: outputs/results/softmax_pass4_2026_07_09/softmax_v4.json
+  status: pass
+  correctness: true
+  speedup: 0.9169
+  weighted_score: 55.01
+  error: null
+  max_abs_diff: 5.587935447692871e-09
+  max_rel_diff: 3.5468568171381776e-07
+  baseline_ms: 0.4522
+  solution_ms: 0.4932
+  observed_backend: triton_row_softmax_bs4096_rpp4
+  backend_probe:
+    output_device: npu:0
+    output_dtype: torch.float32
+    last_error: null
+    allclose: true
+comparison_to_previous:
+  previous_report: experiments/reports/2026-07-08-softmax-pass4.yaml
+  previous_akg_commit: bea77cb38db5713056a7e06e5e8a0cbe9d26954b
+  outcome_change: none
+  best_candidate_change: none
+  best_triton_candidate_change: none
+  interpretation: >
+    Pass@1 and Pass@4 still hold under the updated AKG runner. The best
+    candidate remains the torch reference `softmax_v1`; the best Triton-Ascend
+    candidate remains `softmax_v4`, still slower than the official reference.
+    The correctness-positive but performance-negative softmax conclusion is
+    unchanged.
+  score_deltas:
+  - candidate_index: 1
+    team_name: softmax_v1
+    old_speedup: 1.0006
+    new_speedup: 0.9993
+    delta_speedup: -0.0013
+    old_weighted_score: 60.01
+    new_weighted_score: 59.96
+    delta_weighted_score: -0.05
+  - candidate_index: 2
+    team_name: softmax_v2
+    old_speedup: 0.7315
+    new_speedup: 0.729
+    delta_speedup: -0.0025
+    old_weighted_score: 43.89
+    new_weighted_score: 43.74
+    delta_weighted_score: -0.15
+  - candidate_index: 3
+    team_name: softmax_v3
+    old_speedup: 0.8871
+    new_speedup: 0.887
+    delta_speedup: -0.0001
+    old_weighted_score: 53.22
+    new_weighted_score: 53.22
+    delta_weighted_score: 0.0
+  - candidate_index: 4
+    team_name: softmax_v4
+    old_speedup: 0.9225
+    new_speedup: 0.9169
+    delta_speedup: -0.0056
+    old_weighted_score: 55.35
+    new_weighted_score: 55.01
+    delta_weighted_score: -0.34
+notes: >
+  Rerun used the updated AKG standalone runner and preserved CANN's Python
+  paths with `export PYTHONPATH=/data/KernelForge-Agent:${PYTHONPATH:-}` after
+  sourcing `set_env.sh`. Backend probes confirmed v2, v3, and v4 still launch
+  Triton-Ascend paths. Softmax remains a correctness-positive but
+  performance-negative trajectory.

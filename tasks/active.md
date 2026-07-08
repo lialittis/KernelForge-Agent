@@ -24,8 +24,8 @@ and agents.
 8. Use completed manual Pass@4 cycles as retrieval examples:
    updated-AKG `sigmoid_scale_sum_v2` for a positive reduction trajectory and
    `fused_silu_and_mul` for a correctness-positive but performance-negative
-   fused-elementwise trajectory, and `softmax_v4` for a correctness-positive
-   but still-slower rowwise softmax trajectory.
+   fused-elementwise trajectory, and updated-AKG `softmax_v4` for a
+   correctness-positive but still-slower rowwise softmax trajectory.
 9. Use
    `experiments/reports/2026-07-09-remaining-reference-preeval-updated-akg.yaml`
    as the deterministic reference baseline for all remaining AKG Bench Lite
@@ -36,8 +36,8 @@ and agents.
    replacing `PYTHONPATH`.
 11. Continue rerunning key Pass@4 reports under AKG commit
    `47aa428fcdc8c68f78d331dc578bc6c74fb9d91d` before final result claims;
-   `t1/sigmoid_scale_sum` is done and still passes Pass@4 with v2 best at
-   `1.9463x`.
+   `t1/sigmoid_scale_sum` and `t1/softmax` are done. Rerun
+   `t1/fused_silu_and_mul` next.
 12. Add backend-probe fields to future generated experiment records by default.
 13. Record model/provider, prompt version, retrieved skills, and candidate index
    for every generated experiment.

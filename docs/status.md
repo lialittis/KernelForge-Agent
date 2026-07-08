@@ -255,6 +255,17 @@ External PR and email submission are manual user actions.
   - `softmax_v4`: pass, speedup `0.9225x`, score `55.35`
 - Promoted the softmax rowwise-correct but performance-negative lesson into
   the Skill Library.
+- Re-ran the `t1/softmax` Pass@4 report under updated AKG commit
+  `47aa428fcdc8c68f78d331dc578bc6c74fb9d91d` with CANN's `PYTHONPATH`
+  preserved; all four candidates still pass, v1 remains best overall, and v4
+  remains the best Triton-Ascend candidate.
+- Updated-AKG `t1/softmax` Pass@4 scores:
+  - `softmax_v1`: pass, speedup `0.9993x`, score `59.96`
+  - `softmax_v2`: pass, speedup `0.729x`, score `43.74`
+  - `softmax_v3`: pass, speedup `0.887x`, score `53.22`
+  - `softmax_v4`: pass, speedup `0.9169x`, score `55.01`
+- Added updated-AKG report at
+  `experiments/reports/2026-07-09-softmax-pass4-updated-akg.yaml`.
 - Added deterministic reference `ModelNew` candidates for the 9 remaining AKG
   Bench Lite cases:
   - `t1/matmul_basic`
@@ -356,8 +367,8 @@ External PR and email submission are manual user actions.
 9. Use the completed manual Pass@4 cycles as retrieval examples:
    updated-AKG `sigmoid_scale_sum_v2` for a positive reduction trajectory and
    `fused_silu_and_mul` for a correctness-positive but performance-negative
-   fused-elementwise trajectory, and `softmax_v4` for a correctness-positive
-   but still-slower rowwise softmax trajectory.
+   fused-elementwise trajectory, and updated-AKG `softmax_v4` for a
+   correctness-positive but still-slower rowwise softmax trajectory.
 10. Use
     `experiments/reports/2026-07-09-remaining-reference-preeval-updated-akg.yaml`
     as the baseline for all remaining AKG Bench Lite operators before live
@@ -365,8 +376,7 @@ External PR and email submission are manual user actions.
     CANN's `PYTHONPATH` entries are preserved.
 11. Continue rerunning key Pass@4 reports under updated AKG commit
     `47aa428fcdc8c68f78d331dc578bc6c74fb9d91d` before final result claims;
-    `t1/sigmoid_scale_sum` has been rebaselined and remains the strongest
-    positive Triton-Ascend result.
+    `t1/sigmoid_scale_sum` and `t1/softmax` have been rebaselined.
 12. Add backend-probe fields to future generated experiment records by default.
 13. Keep model/provider information explicit in every generated experiment
    record.
@@ -379,28 +389,28 @@ Date: 2026-07-09
 Agent: Codex
 Branch: main
 Summary:
-- Re-ran the four-candidate `t1/sigmoid_scale_sum` Pass@4 batch under AKG
+- Re-ran the four-candidate `t1/softmax` Pass@4 batch under AKG
   `47aa428fcdc8c68f78d331dc578bc6c74fb9d91d` on the Ascend worker with CANN's
   `PYTHONPATH` preserved.
-- Pass@1 and Pass@4 still hold: all four candidates pass and
-  `sigmoid_scale_sum_v2` remains best.
-- The active best speedup for current claims is now `1.9463x` with weighted
-  score `69.46`, down from the historical July 7 `2.0279x` / `70.28`.
+- Pass@1 and Pass@4 still hold: all four candidates pass.
+- The active conclusion is unchanged: torch reference `softmax_v1` remains best
+  overall at `0.9993x`; `softmax_v4` remains the best Triton-Ascend candidate
+  at `0.9169x`, still below baseline.
 
 Changed Files:
 - `docs/status.md`
-- `experiments/reports/2026-07-09-sigmoid-scale-sum-pass4-updated-akg.yaml`
-- `experiments/runs/2026-07-09-sigmoid-scale-sum-pass4-updated-akg.yaml`
+- `experiments/reports/2026-07-09-softmax-pass4-updated-akg.yaml`
+- `experiments/runs/2026-07-09-softmax-pass4-updated-akg.yaml`
 - `tasks/active.md`
 
 Verification:
-- `ssh -o BatchMode=yes ascend-kf 'cd /data/KernelForge-Agent && OUTPUT_ROOT=outputs/submissions/sigmoid_scale_sum_pass4_2026_07_09 bash scripts/create_sigmoid_scale_sum_pass4_submissions.sh'`
-- `ssh -o BatchMode=yes ascend-kf 'bash -lc '\''cd /data/KernelForge-Agent && source /usr/local/Ascend/ascend-toolkit/set_env.sh >/dev/null 2>&1 && source /data/venvs/kf-triton-ascend/bin/activate && export PYTHONPATH=/data/KernelForge-Agent:${PYTHONPATH:-} && python third_party/akg/akg_agents/benchmark/akg_kernels_bench_lite/tools/run_bench.py outputs/submissions/sigmoid_scale_sum_pass4_2026_07_09 --bench-dir third_party/akg/akg_agents/benchmark/akg_kernels_bench_lite --output outputs/results/sigmoid_scale_sum_pass4_2026_07_09 --warmup 10 --iterations 100 --num-trials 3'\'''`
+- `ssh -o BatchMode=yes ascend-kf 'cd /data/KernelForge-Agent && OUTPUT_ROOT=outputs/submissions/softmax_pass4_2026_07_09 bash scripts/create_softmax_pass4_submissions.sh'`
+- `ssh -o BatchMode=yes ascend-kf 'bash -lc '\''cd /data/KernelForge-Agent && source /usr/local/Ascend/ascend-toolkit/set_env.sh >/dev/null 2>&1 && source /data/venvs/kf-triton-ascend/bin/activate && export PYTHONPATH=/data/KernelForge-Agent:${PYTHONPATH:-} && python third_party/akg/akg_agents/benchmark/akg_kernels_bench_lite/tools/run_bench.py outputs/submissions/softmax_pass4_2026_07_09 --bench-dir third_party/akg/akg_agents/benchmark/akg_kernels_bench_lite --output outputs/results/softmax_pass4_2026_07_09 --warmup 10 --iterations 100 --num-trials 3'\'''`
 - Backend probes confirmed: v1 `torch_reference`, v2
-  `triton_row_reduce_bs8192`, v3 `triton_row_reduce_bs4096x2`, v4
-  `triton_row_reduce_bs2048x4`.
+  `triton_row_softmax_bs4096_rpp1`, v3 `triton_row_softmax_bs4096_rpp2`, v4
+  `triton_row_softmax_bs4096_rpp4`.
 - Result summary: Pass@1 true, Pass@4 true, 4/4 pass, best candidate
-  `sigmoid_scale_sum_v2`.
+  `softmax_v1`, best Triton candidate `softmax_v4`.
 
 Open Issues:
 - GitLink PR is not opened yet; this is a manual user action.
@@ -416,5 +426,5 @@ Open Issues:
 Next Suggested Step:
 - Rerun the next key Pass@4 report under AKG
   `47aa428fcdc8c68f78d331dc578bc6c74fb9d91d` with CANN's `PYTHONPATH`
-  preserved; `t1/softmax` is the next useful candidate because it was
-  correctness-positive but performance-negative.
+  preserved; `t1/fused_silu_and_mul` is the next useful candidate because it
+  was correctness-positive but strongly performance-negative.
