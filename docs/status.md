@@ -208,10 +208,19 @@ templates, Pass@N reporting, and first positive non-GELU NPU result.
 - Added completed replay experiment metadata at
   `experiments/runs/2026-07-08-replay-sigmoid-scale-sum-pass4.yaml` and report
   at `experiments/reports/2026-07-08-replay-sigmoid-scale-sum-pass4.yaml`.
+- Added the first live LLM provider adapter, `openai`, behind the same
+  `ProviderRequest` and `ProviderResponse` interface used by deterministic
+  replay generation.
+- Added provider tests that validate OpenAI Responses API request construction,
+  response text extraction, code-fence cleanup, and missing-configuration
+  failure modes without real network calls or credentials.
+- Added decision record
+  `docs/decisions/0006-add-openai-responses-provider.md`.
 
 ## In Progress
 
-- Adding a live provider adapter behind the tested replay provider interface.
+- Preparing the first live `--provider openai` generation cycle, then official
+  Ascend verification through the existing Pass@N loop.
 
 ## Blockers
 
@@ -220,8 +229,6 @@ templates, Pass@N reporting, and first positive non-GELU NPU result.
 - T2/T3 cases with symbolic shape setup are currently discovered by the
   registry but marked `parse_failed` until the extractor supports local shape
   variables and more complex input construction.
-- The first pluggable LLM adapter is not implemented yet; defer it until the
-  deterministic T1 non-matmul loop is stable.
 - A formal submission-oriented technical design document still needs to be
   assembled from the architecture, workflow, roadmap, and competition alignment
   docs.
@@ -233,18 +240,19 @@ templates, Pass@N reporting, and first positive non-GELU NPU result.
 
 ## Next Actions
 
-1. Add a live provider adapter behind the tested `ProviderRequest` and
-   `ProviderResponse` interface.
+1. Run a first live `provider=openai` Pass@4 generation cycle for
+   `t1/sigmoid_scale_sum` once credentials and model selection are available.
 2. Keep `replay` as the deterministic CI/regression provider.
-3. Use the completed manual Pass@4 cycles as retrieval examples:
+3. Import live generated benchmark results after Ascend verification.
+4. Use the completed manual Pass@4 cycles as retrieval examples:
    `sigmoid_scale_sum_v2` for a positive reduction trajectory and
    `fused_silu_and_mul` for a correctness-positive but performance-negative
    fused-elementwise trajectory.
-4. Add backend-probe fields to future generated experiment records by default.
-5. Keep model/provider information explicit in every generated experiment
+5. Add backend-probe fields to future generated experiment records by default.
+6. Keep model/provider information explicit in every generated experiment
    record.
-6. Draft `docs/technical_design.md` before final submission/report work.
-7. Run `t1/softmax` only after the provider adapter can generate or repair
+7. Draft `docs/technical_design.md` before final submission/report work.
+8. Run `t1/softmax` only after the provider adapter can generate or repair
    candidates through the same deterministic evaluation loop.
 
 ## Latest Handoff
@@ -253,49 +261,38 @@ Date: 2026-07-08
 Agent: Codex
 Branch: main
 Summary:
-- Added the first pluggable provider scaffold with a deterministic `replay`
-  provider.
-- Added Code/Repair/Skill Writer prompt templates and
-  `scripts/generate_candidate.py`.
-- Refactored submission layout creation into importable project code while
-  preserving the existing CLI.
-- Added decision record 0005 to make replay-first provider validation the
-  default before live LLM providers.
-- Generated replay Pass@4 candidates for `t1/sigmoid_scale_sum` from OpSpec,
-  Sketch, retrieved skills, prompt metadata, and replay provider metadata.
-- Ran the replay-generated submissions on the Ascend worker. Pass@1 = true and
-  Pass@4 = 4/4. Best replay candidate was `sigmoid_scale_sum_replay_v2` with
-  speedup `1.998x` and score `69.98`.
+- Added the first live `openai` provider adapter behind the already-tested
+  replay provider boundary.
+- Kept credentials environment-driven and test coverage network-free through an
+  injectable HTTP poster.
+- Documented the live generation command and provider environment variables.
 
 Changed Files:
-- `docs/decisions/0005-replay-first-provider-adapter.md`
+- `docs/decisions/0006-add-openai-responses-provider.md`
 - `docs/project_workflow.md`
 - `docs/status.md`
-- `experiments/reports/2026-07-08-replay-sigmoid-scale-sum-pass4.yaml`
-- `experiments/runs/2026-07-08-replay-sigmoid-scale-sum-pass4.yaml`
-- `kernel_forge/agents/`
-- `kernel_forge/submission.py`
-- `prompts/`
-- `scripts/create_submission.py`
+- `kernel_forge/agents/__init__.py`
+- `kernel_forge/agents/provider.py`
 - `scripts/generate_candidate.py`
 - `tasks/active.md`
 - `tests/test_agent_generation_workflow.py`
 
 Verification:
+- `pytest -q tests/test_agent_generation_workflow.py`
+- `python -m py_compile kernel_forge/agents/provider.py scripts/generate_candidate.py`
 - `pytest -q`
-- `python scripts/generate_candidate.py --opspec benchmarks/parsed/t1_sigmoid_scale_sum.yaml --provider replay --backend triton_ascend --pass-n 4 --run-id replay-sigmoid-scale-sum-pass4 --output-root /tmp/kf-generated`
-- Remote replay backend probes for `sigmoid_scale_sum_replay_v1` through
-  `sigmoid_scale_sum_replay_v4`: all correctness probes passed; v2-v4 used
-  real Triton paths.
-- Remote Ascend official benchmark for generated replay `t1/sigmoid_scale_sum`:
-  Pass@4 = 4/4, best speedup `1.998x`.
+- `git diff --check`
+- `python scripts/generate_candidate.py --opspec benchmarks/parsed/t1_sigmoid_scale_sum.yaml --provider replay --backend triton_ascend --pass-n 1 --run-id replay-provider-smoke --output-root /tmp/kf-generated-smoke`
 
 Open Issues:
 - The PDF is present as `SketchSkill_AKG_项目书基础版.pdf` but is currently
   untracked; decide whether to commit it as source material.
 - Need to extend parsing for symbolic shape construction in T2/T3 cases.
-- Need to implement model/provider metadata flow before comparing LLMs.
+- Need to run the first real live-provider generation and compare it with
+  replay/manual Pass@4 results.
 - Need to write the final technical design document for competition submission.
 
 Next Suggested Step:
-- Add a live provider adapter behind the tested replay provider interface.
+- Commit and sync the live provider adapter, then run the first real
+  `provider=openai` generation cycle when credentials and model selection are
+  available.

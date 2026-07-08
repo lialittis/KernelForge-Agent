@@ -5,6 +5,7 @@ import subprocess
 import sys
 from pathlib import Path
 
+import pytest
 import yaml
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -12,7 +13,7 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from kernel_forge.agents.prompts import render_code_prompt
-from kernel_forge.agents.provider import ProviderRequest, ReplayProvider
+from kernel_forge.agents.provider import OpenAIResponsesProvider, ProviderError, ProviderRequest, ReplayProvider
 from kernel_forge.agents.skills import load_retrieved_skills, retrieve_skill_paths
 from kernel_forge.agents.workflow import generate_passn_candidates
 from kernel_forge.benchmark import read_yaml
@@ -43,6 +44,106 @@ def test_replay_provider_returns_known_sigmoid_candidate():
     assert response.metadata["replay_source_path"] == "kernel_forge/candidates/sigmoid_scale_sum_v2.py"
     assert "class ModelNew" in response.text
     assert "triton_row_reduce_bs8192" in response.text
+
+
+def test_openai_provider_requires_api_key_and_model(monkeypatch):
+    monkeypatch.delenv("OPENAI_API_KEY", raising=False)
+    monkeypatch.delenv("KERNEL_FORGE_OPENAI_MODEL", raising=False)
+    monkeypatch.delenv("OPENAI_MODEL", raising=False)
+
+    with pytest.raises(ProviderError, match="OPENAI_API_KEY"):
+        OpenAIResponsesProvider()
+
+    monkeypatch.setenv("OPENAI_API_KEY", "test-key")
+    with pytest.raises(ProviderError, match="KERNEL_FORGE_OPENAI_MODEL"):
+        OpenAIResponsesProvider()
+
+
+def test_openai_provider_posts_responses_request_and_extracts_code():
+    opspec = read_yaml(OPSPEC_PATH)
+    request = ProviderRequest(
+        case_id="t1/sigmoid_scale_sum",
+        candidate_index=1,
+        pass_n=4,
+        backend="triton_ascend",
+        prompt_version="code_agent.v1",
+        prompt="Generate a candidate.",
+        opspec=opspec,
+        sketch=opspec["sketch"],
+        retrieved_skills=["skills/reduction/SKILL.md"],
+    )
+    calls = []
+
+    def fake_post(url, headers, payload, timeout):
+        calls.append((url, headers, payload, timeout))
+        return {
+            "id": "resp_test",
+            "output": [
+                {
+                    "content": [
+                        {
+                            "type": "output_text",
+                            "text": "```python\nclass ModelNew:\n    pass\n```",
+                        }
+                    ]
+                }
+            ],
+            "usage": {"total_tokens": 123},
+        }
+
+    provider = OpenAIResponsesProvider(
+        api_key="test-key",
+        model="test-model",
+        responses_url="https://example.test/v1/responses",
+        timeout=3.0,
+        max_output_tokens=2048,
+        temperature=0.2,
+        http_post=fake_post,
+    )
+
+    response = provider.generate_text(request)
+
+    assert response.provider == "openai"
+    assert response.model == "test-model"
+    assert response.text == "class ModelNew:\n    pass\n"
+    assert response.metadata["response_id"] == "resp_test"
+    assert response.metadata["usage"] == {"total_tokens": 123}
+
+    assert len(calls) == 1
+    url, headers, payload, timeout = calls[0]
+    assert url == "https://example.test/v1/responses"
+    assert headers["Authorization"] == "Bearer test-key"
+    assert headers["Content-Type"] == "application/json"
+    assert payload["model"] == "test-model"
+    assert payload["input"] == "Generate a candidate."
+    assert payload["max_output_tokens"] == 2048
+    assert payload["temperature"] == 0.2
+    assert "Return only the Python candidate source file" in payload["instructions"]
+    assert timeout == 3.0
+
+
+def test_openai_provider_accepts_top_level_output_text():
+    request = ProviderRequest(
+        case_id="case",
+        candidate_index=1,
+        pass_n=1,
+        backend="triton_ascend",
+        prompt_version="code_agent.v1",
+        prompt="prompt",
+        opspec={},
+        sketch={},
+        retrieved_skills=[],
+    )
+
+    provider = OpenAIResponsesProvider(
+        api_key="test-key",
+        model="test-model",
+        http_post=lambda *_args: {"id": "resp_test", "output_text": "class ModelNew:\n    pass\n"},
+    )
+
+    response = provider.generate_text(request)
+
+    assert response.text == "class ModelNew:\n    pass\n"
 
 
 def test_skill_retrieval_and_prompt_rendering_include_required_context():

@@ -5,22 +5,23 @@ and agents.
 
 ## Current Priorities
 
-1. Commit and push the completed replay provider benchmark record.
-2. Sync the final replay provider result commit to the Ascend worker.
-3. Add a live provider adapter behind the tested `ProviderRequest` and
-   `ProviderResponse` interface.
+1. Commit and push the live `openai` provider adapter.
+2. Sync the live provider adapter commit to the Ascend worker.
+3. Run a first live `provider=openai` Pass@4 generation cycle for
+   `t1/sigmoid_scale_sum` once credentials and model selection are available.
 4. Keep `replay` as the deterministic CI/regression provider.
-5. Use completed manual Pass@4 cycles as retrieval examples:
+5. Import live generated benchmark results after Ascend verification.
+6. Use completed manual Pass@4 cycles as retrieval examples:
    `sigmoid_scale_sum_v2` for a positive reduction trajectory and
    `fused_silu_and_mul` for a correctness-positive but performance-negative
    fused-elementwise trajectory.
-6. Add backend-probe fields to future generated experiment records by default.
-7. Record model/provider, prompt version, retrieved skills, and candidate index
+7. Add backend-probe fields to future generated experiment records by default.
+8. Record model/provider, prompt version, retrieved skills, and candidate index
    for every generated experiment.
-8. Promote reusable generation, repair, or tuning lessons into `skills/`.
-9. Draft `docs/technical_design.md` from the architecture, workflow, roadmap,
+9. Promote reusable generation, repair, or tuning lessons into `skills/`.
+10. Draft `docs/technical_design.md` from the architecture, workflow, roadmap,
    and competition alignment docs.
-10. Decide whether to commit `SketchSkill_AKG_项目书基础版.pdf`.
+11. Decide whether to commit `SketchSkill_AKG_项目书基础版.pdf`.
 
 ## Research Questions
 
@@ -33,8 +34,8 @@ and agents.
 - Should project experiments use Pass@4, or match the AKG Agents runner default
   `--pass-n 3` unless overridden?
 - What is the minimum symbolic-shape parser needed for T2/T3 case metadata?
-- Which LLM provider adapter should be implemented first after the deterministic
-  T1 loop is stable?
+- Which live model should be the first measured `openai` provider backend for
+  generated candidates?
 - Can the cloud SSH gateway be configured for provider-level key auth, or do
   agents need an explicitly maintained `ControlMaster` session?
 

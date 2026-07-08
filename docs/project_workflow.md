@@ -143,6 +143,32 @@ python scripts/generate_candidate.py \
   --output-root outputs/generated
 ```
 
+The first live provider adapter is `openai`, implemented against the OpenAI
+Responses API through the same `ProviderRequest` and `ProviderResponse`
+boundary. It should be used only when credentials and a model name are set in
+the environment:
+
+```bash
+export OPENAI_API_KEY="<redacted>"
+export KERNEL_FORGE_OPENAI_MODEL="<model-name>"
+
+python scripts/generate_candidate.py \
+  --opspec benchmarks/parsed/t1_sigmoid_scale_sum.yaml \
+  --provider openai \
+  --backend triton_ascend \
+  --pass-n 4 \
+  --run-id openai-sigmoid-scale-sum-pass4 \
+  --output-root outputs/generated
+```
+
+Optional controls:
+
+- `KERNEL_FORGE_OPENAI_RESPONSES_URL`: override the Responses API endpoint.
+- `KERNEL_FORGE_OPENAI_TIMEOUT`: request timeout in seconds, default `120`.
+- `KERNEL_FORGE_OPENAI_MAX_OUTPUT_TOKENS`: output budget, default `8192`.
+- `KERNEL_FORGE_OPENAI_TEMPERATURE`: sampling temperature if a non-default
+  value is desired.
+
 Generated artifacts are runtime outputs under `outputs/generated/` and should
 not be committed by default. Commit only the provider code, prompt templates,
 tests, documentation, and concise experiment records.

@@ -17,7 +17,7 @@ from kernel_forge.agents import generate_passn_candidates
 def main() -> int:
     parser = argparse.ArgumentParser(description="Generate Pass@N candidates through a provider workflow.")
     parser.add_argument("--opspec", required=True, help="Path to OpSpec YAML.")
-    parser.add_argument("--provider", default="replay", help="Provider name. Supported: replay.")
+    parser.add_argument("--provider", default="replay", help="Provider name. Supported: replay, openai.")
     parser.add_argument("--backend", default="triton_ascend", help="Backend target to record in prompts.")
     parser.add_argument("--pass-n", type=int, default=4, help="Number of candidates to generate.")
     parser.add_argument("--run-id", required=True, help="Stable run id for generated artifacts.")
