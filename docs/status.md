@@ -200,10 +200,18 @@ templates, Pass@N reporting, and first positive non-GELU NPU result.
   candidates, prompts, submissions, and experiment metadata.
 - Added decision record
   `docs/decisions/0005-replay-first-provider-adapter.md`.
+- Ran replay-generated `t1/sigmoid_scale_sum` Pass@4 submissions on Ascend:
+  - `sigmoid_scale_sum_replay_v1`: pass, speedup `1.0034x`, score `60.03`
+  - `sigmoid_scale_sum_replay_v2`: pass, speedup `1.998x`, score `69.98`
+  - `sigmoid_scale_sum_replay_v3`: pass, speedup `1.8731x`, score `68.73`
+  - `sigmoid_scale_sum_replay_v4`: pass, speedup `1.5451x`, score `65.45`
+- Added completed replay experiment metadata at
+  `experiments/runs/2026-07-08-replay-sigmoid-scale-sum-pass4.yaml` and report
+  at `experiments/reports/2026-07-08-replay-sigmoid-scale-sum-pass4.yaml`.
 
 ## In Progress
 
-- Validating replay-generated `t1/sigmoid_scale_sum` submissions on Ascend.
+- Adding a live provider adapter behind the tested replay provider interface.
 
 ## Blockers
 
@@ -225,17 +233,18 @@ templates, Pass@N reporting, and first positive non-GELU NPU result.
 
 ## Next Actions
 
-1. Sync the replay provider scaffold to Ascend and run the generated
-   `t1/sigmoid_scale_sum` replay Pass@4 submissions.
-2. Use the completed manual Pass@4 cycles as retrieval examples:
+1. Add a live provider adapter behind the tested `ProviderRequest` and
+   `ProviderResponse` interface.
+2. Keep `replay` as the deterministic CI/regression provider.
+3. Use the completed manual Pass@4 cycles as retrieval examples:
    `sigmoid_scale_sum_v2` for a positive reduction trajectory and
    `fused_silu_and_mul` for a correctness-positive but performance-negative
    fused-elementwise trajectory.
-3. Add backend-probe fields to future generated experiment records by default.
-4. Keep model/provider information explicit in every generated experiment
+4. Add backend-probe fields to future generated experiment records by default.
+5. Keep model/provider information explicit in every generated experiment
    record.
-5. Draft `docs/technical_design.md` before final submission/report work.
-6. Run `t1/softmax` only after the provider adapter can generate or repair
+6. Draft `docs/technical_design.md` before final submission/report work.
+7. Run `t1/softmax` only after the provider adapter can generate or repair
    candidates through the same deterministic evaluation loop.
 
 ## Latest Handoff
@@ -244,42 +253,42 @@ Date: 2026-07-08
 Agent: Codex
 Branch: main
 Summary:
-- Completed the `t1/fused_silu_and_mul` deterministic Pass@4 cycle.
-- Added four fused SwiGLU candidates, submission helper, backend probe, tests,
-  and experiment metadata.
-- Repaired early Triton UB-overflow variants by reducing tile pressure from
-  `16384` and `8192 x 2` to `4096` and `4096 x 2`.
-- Ran all fused candidates on the Ascend worker with the official benchmark.
-  Pass@1 = true and Pass@4 = 4/4.
-- Best overall candidate was the reference `torch_npu.npu_swiglu` path:
-  `fused_silu_and_mul_v1`, speedup `1.0027x`, score `60.03`.
-- All custom Triton variants launched and passed correctness, but were much
-  slower than the fused NPU intrinsic, around `0.0033x` speedup.
-- Promoted split-last-dim indexing, UB-pressure, and negative-performance
-  fused-elementwise lessons into the Skill Library.
+- Added the first pluggable provider scaffold with a deterministic `replay`
+  provider.
+- Added Code/Repair/Skill Writer prompt templates and
+  `scripts/generate_candidate.py`.
+- Refactored submission layout creation into importable project code while
+  preserving the existing CLI.
+- Added decision record 0005 to make replay-first provider validation the
+  default before live LLM providers.
+- Generated replay Pass@4 candidates for `t1/sigmoid_scale_sum` from OpSpec,
+  Sketch, retrieved skills, prompt metadata, and replay provider metadata.
+- Ran the replay-generated submissions on the Ascend worker. Pass@1 = true and
+  Pass@4 = 4/4. Best replay candidate was `sigmoid_scale_sum_replay_v2` with
+  speedup `1.998x` and score `69.98`.
 
 Changed Files:
-- `docs/dev_guide.md`
+- `docs/decisions/0005-replay-first-provider-adapter.md`
+- `docs/project_workflow.md`
 - `docs/status.md`
-- `experiments/reports/2026-07-08-fused-silu-and-mul-pass4.yaml`
-- `experiments/runs/2026-07-08-fused-silu-and-mul-pass4.yaml`
-- `kernel_forge/candidates/fused_silu_and_mul_v*.py`
-- `scripts/create_fused_silu_and_mul_pass4_submissions.sh`
-- `scripts/probe_fused_silu_and_mul_backend.py`
-- `skills/ascend_debug/SKILL.md`
-- `skills/ascend_performance/SKILL.md`
-- `skills/elementwise/SKILL.md`
+- `experiments/reports/2026-07-08-replay-sigmoid-scale-sum-pass4.yaml`
+- `experiments/runs/2026-07-08-replay-sigmoid-scale-sum-pass4.yaml`
+- `kernel_forge/agents/`
+- `kernel_forge/submission.py`
+- `prompts/`
+- `scripts/create_submission.py`
+- `scripts/generate_candidate.py`
 - `tasks/active.md`
-- `tests/test_fused_silu_and_mul_pass4.py`
+- `tests/test_agent_generation_workflow.py`
 
 Verification:
-- `pytest -q tests/test_fused_silu_and_mul_pass4.py`
 - `pytest -q`
-- Remote backend probes for `fused_silu_and_mul_v1` through
-  `fused_silu_and_mul_v4`: all correctness probes passed; v2-v4 used real
-  Triton paths after the UB-pressure repair.
-- Remote Ascend official benchmark for `t1/fused_silu_and_mul`: Pass@4 = 4/4,
-  best overall speedup `1.0027x`, best custom Triton speedup `0.0033x`.
+- `python scripts/generate_candidate.py --opspec benchmarks/parsed/t1_sigmoid_scale_sum.yaml --provider replay --backend triton_ascend --pass-n 4 --run-id replay-sigmoid-scale-sum-pass4 --output-root /tmp/kf-generated`
+- Remote replay backend probes for `sigmoid_scale_sum_replay_v1` through
+  `sigmoid_scale_sum_replay_v4`: all correctness probes passed; v2-v4 used
+  real Triton paths.
+- Remote Ascend official benchmark for generated replay `t1/sigmoid_scale_sum`:
+  Pass@4 = 4/4, best speedup `1.998x`.
 
 Open Issues:
 - The PDF is present as `SketchSkill_AKG_项目书基础版.pdf` but is currently
@@ -289,5 +298,4 @@ Open Issues:
 - Need to write the final technical design document for competition submission.
 
 Next Suggested Step:
-- Implement the first pluggable LLM/provider adapter for Sketch/Code/Repair
-  experiments, using the completed manual Pass@4 cycles as retrieval examples.
+- Add a live provider adapter behind the tested replay provider interface.

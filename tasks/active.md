@@ -5,11 +5,11 @@ and agents.
 
 ## Current Priorities
 
-1. Commit and push the replay provider scaffold.
-2. Sync the replay provider commit to the Ascend worker.
-3. Generate `t1/sigmoid_scale_sum` replay Pass@4 submissions with
-   `scripts/generate_candidate.py`.
-4. Run the replay-generated submissions on Ascend and record Pass@4.
+1. Commit and push the completed replay provider benchmark record.
+2. Sync the final replay provider result commit to the Ascend worker.
+3. Add a live provider adapter behind the tested `ProviderRequest` and
+   `ProviderResponse` interface.
+4. Keep `replay` as the deterministic CI/regression provider.
 5. Use completed manual Pass@4 cycles as retrieval examples:
    `sigmoid_scale_sum_v2` for a positive reduction trajectory and
    `fused_silu_and_mul` for a correctness-positive but performance-negative

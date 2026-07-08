@@ -1,0 +1,68 @@
+case: t1/sigmoid_scale_sum
+candidate_count: 4
+pass_at_1: true
+pass_at_n: true
+n: 4
+passed_count: 4
+best_candidate:
+  candidate_index: 2
+  team_name: sigmoid_scale_sum_replay_v2
+  result_path: outputs/results/replay_sigmoid_scale_sum_pass4/sigmoid_scale_sum_replay_v2.json
+  status: pass
+  correctness: true
+  speedup: 1.998
+  weighted_score: 69.98
+  error: null
+  max_abs_diff: 0.0
+  max_rel_diff: 0.0
+  baseline_ms: 0.0978
+  solution_ms: 0.0489
+candidates:
+- candidate_index: 1
+  team_name: sigmoid_scale_sum_replay_v1
+  result_path: outputs/results/replay_sigmoid_scale_sum_pass4/sigmoid_scale_sum_replay_v1.json
+  status: pass
+  correctness: true
+  speedup: 1.0034
+  weighted_score: 60.03
+  error: null
+  max_abs_diff: 0.0
+  max_rel_diff: 0.0
+  baseline_ms: 0.0977
+  solution_ms: 0.0973
+- candidate_index: 2
+  team_name: sigmoid_scale_sum_replay_v2
+  result_path: outputs/results/replay_sigmoid_scale_sum_pass4/sigmoid_scale_sum_replay_v2.json
+  status: pass
+  correctness: true
+  speedup: 1.998
+  weighted_score: 69.98
+  error: null
+  max_abs_diff: 0.0
+  max_rel_diff: 0.0
+  baseline_ms: 0.0978
+  solution_ms: 0.0489
+- candidate_index: 3
+  team_name: sigmoid_scale_sum_replay_v3
+  result_path: outputs/results/replay_sigmoid_scale_sum_pass4/sigmoid_scale_sum_replay_v3.json
+  status: pass
+  correctness: true
+  speedup: 1.8731
+  weighted_score: 68.73
+  error: null
+  max_abs_diff: 0.0009765625
+  max_rel_diff: 2.3828076223253447e-07
+  baseline_ms: 0.0969
+  solution_ms: 0.0517
+- candidate_index: 4
+  team_name: sigmoid_scale_sum_replay_v4
+  result_path: outputs/results/replay_sigmoid_scale_sum_pass4/sigmoid_scale_sum_replay_v4.json
+  status: pass
+  correctness: true
+  speedup: 1.5451
+  weighted_score: 65.45
+  error: null
+  max_abs_diff: 0.0009765625
+  max_rel_diff: 2.3810034122107027e-07
+  baseline_ms: 0.0971
+  solution_ms: 0.0629
