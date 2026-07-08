@@ -5,16 +5,23 @@ and agents.
 
 ## Current Priorities
 
-1. Start the next deterministic Pass@4 cycle on `t1/fused_silu_and_mul`.
-2. Reuse `sigmoid_scale_sum_v2` as the first positive non-GELU retrieval
+1. Commit and push the local `t1/fused_silu_and_mul` Pass@4 candidate batch.
+2. Sync the pushed commit to the Ascend worker.
+3. Create fused submissions with
+   `bash scripts/create_fused_silu_and_mul_pass4_submissions.sh`.
+4. Probe all fused Triton candidates with
+   `scripts/probe_fused_silu_and_mul_backend.py`.
+5. Run the official benchmark and summarize Pass@4 with
+   `scripts/summarize_passn.py`.
+6. Reuse `sigmoid_scale_sum_v2` as the first positive non-GELU retrieval
    example for rowwise reductions.
-3. Add backend-probe fields to future generated experiment records by default.
-4. Record model/provider, prompt version, retrieved skills, and candidate index
+7. Add backend-probe fields to future generated experiment records by default.
+8. Record model/provider, prompt version, retrieved skills, and candidate index
    for every generated experiment.
-5. Promote reusable generation, repair, or tuning lessons into `skills/`.
-6. Draft `docs/technical_design.md` from the architecture, workflow, roadmap,
+9. Promote reusable generation, repair, or tuning lessons into `skills/`.
+10. Draft `docs/technical_design.md` from the architecture, workflow, roadmap,
    and competition alignment docs.
-7. Decide whether to commit `SketchSkill_AKG_项目书基础版.pdf`.
+11. Decide whether to commit `SketchSkill_AKG_项目书基础版.pdf`.
 
 ## Research Questions
 

@@ -1,0 +1,122 @@
+id: 2026-07-08-fused-silu-and-mul-pass4-planned
+date: 2026-07-08
+agent: codex
+machine: ascend-worker
+branch: main
+commit: null
+status: planned
+
+benchmark:
+  source: akg_kernels_bench_lite
+  source_commit: bea77cb38db5713056a7e06e5e8a0cbe9d26954b
+  task_id: t1/fused_silu_and_mul
+  operator_name: fused_silu_and_mul
+  operator_category: fused_elementwise
+  reference_path: third_party/akg/akg_agents/benchmark/akg_kernels_bench_lite/t1/fused_silu_and_mul.py
+
+environment:
+  hardware: Ascend 910
+  device_name: null
+  cann_version: null
+  python_version: null
+  torch_version: null
+  torch_npu_version: null
+  triton_version: null
+  triton_ascend_version: null
+  venv: /data/venvs/kf-triton-ascend
+
+generation:
+  provider: manual
+  model: manual
+  agent_role: code_agent_pass4_seed
+  backend: triton_ascend
+  prompt_version: null
+  retrieved_skills:
+    - skills/elementwise/SKILL.md
+    - skills/broadcast/SKILL.md
+    - skills/ascend_debug/SKILL.md
+    - skills/ascend_performance/SKILL.md
+  opspec_path: benchmarks/parsed/t1_fused_silu_and_mul.yaml
+  sketch_path: benchmarks/parsed/t1_fused_silu_and_mul.yaml#sketch
+  pass_n: 4
+  candidates:
+    - index: 1
+      team_name: fused_silu_and_mul_v1
+      candidate_source_path: kernel_forge/candidates/fused_silu_and_mul_v1.py
+      expected_backend: torch_npu_or_torch_reference
+      strategy: reference_npu_swiglu_or_silu_mul
+    - index: 2
+      team_name: fused_silu_and_mul_v2
+      candidate_source_path: kernel_forge/candidates/fused_silu_and_mul_v2.py
+      expected_backend: triton_ascend
+      strategy: flattened_output_tiling_bs8192_exp_sigmoid
+    - index: 3
+      team_name: fused_silu_and_mul_v3
+      candidate_source_path: kernel_forge/candidates/fused_silu_and_mul_v3.py
+      expected_backend: triton_ascend
+      strategy: flattened_output_tiling_bs16384_exp_sigmoid
+    - index: 4
+      team_name: fused_silu_and_mul_v4
+      candidate_source_path: kernel_forge/candidates/fused_silu_and_mul_v4.py
+      expected_backend: triton_ascend
+      strategy: flattened_output_tiling_bs8192_two_chunks_per_program
+
+commands:
+  create_submissions: bash scripts/create_fused_silu_and_mul_pass4_submissions.sh
+  backend_probe_all: >
+    python scripts/probe_fused_silu_and_mul_backend.py
+    --candidate outputs/submissions/fused_silu_and_mul_pass4/<team>/t1/fused_silu_and_mul.py
+    --shape 4096 8192
+  benchmark_all: >
+    python third_party/akg/akg_agents/benchmark/akg_kernels_bench_lite/tools/run_bench.py
+    outputs/submissions/fused_silu_and_mul_pass4
+    --bench-dir third_party/akg/akg_agents/benchmark/akg_kernels_bench_lite
+    --output outputs/results/fused_silu_and_mul_pass4
+    --warmup 10
+    --iterations 100
+    --num-trials 3
+  summarize_pass4: >
+    python scripts/summarize_passn.py
+    --results-dir outputs/results/fused_silu_and_mul_pass4
+    --case t1/fused_silu_and_mul
+    --candidate fused_silu_and_mul_v1
+    --candidate fused_silu_and_mul_v2
+    --candidate fused_silu_and_mul_v3
+    --candidate fused_silu_and_mul_v4
+    --output experiments/reports/2026-07-08-fused-silu-and-mul-pass4.yaml
+
+results:
+  correctness:
+    status: not_run
+    rtol: 0.01
+    atol: 0.01
+  pass_n:
+    pass_at_1: null
+    pass_at_4: null
+    passed_count: null
+    best_candidate: null
+  performance:
+    status: not_run
+    warmup: 10
+    repeats: 100
+    num_trials: 3
+    baseline_latency_ms: null
+    best_solution_latency_ms: null
+    best_speedup_vs_baseline: null
+    best_weighted_score: null
+
+artifacts:
+  submissions: outputs/submissions/fused_silu_and_mul_pass4
+  results: outputs/results/fused_silu_and_mul_pass4
+  pass4_report: experiments/reports/2026-07-08-fused-silu-and-mul-pass4.yaml
+
+skill_updates: []
+
+notes: >
+  First fused-elementwise Pass@4 cycle after validating the rowwise reduction
+  loop. This tests split-last-dimension indexing plus fused activation and
+  multiply generation against the official torch_npu.npu_swiglu baseline.
+
+next:
+  - Run on the Ascend worker and import the Pass@4 report.
+  - Promote split-indexing, numerical, compile, or tuning lessons into skills.

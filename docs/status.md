@@ -1,6 +1,6 @@
 # Status
 
-Last updated: 2026-07-07
+Last updated: 2026-07-08
 
 ## Current Phase
 
@@ -174,10 +174,17 @@ templates, Pass@N reporting, and first positive non-GELU NPU result.
 - Added Pass@4 report at
   `experiments/reports/2026-07-07-sigmoid-scale-sum-pass4.yaml`.
 - Promoted the `sigmoid_scale_sum` row-reduction lesson into the Skill Library.
+- Added the first fused-elementwise Pass@4 candidate batch for
+  `t1/fused_silu_and_mul`: one reference candidate and three Triton-Ascend
+  flattened-output tiling variants.
+- Added `scripts/create_fused_silu_and_mul_pass4_submissions.sh`,
+  `scripts/probe_fused_silu_and_mul_backend.py`, and planned experiment
+  metadata at
+  `experiments/runs/2026-07-08-fused-silu-and-mul-pass4-planned.yaml`.
 
 ## In Progress
 
-- Expanding the repeatable Pass@4 workflow to the next supported T1 case.
+- Running the `t1/fused_silu_and_mul` Pass@4 candidate batch on Ascend.
 
 ## Blockers
 
@@ -201,13 +208,15 @@ templates, Pass@N reporting, and first positive non-GELU NPU result.
 
 1. Start the next Pass@4 cycle on another supported T1 case, preferably
    `t1/fused_silu_and_mul` before `t1/softmax`.
-2. Keep `sigmoid_scale_sum_v2` as the first positive non-GELU reduction
+2. Sync the fused candidate batch to the Ascend worker and run probes plus the
+   official benchmark.
+3. Keep `sigmoid_scale_sum_v2` as the first positive non-GELU reduction
    trajectory for retrieval and prompt examples.
-3. Add backend-probe fields to future generated experiment records by default.
-4. Keep model/provider information explicit in every generated experiment
+4. Add backend-probe fields to future generated experiment records by default.
+5. Keep model/provider information explicit in every generated experiment
    record.
-5. Draft `docs/technical_design.md` before final submission/report work.
-6. Implement the first pluggable LLM/provider adapter after one more non-GELU
+6. Draft `docs/technical_design.md` before final submission/report work.
+7. Implement the first pluggable LLM/provider adapter after one more non-GELU
    deterministic loop is stable.
 
 ## Latest Handoff
