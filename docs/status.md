@@ -186,6 +186,16 @@ External PR and email submission are manual user actions.
 - Added Pass@4 report at
   `experiments/reports/2026-07-07-sigmoid-scale-sum-pass4.yaml`.
 - Promoted the `sigmoid_scale_sum` row-reduction lesson into the Skill Library.
+- Re-ran the `t1/sigmoid_scale_sum` Pass@4 report under updated AKG commit
+  `47aa428fcdc8c68f78d331dc578bc6c74fb9d91d` with CANN's `PYTHONPATH`
+  preserved; all four candidates still pass and v2 remains the best candidate.
+- Updated-AKG `t1/sigmoid_scale_sum` Pass@4 scores:
+  - `sigmoid_scale_sum_v1`: pass, speedup `0.9994x`, score `59.97`
+  - `sigmoid_scale_sum_v2`: pass, speedup `1.9463x`, score `69.46`
+  - `sigmoid_scale_sum_v3`: pass, speedup `1.8456x`, score `68.46`
+  - `sigmoid_scale_sum_v4`: pass, speedup `1.575x`, score `65.75`
+- Added updated-AKG report at
+  `experiments/reports/2026-07-09-sigmoid-scale-sum-pass4-updated-akg.yaml`.
 - Added the first fused-elementwise Pass@4 candidate batch for
   `t1/fused_silu_and_mul`: one reference candidate and three Triton-Ascend
   flattened-output tiling variants.
@@ -344,7 +354,7 @@ External PR and email submission are manual user actions.
 7. Keep `replay` as the deterministic CI/regression provider.
 8. Import live generated benchmark results after Ascend verification.
 9. Use the completed manual Pass@4 cycles as retrieval examples:
-   `sigmoid_scale_sum_v2` for a positive reduction trajectory and
+   updated-AKG `sigmoid_scale_sum_v2` for a positive reduction trajectory and
    `fused_silu_and_mul` for a correctness-positive but performance-negative
    fused-elementwise trajectory, and `softmax_v4` for a correctness-positive
    but still-slower rowwise softmax trajectory.
@@ -353,9 +363,10 @@ External PR and email submission are manual user actions.
     as the baseline for all remaining AKG Bench Lite operators before live
     provider generation; all nine remaining reference cases now pass when
     CANN's `PYTHONPATH` entries are preserved.
-11. Rerun key Pass@4 reports under updated AKG commit
-    `47aa428fcdc8c68f78d331dc578bc6c74fb9d91d` before final result claims,
-    because the standalone correctness protocol changed.
+11. Continue rerunning key Pass@4 reports under updated AKG commit
+    `47aa428fcdc8c68f78d331dc578bc6c74fb9d91d` before final result claims;
+    `t1/sigmoid_scale_sum` has been rebaselined and remains the strongest
+    positive Triton-Ascend result.
 12. Add backend-probe fields to future generated experiment records by default.
 13. Keep model/provider information explicit in every generated experiment
    record.
@@ -368,32 +379,28 @@ Date: 2026-07-09
 Agent: Codex
 Branch: main
 Summary:
-- Diagnosed the `t3/causal_conv1d` CANN/TBE import failure on the Ascend
-  worker. The worker already has `tbe`; the failed benchmark command had
-  overwritten CANN's `PYTHONPATH`.
-- Re-ran `reference_t3_causal_conv1d` with the repository path prepended to the
-  existing CANN `PYTHONPATH`; it passed correctness and benchmarked at
-  `0.9971x` speedup with weighted score `119.65`.
-- Updated
-  `experiments/reports/2026-07-09-remaining-reference-preeval-updated-akg.yaml`
-  to be a 9/9 passing active baseline for remaining AKG Bench Lite operators
-  under the current runner.
+- Re-ran the four-candidate `t1/sigmoid_scale_sum` Pass@4 batch under AKG
+  `47aa428fcdc8c68f78d331dc578bc6c74fb9d91d` on the Ascend worker with CANN's
+  `PYTHONPATH` preserved.
+- Pass@1 and Pass@4 still hold: all four candidates pass and
+  `sigmoid_scale_sum_v2` remains best.
+- The active best speedup for current claims is now `1.9463x` with weighted
+  score `69.46`, down from the historical July 7 `2.0279x` / `70.28`.
 
 Changed Files:
 - `docs/status.md`
-- `experiments/reports/2026-07-09-remaining-reference-preeval-updated-akg.yaml`
-- `experiments/runs/2026-07-09-causal-conv1d-tbe-pythonpath-fix.yaml`
-- `experiments/runs/2026-07-09-remaining-reference-preeval-updated-akg.yaml`
-- `skills/ascend_debug/SKILL.md`
-- `skills/benchmark_evaluation/SKILL.md`
+- `experiments/reports/2026-07-09-sigmoid-scale-sum-pass4-updated-akg.yaml`
+- `experiments/runs/2026-07-09-sigmoid-scale-sum-pass4-updated-akg.yaml`
 - `tasks/active.md`
 
 Verification:
-- `ssh -o BatchMode=yes ascend-kf 'bash -lc '\''cd /data/KernelForge-Agent; source /usr/local/Ascend/ascend-toolkit/set_env.sh >/dev/null 2>&1; source /data/venvs/kf-triton-ascend/bin/activate; python -c "import importlib.util; print(importlib.util.find_spec(\"tbe\")); print(importlib.util.find_spec(\"te\")); print(importlib.util.find_spec(\"auto_tune\"))"'\'''`
-- `ssh -o BatchMode=yes ascend-kf 'bash -lc '\''cd /data/KernelForge-Agent && source /usr/local/Ascend/ascend-toolkit/set_env.sh >/dev/null 2>&1 && source /data/venvs/kf-triton-ascend/bin/activate && export PYTHONPATH=/data/KernelForge-Agent:${PYTHONPATH:-} && python third_party/akg/akg_agents/benchmark/akg_kernels_bench_lite/tools/run_bench.py outputs/submissions/remaining_reference_2026_07_09 --team reference_t3_causal_conv1d --bench-dir third_party/akg/akg_agents/benchmark/akg_kernels_bench_lite --output outputs/results/causal_conv1d_envfix_2026_07_09 --warmup 10 --iterations 100 --num-trials 3'\'''`
-- Corrected single-case result: `t3/causal_conv1d` pass,
-  `max_abs_diff=0.0`, `max_rel_diff=0.0`, speedup `0.9971x`, weighted score
-  `119.65`.
+- `ssh -o BatchMode=yes ascend-kf 'cd /data/KernelForge-Agent && OUTPUT_ROOT=outputs/submissions/sigmoid_scale_sum_pass4_2026_07_09 bash scripts/create_sigmoid_scale_sum_pass4_submissions.sh'`
+- `ssh -o BatchMode=yes ascend-kf 'bash -lc '\''cd /data/KernelForge-Agent && source /usr/local/Ascend/ascend-toolkit/set_env.sh >/dev/null 2>&1 && source /data/venvs/kf-triton-ascend/bin/activate && export PYTHONPATH=/data/KernelForge-Agent:${PYTHONPATH:-} && python third_party/akg/akg_agents/benchmark/akg_kernels_bench_lite/tools/run_bench.py outputs/submissions/sigmoid_scale_sum_pass4_2026_07_09 --bench-dir third_party/akg/akg_agents/benchmark/akg_kernels_bench_lite --output outputs/results/sigmoid_scale_sum_pass4_2026_07_09 --warmup 10 --iterations 100 --num-trials 3'\'''`
+- Backend probes confirmed: v1 `torch_reference`, v2
+  `triton_row_reduce_bs8192`, v3 `triton_row_reduce_bs4096x2`, v4
+  `triton_row_reduce_bs2048x4`.
+- Result summary: Pass@1 true, Pass@4 true, 4/4 pass, best candidate
+  `sigmoid_scale_sum_v2`.
 
 Open Issues:
 - GitLink PR is not opened yet; this is a manual user action.
@@ -407,6 +414,7 @@ Open Issues:
   replay/manual Pass@4 results when credentials/model selection are available.
 
 Next Suggested Step:
-- Rerun the `t1/sigmoid_scale_sum` Pass@4 report under AKG
+- Rerun the next key Pass@4 report under AKG
   `47aa428fcdc8c68f78d331dc578bc6c74fb9d91d` with CANN's `PYTHONPATH`
-  preserved, because it is the strongest positive Triton-Ascend result so far.
+  preserved; `t1/softmax` is the next useful candidate because it was
+  correctness-positive but performance-negative.

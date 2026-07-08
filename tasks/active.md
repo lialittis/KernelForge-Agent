@@ -22,7 +22,7 @@ and agents.
    date/status.
 7. Keep `replay` as the deterministic CI/regression provider.
 8. Use completed manual Pass@4 cycles as retrieval examples:
-   `sigmoid_scale_sum_v2` for a positive reduction trajectory and
+   updated-AKG `sigmoid_scale_sum_v2` for a positive reduction trajectory and
    `fused_silu_and_mul` for a correctness-positive but performance-negative
    fused-elementwise trajectory, and `softmax_v4` for a correctness-positive
    but still-slower rowwise softmax trajectory.
@@ -34,10 +34,10 @@ and agents.
    prepend the repository path with
    `export PYTHONPATH=/data/KernelForge-Agent:${PYTHONPATH:-}` instead of
    replacing `PYTHONPATH`.
-11. Rerun key Pass@4 reports under AKG commit
-   `47aa428fcdc8c68f78d331dc578bc6c74fb9d91d` before final result claims,
-   because standalone `run_bench.py` now uses three seeded correctness trials,
-   independent reference/solution inputs, and NaN/Inf rejection.
+11. Continue rerunning key Pass@4 reports under AKG commit
+   `47aa428fcdc8c68f78d331dc578bc6c74fb9d91d` before final result claims;
+   `t1/sigmoid_scale_sum` is done and still passes Pass@4 with v2 best at
+   `1.9463x`.
 12. Add backend-probe fields to future generated experiment records by default.
 13. Record model/provider, prompt version, retrieved skills, and candidate index
    for every generated experiment.

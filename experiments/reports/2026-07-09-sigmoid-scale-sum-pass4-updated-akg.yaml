@@ -1,0 +1,145 @@
+case: t1/sigmoid_scale_sum
+id: 2026-07-09-sigmoid-scale-sum-pass4-updated-akg
+supersedes: experiments/reports/2026-07-07-sigmoid-scale-sum-pass4.yaml
+akg_commit: 47aa428fcdc8c68f78d331dc578bc6c74fb9d91d
+project_commit: 844cc3ea9d7283def77110414dd322d93aac116e
+candidate_count: 4
+pass_at_1: true
+pass_at_n: true
+n: 4
+passed_count: 4
+best_candidate:
+  candidate_index: 2
+  team_name: sigmoid_scale_sum_v2
+  result_path: outputs/results/sigmoid_scale_sum_pass4_2026_07_09/sigmoid_scale_sum_v2.json
+  status: pass
+  correctness: true
+  speedup: 1.9463
+  weighted_score: 69.46
+  error: null
+  max_abs_diff: 0.0
+  max_rel_diff: 0.0
+  baseline_ms: 0.1004
+  solution_ms: 0.0516
+  observed_backend: triton_row_reduce_bs8192
+candidates:
+- candidate_index: 1
+  team_name: sigmoid_scale_sum_v1
+  result_path: outputs/results/sigmoid_scale_sum_pass4_2026_07_09/sigmoid_scale_sum_v1.json
+  status: pass
+  correctness: true
+  speedup: 0.9994
+  weighted_score: 59.97
+  error: null
+  max_abs_diff: 0.0
+  max_rel_diff: 0.0
+  baseline_ms: 0.0995
+  solution_ms: 0.0995
+  observed_backend: torch_reference
+  backend_probe:
+    output_device: npu:0
+    output_dtype: torch.float32
+    last_error: null
+    allclose: true
+- candidate_index: 2
+  team_name: sigmoid_scale_sum_v2
+  result_path: outputs/results/sigmoid_scale_sum_pass4_2026_07_09/sigmoid_scale_sum_v2.json
+  status: pass
+  correctness: true
+  speedup: 1.9463
+  weighted_score: 69.46
+  error: null
+  max_abs_diff: 0.0
+  max_rel_diff: 0.0
+  baseline_ms: 0.1004
+  solution_ms: 0.0516
+  observed_backend: triton_row_reduce_bs8192
+  backend_probe:
+    output_device: npu:0
+    output_dtype: torch.float32
+    last_error: null
+    allclose: true
+- candidate_index: 3
+  team_name: sigmoid_scale_sum_v3
+  result_path: outputs/results/sigmoid_scale_sum_pass4_2026_07_09/sigmoid_scale_sum_v3.json
+  status: pass
+  correctness: true
+  speedup: 1.8456
+  weighted_score: 68.46
+  error: null
+  max_abs_diff: 0.0009765625
+  max_rel_diff: 2.3805573334811925e-07
+  baseline_ms: 0.0994
+  solution_ms: 0.0538
+  observed_backend: triton_row_reduce_bs4096x2
+  backend_probe:
+    output_device: npu:0
+    output_dtype: torch.float32
+    last_error: null
+    allclose: true
+- candidate_index: 4
+  team_name: sigmoid_scale_sum_v4
+  result_path: outputs/results/sigmoid_scale_sum_pass4_2026_07_09/sigmoid_scale_sum_v4.json
+  status: pass
+  correctness: true
+  speedup: 1.575
+  weighted_score: 65.75
+  error: null
+  max_abs_diff: 0.0009765625
+  max_rel_diff: 2.370963869680054e-07
+  baseline_ms: 0.0997
+  solution_ms: 0.0633
+  observed_backend: triton_row_reduce_bs2048x4
+  backend_probe:
+    output_device: npu:0
+    output_dtype: torch.float32
+    last_error: null
+    allclose: true
+comparison_to_previous:
+  previous_report: experiments/reports/2026-07-07-sigmoid-scale-sum-pass4.yaml
+  previous_akg_commit: bea77cb38db5713056a7e06e5e8a0cbe9d26954b
+  outcome_change: none
+  best_candidate_change: none
+  interpretation: >
+    Pass@1 and Pass@4 still hold under the updated AKG runner. The best
+    candidate remains `sigmoid_scale_sum_v2`, but measured speedup decreased
+    from `2.0279x` to `1.9463x`; keep the July 9 report as the active
+    benchmark evidence for final claims.
+  score_deltas:
+  - candidate_index: 1
+    team_name: sigmoid_scale_sum_v1
+    old_speedup: 1.0006
+    new_speedup: 0.9994
+    delta_speedup: -0.0012
+    old_weighted_score: 60.01
+    new_weighted_score: 59.97
+    delta_weighted_score: -0.04
+  - candidate_index: 2
+    team_name: sigmoid_scale_sum_v2
+    old_speedup: 2.0279
+    new_speedup: 1.9463
+    delta_speedup: -0.0816
+    old_weighted_score: 70.28
+    new_weighted_score: 69.46
+    delta_weighted_score: -0.82
+  - candidate_index: 3
+    team_name: sigmoid_scale_sum_v3
+    old_speedup: 1.9367
+    new_speedup: 1.8456
+    delta_speedup: -0.0911
+    old_weighted_score: 69.37
+    new_weighted_score: 68.46
+    delta_weighted_score: -0.91
+  - candidate_index: 4
+    team_name: sigmoid_scale_sum_v4
+    old_speedup: 1.5785
+    new_speedup: 1.575
+    delta_speedup: -0.0035
+    old_weighted_score: 65.79
+    new_weighted_score: 65.75
+    delta_weighted_score: -0.04
+notes: >
+  Rerun used the updated AKG standalone runner and preserved CANN's Python
+  paths with `export PYTHONPATH=/data/KernelForge-Agent:${PYTHONPATH:-}` after
+  sourcing `set_env.sh`. Backend probes confirmed v2, v3, and v4 still launch
+  Triton-Ascend paths.
