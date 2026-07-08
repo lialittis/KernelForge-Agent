@@ -9,7 +9,7 @@ except Exception:
     tl = None
 
 
-_BLOCK_SIZE = 8192
+_BLOCK_SIZE = 4096
 _CHUNKS_PER_PROGRAM = 2
 _HAS_TRITON = (
     triton is not None
@@ -75,7 +75,7 @@ class ModelNew(nn.Module):
                 hidden_size,
                 BLOCK_SIZE=_BLOCK_SIZE,
             )
-            self._last_backend = "triton_flat_swiglu_bs8192x2"
+            self._last_backend = "triton_flat_swiglu_bs4096x2"
             self._last_error = None
             return output
         except Exception as exc:
