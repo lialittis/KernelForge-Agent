@@ -4,7 +4,8 @@ agent: codex
 machine: ascend-worker
 branch: main
 commit: 4a4c2cb5bce30599e78256c2d052b5a916c6aa80
-status: completed_with_environment_failure
+corrected_single_case_commit: 72ab6fc36b5f0dee8d40572302e7d3c66c8d862d
+status: completed
 
 benchmark:
   source: akg_kernels_bench_lite
@@ -81,7 +82,7 @@ commands:
   create_submissions: >
     OUTPUT_ROOT=outputs/submissions/remaining_reference_2026_07_09
     bash scripts/create_remaining_reference_submissions.sh
-  benchmark_all: >
+  benchmark_all_initial: >
     source /usr/local/Ascend/ascend-toolkit/set_env.sh &&
     source /data/venvs/kf-triton-ascend/bin/activate &&
     PYTHONPATH=/data/KernelForge-Agent
@@ -92,17 +93,44 @@ commands:
     --warmup 10
     --iterations 100
     --num-trials 3
+  diagnose_tbe_import: >
+    source /usr/local/Ascend/ascend-toolkit/set_env.sh &&
+    source /data/venvs/kf-triton-ascend/bin/activate &&
+    python -c "import importlib.util; print(importlib.util.find_spec('tbe'))"
+  benchmark_causal_conv1d_fixed_pythonpath: >
+    source /usr/local/Ascend/ascend-toolkit/set_env.sh &&
+    source /data/venvs/kf-triton-ascend/bin/activate &&
+    export PYTHONPATH=/data/KernelForge-Agent:${PYTHONPATH:-} &&
+    python /data/KernelForge-Agent/third_party/akg/akg_agents/benchmark/akg_kernels_bench_lite/tools/run_bench.py
+    /data/KernelForge-Agent/outputs/submissions/remaining_reference_2026_07_09
+    --team reference_t3_causal_conv1d
+    --bench-dir /data/KernelForge-Agent/third_party/akg/akg_agents/benchmark/akg_kernels_bench_lite
+    --output /data/KernelForge-Agent/outputs/results/causal_conv1d_envfix_2026_07_09
+    --warmup 10
+    --iterations 100
+    --num-trials 3
 
 results:
   status: completed
   total_cases: 9
-  passed_cases: 8
-  failed_cases:
-    - case: t3/causal_conv1d
-      team_name: reference_t3_causal_conv1d
-      failure_category: environment_error
-      status: error
-      summary: "Official reference failed in F.conv1d while initializing the NPU ACL/TBE compile path: ModuleNotFoundError: No module named 'tbe'."
+  passed_cases: 9
+  failed_cases: []
+  environment_diagnosis:
+    initial_failure_category: environment_error
+    initial_failure_summary: "Official reference failed in F.conv1d while initializing the NPU ACL/TBE compile path: ModuleNotFoundError: No module named 'tbe'."
+    root_cause: >
+      The initial benchmark command overwrote CANN's `PYTHONPATH` with
+      `PYTHONPATH=/data/KernelForge-Agent`, removing
+      `/usr/local/Ascend/cann-8.5.1/python/site-packages` and
+      `/usr/local/Ascend/cann-8.5.1/opp/built-in/op_impl/ai_core/tbe` from
+      the Python import path.
+    fix: >
+      Source `set_env.sh`, activate the benchmark venv, then prepend the
+      repository path with `export PYTHONPATH=/data/KernelForge-Agent:${PYTHONPATH:-}`.
+    evidence: >
+      After `set_env.sh`, Python found `tbe`, `te`, and `auto_tune` under
+      `/usr/local/Ascend/cann-8.5.1/python/site-packages`. The corrected
+      single-case benchmark passed.
   completed_cases:
     - case: t1/matmul_basic
       team_name: reference_t1_matmul_basic
@@ -146,6 +174,13 @@ results:
       solution_latency_ms: 0.3538
       speedup_vs_baseline: 1.01
       weighted_score: 90.15
+    - case: t3/causal_conv1d
+      team_name: reference_t3_causal_conv1d
+      status: pass
+      baseline_latency_ms: 0.3176
+      solution_latency_ms: 0.3185
+      speedup_vs_baseline: 0.9971
+      weighted_score: 119.65
     - case: t3/decode_mla
       team_name: reference_t3_decode_mla
       status: pass
@@ -165,20 +200,20 @@ artifacts:
   submissions: outputs/submissions/remaining_reference_2026_07_09
   results: outputs/results/remaining_reference_2026_07_09
   report: experiments/reports/2026-07-09-remaining-reference-preeval-updated-akg.yaml
-  failed_case_result: outputs/results/remaining_reference_2026_07_09/reference_t3_causal_conv1d.json
+  initial_failed_case_result: outputs/results/remaining_reference_2026_07_09/reference_t3_causal_conv1d.json
+  corrected_case_result: outputs/results/causal_conv1d_envfix_2026_07_09/reference_t3_causal_conv1d.json
 
 notes: >
   This rerun updates the deterministic pre-evaluation baseline for the nine
   remaining AKG Bench Lite cases after the AKG submodule pin changed. Outcome
-  status is unchanged from the July 8 run: eight cases pass and
-  `t3/causal_conv1d` fails before candidate comparison in the official
-  reference path due to the missing CANN/TBE Python module.
+  status changed after diagnosing the environment invocation: all nine cases
+  now pass when CANN's `PYTHONPATH` entries from `set_env.sh` are preserved.
 
 next:
   - Treat this July 9 report as the active baseline for the remaining-reference
     set under the current AKG runner.
-  - Fix or document the CANN/TBE environment gap for `t3/causal_conv1d` before
-    spending AI-generation budget on that operator.
+  - Preserve CANN's `PYTHONPATH` entries in all future Ascend benchmark
+    invocations; do not replace them with only the repository path.
   - Rerun prior Pass@4 reports under AKG commit
     `47aa428fcdc8c68f78d331dc578bc6c74fb9d91d` before making final benchmark
     claims.

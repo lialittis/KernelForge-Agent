@@ -65,11 +65,18 @@ comparison because CANN/TBE initialization could not import Python module
 `tbe`.
 ```
 
+The case was later repaired without installing packages: `set_env.sh` already
+made `tbe` importable, but the benchmark invocation had replaced CANN's
+`PYTHONPATH` with only the project root. Prepending the project root to the
+existing `PYTHONPATH` fixed the official reference path.
+
 Evaluation rule:
 
 - When the official reference itself fails, categorize the case as an
   environment or benchmark-runtime failure, not as a candidate correctness
   failure.
+- Before marking it externally blocked, verify the benchmark command preserved
+  CANN's environment variables and Python paths.
 - Keep the JSON result and traceback path in the experiment record so the
   environment can be repaired or documented later.
 - Continue running independent single-case teams so one environment failure

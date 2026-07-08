@@ -30,9 +30,10 @@ and agents.
    `experiments/reports/2026-07-09-remaining-reference-preeval-updated-akg.yaml`
    as the deterministic reference baseline for all remaining AKG Bench Lite
    cases under the current runner.
-10. Repair or document the current `t3/causal_conv1d` environment failure:
-   official reference `F.conv1d` cannot initialize the NPU ACL/TBE compile path
-   because Python module `tbe` is missing.
+10. Preserve CANN's `PYTHONPATH` entries in all Ascend benchmark commands;
+   prepend the repository path with
+   `export PYTHONPATH=/data/KernelForge-Agent:${PYTHONPATH:-}` instead of
+   replacing `PYTHONPATH`.
 11. Rerun key Pass@4 reports under AKG commit
    `47aa428fcdc8c68f78d331dc578bc6c74fb9d91d` before final result claims,
    because standalone `run_bench.py` now uses three seeded correctness trials,
@@ -53,8 +54,6 @@ and agents.
 - Should project experiments use Pass@4, or match the AKG Agents runner default
   `--pass-n 3` unless overridden?
 - What is the minimum symbolic-shape parser needed for T2/T3 case metadata?
-- Does the Ascend worker need an additional CANN/TBE Python path or package to
-  run the official `t3/causal_conv1d` reference?
 - Which live model should be the first measured `openai` provider backend for
   generated candidates after the initial submission package is done?
 - Can the cloud SSH gateway be configured for provider-level key auth, or do

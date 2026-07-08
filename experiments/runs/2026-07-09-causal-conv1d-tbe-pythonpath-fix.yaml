@@ -1,0 +1,76 @@
+id: 2026-07-09-causal-conv1d-tbe-pythonpath-fix
+date: 2026-07-09
+agent: codex
+machine: ascend-worker
+branch: main
+commit: 72ab6fc36b5f0dee8d40572302e7d3c66c8d862d
+status: completed
+
+benchmark:
+  source: akg_kernels_bench_lite
+  source_commit: 47aa428fcdc8c68f78d331dc578bc6c74fb9d91d
+  task_id: t3/causal_conv1d
+  operator_name: causal_conv1d
+  operator_category: grouped_conv1d_state_update
+
+environment:
+  hardware: Ascend 910
+  device_name: Ascend910B2C
+  cann_version: "8.5.1"
+  python_version: "3.11.14"
+  torch_version: "2.9.0+cpu"
+  torch_npu_version: "2.9.0rc1"
+  venv: /data/venvs/kf-triton-ascend
+
+diagnosis:
+  initial_error: "ModuleNotFoundError: No module named 'tbe'"
+  initial_failed_result: outputs/results/remaining_reference_2026_07_09/reference_t3_causal_conv1d.json
+  root_cause: >
+    The failed benchmark invocation set `PYTHONPATH=/data/KernelForge-Agent`
+    for the Python process after sourcing CANN `set_env.sh`, which discarded
+    the CANN Python paths needed by the ACL/TBE compile path.
+  existing_tbe_location: /usr/local/Ascend/cann-8.5.1/python/site-packages/tbe
+  existing_te_location: /usr/local/Ascend/cann-8.5.1/python/site-packages/te
+  existing_auto_tune_location: /usr/local/Ascend/cann-8.5.1/python/site-packages/auto_tune
+  fix: >
+    Source `/usr/local/Ascend/ascend-toolkit/set_env.sh`, activate the
+    benchmark venv, then prepend the repository path with
+    `export PYTHONPATH=/data/KernelForge-Agent:${PYTHONPATH:-}`.
+
+commands:
+  check_imports: >
+    source /usr/local/Ascend/ascend-toolkit/set_env.sh &&
+    source /data/venvs/kf-triton-ascend/bin/activate &&
+    python -c "import importlib.util; print(importlib.util.find_spec('tbe')); print(importlib.util.find_spec('te')); print(importlib.util.find_spec('auto_tune'))"
+  benchmark_fixed: >
+    source /usr/local/Ascend/ascend-toolkit/set_env.sh &&
+    source /data/venvs/kf-triton-ascend/bin/activate &&
+    export PYTHONPATH=/data/KernelForge-Agent:${PYTHONPATH:-} &&
+    python third_party/akg/akg_agents/benchmark/akg_kernels_bench_lite/tools/run_bench.py
+    outputs/submissions/remaining_reference_2026_07_09
+    --team reference_t3_causal_conv1d
+    --bench-dir third_party/akg/akg_agents/benchmark/akg_kernels_bench_lite
+    --output outputs/results/causal_conv1d_envfix_2026_07_09
+    --warmup 10
+    --iterations 100
+    --num-trials 3
+
+result:
+  team_name: reference_t3_causal_conv1d
+  case: t3/causal_conv1d
+  status: pass
+  correctness: true
+  max_abs_diff: 0.0
+  max_rel_diff: 0.0
+  correctness_detail: PASS (3 random trials)
+  baseline_latency_ms: 0.3176
+  solution_latency_ms: 0.3185
+  speedup_vs_baseline: 0.9971
+  weighted_score: 119.65
+  result_path: outputs/results/causal_conv1d_envfix_2026_07_09/reference_t3_causal_conv1d.json
+
+notes: >
+  No additional Ascend toolkit package or admin change was required. Future
+  remote benchmark commands must preserve the CANN Python paths established by
+  `set_env.sh`; use `export PYTHONPATH=/data/KernelForge-Agent:${PYTHONPATH:-}`
+  instead of an inline `PYTHONPATH=/data/KernelForge-Agent python ...`.

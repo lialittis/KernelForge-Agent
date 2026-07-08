@@ -275,19 +275,20 @@ External PR and email submission are manual user actions.
 - Re-ran the remaining-reference pre-evaluation after updating AKG to commit
   `47aa428fcdc8c68f78d331dc578bc6c74fb9d91d`; the active baseline is now
   `experiments/reports/2026-07-09-remaining-reference-preeval-updated-akg.yaml`.
-- The updated-runner outcome is unchanged at the pass/fail level: eight cases
-  pass and `t3/causal_conv1d` still fails before candidate comparison in the
-  official reference path because CANN/TBE initialization cannot import Python
-  module `tbe`.
-- Updated remaining-reference scores under the current runner:
+- Diagnosed the `t3/causal_conv1d` CANN/TBE failure: `set_env.sh` made `tbe`,
+  `te`, and `auto_tune` importable, but the initial benchmark command
+  overwrote CANN's `PYTHONPATH` with only `/data/KernelForge-Agent`.
+- Re-ran `t3/causal_conv1d` with
+  `export PYTHONPATH=/data/KernelForge-Agent:${PYTHONPATH:-}` after sourcing
+  CANN and activating the venv; the official reference path passed.
+- Corrected remaining-reference baseline under the current runner:
   - `t1/matmul_basic`: pass, speedup `1.0036x`, score `60.04`
   - `t1/matmul_biasadd`: pass, speedup `0.891x`, score `53.46`
   - `t2/add_rmsnorm_cast`: pass, speedup `0.9984x`, score `89.86`
   - `t2/add_rmsnorm_quant`: pass, speedup `0.9996x`, score `89.96`
   - `t2/moe_topk_softmax`: pass, speedup `1.0002x`, score `90.0`
   - `t2/rope`: pass, speedup `1.01x`, score `90.15`
-  - `t3/causal_conv1d`: environment/runtime failure in the official reference
-    path while initializing the NPU ACL/TBE compile path
+  - `t3/causal_conv1d`: pass, speedup `0.9971x`, score `119.65`
   - `t3/decode_mla`: pass, speedup `0.9983x`, score `119.79`
   - `t3/layernorm_gated`: pass, speedup `0.9893x`, score `118.71`
 - Added the base project-book source and PDF under `pdfs/`.
@@ -322,10 +323,6 @@ External PR and email submission are manual user actions.
 - T2/T3 cases with symbolic shape setup are currently discovered by the
   registry but marked `parse_failed` until the extractor supports local shape
   variables and more complex input construction.
-- `t3/causal_conv1d` fails in the official reference path on the current
-  Ascend worker because CANN/TBE initialization cannot import Python module
-  `tbe`; this should be repaired or documented before treating causal Conv1D
-  as a model/candidate failure.
 - The current cloud SSH endpoint is served by `SSHPiper` and only advertises
   password authentication. Local no-password SSH works only while a
   `ControlMaster` session remains alive; durable automation needs either
@@ -354,7 +351,8 @@ External PR and email submission are manual user actions.
 10. Use
     `experiments/reports/2026-07-09-remaining-reference-preeval-updated-akg.yaml`
     as the baseline for all remaining AKG Bench Lite operators before live
-    provider generation.
+    provider generation; all nine remaining reference cases now pass when
+    CANN's `PYTHONPATH` entries are preserved.
 11. Rerun key Pass@4 reports under updated AKG commit
     `47aa428fcdc8c68f78d331dc578bc6c74fb9d91d` before final result claims,
     because the standalone correctness protocol changed.
@@ -370,27 +368,32 @@ Date: 2026-07-09
 Agent: Codex
 Branch: main
 Summary:
-- Re-ran the nine-case remaining-reference pre-evaluation on the Ascend worker
-  after updating AKG to `47aa428fcdc8c68f78d331dc578bc6c74fb9d91d`.
-- Outcome status did not change from the July 8 run: eight cases pass and
-  `t3/causal_conv1d` fails in the official reference path before candidate
-  comparison.
-- Made
+- Diagnosed the `t3/causal_conv1d` CANN/TBE import failure on the Ascend
+  worker. The worker already has `tbe`; the failed benchmark command had
+  overwritten CANN's `PYTHONPATH`.
+- Re-ran `reference_t3_causal_conv1d` with the repository path prepended to the
+  existing CANN `PYTHONPATH`; it passed correctness and benchmarked at
+  `0.9971x` speedup with weighted score `119.65`.
+- Updated
   `experiments/reports/2026-07-09-remaining-reference-preeval-updated-akg.yaml`
-  the active baseline for remaining AKG Bench Lite operators under the current
-  runner.
+  to be a 9/9 passing active baseline for remaining AKG Bench Lite operators
+  under the current runner.
 
 Changed Files:
 - `docs/status.md`
 - `experiments/reports/2026-07-09-remaining-reference-preeval-updated-akg.yaml`
+- `experiments/runs/2026-07-09-causal-conv1d-tbe-pythonpath-fix.yaml`
 - `experiments/runs/2026-07-09-remaining-reference-preeval-updated-akg.yaml`
+- `skills/ascend_debug/SKILL.md`
 - `skills/benchmark_evaluation/SKILL.md`
 - `tasks/active.md`
 
 Verification:
-- `ssh -o BatchMode=yes ascend-kf 'cd /data/KernelForge-Agent && OUTPUT_ROOT=outputs/submissions/remaining_reference_2026_07_09 bash scripts/create_remaining_reference_submissions.sh'`
-- `ssh -o BatchMode=yes ascend-kf 'bash -c '\''source /usr/local/Ascend/ascend-toolkit/set_env.sh && source /data/venvs/kf-triton-ascend/bin/activate && PYTHONPATH=/data/KernelForge-Agent python /data/KernelForge-Agent/third_party/akg/akg_agents/benchmark/akg_kernels_bench_lite/tools/run_bench.py /data/KernelForge-Agent/outputs/submissions/remaining_reference_2026_07_09 --bench-dir /data/KernelForge-Agent/third_party/akg/akg_agents/benchmark/akg_kernels_bench_lite --output /data/KernelForge-Agent/outputs/results/remaining_reference_2026_07_09 --warmup 10 --iterations 100 --num-trials 3'\'''`
-- Result summary: 9 total, 8 pass, 1 environment/runtime failure.
+- `ssh -o BatchMode=yes ascend-kf 'bash -lc '\''cd /data/KernelForge-Agent; source /usr/local/Ascend/ascend-toolkit/set_env.sh >/dev/null 2>&1; source /data/venvs/kf-triton-ascend/bin/activate; python -c "import importlib.util; print(importlib.util.find_spec(\"tbe\")); print(importlib.util.find_spec(\"te\")); print(importlib.util.find_spec(\"auto_tune\"))"'\'''`
+- `ssh -o BatchMode=yes ascend-kf 'bash -lc '\''cd /data/KernelForge-Agent && source /usr/local/Ascend/ascend-toolkit/set_env.sh >/dev/null 2>&1 && source /data/venvs/kf-triton-ascend/bin/activate && export PYTHONPATH=/data/KernelForge-Agent:${PYTHONPATH:-} && python third_party/akg/akg_agents/benchmark/akg_kernels_bench_lite/tools/run_bench.py outputs/submissions/remaining_reference_2026_07_09 --team reference_t3_causal_conv1d --bench-dir third_party/akg/akg_agents/benchmark/akg_kernels_bench_lite --output outputs/results/causal_conv1d_envfix_2026_07_09 --warmup 10 --iterations 100 --num-trials 3'\'''`
+- Corrected single-case result: `t3/causal_conv1d` pass,
+  `max_abs_diff=0.0`, `max_rel_diff=0.0`, speedup `0.9971x`, weighted score
+  `119.65`.
 
 Open Issues:
 - GitLink PR is not opened yet; this is a manual user action.
@@ -398,14 +401,12 @@ Open Issues:
 - After the PR is opened, rerun the exporter with `--pr-link <GitLink PR URL>`
   and attach that final output to the email.
 - Need to extend parsing for symbolic shape construction in T2/T3 cases.
-- Need to repair or document the current Ascend worker's missing `tbe` module
-  for the `t3/causal_conv1d` official reference path.
 - Need to rerun important Pass@4 benchmark reports under the updated AKG runner
   before treating previous speed/correctness numbers as final.
 - Need to run the first real live-provider generation and compare it with
   replay/manual Pass@4 results when credentials/model selection are available.
 
 Next Suggested Step:
-- Triage the Ascend worker CANN/TBE Python environment for `t3/causal_conv1d`,
-  or document the environment gap as a benchmark limitation, before spending
-  live AI-generation budget on that operator.
+- Rerun the `t1/sigmoid_scale_sum` Pass@4 report under AKG
+  `47aa428fcdc8c68f78d331dc578bc6c74fb9d91d` with CANN's `PYTHONPATH`
+  preserved, because it is the strongest positive Triton-Ascend result so far.

@@ -66,6 +66,42 @@ missing backend installation. Install the backend package, then rerun both:
 - `python scripts/diagnose_triton_ascend.py`
 - `python scripts/probe_gelu_triton_backend.py`
 
+### Preserve CANN Python Paths When Adding Repo Imports
+
+Observed in `t3/causal_conv1d` on the Ascend worker:
+
+```text
+ModuleNotFoundError: No module named 'tbe'
+```
+
+Interpretation:
+
+- The worker's CANN install already provided `tbe`, `te`, and `auto_tune` under
+  `/usr/local/Ascend/cann-8.5.1/python/site-packages` after sourcing
+  `set_env.sh`.
+- The failure was caused by a benchmark command that ran Python as
+  `PYTHONPATH=/data/KernelForge-Agent python ...`, which replaced the
+  `PYTHONPATH` set by CANN and hid those modules from the ACL/TBE compile path.
+
+First fix:
+
+- Source `/usr/local/Ascend/ascend-toolkit/set_env.sh`.
+- Activate the benchmark venv.
+- Prepend project imports with:
+
+```bash
+export PYTHONPATH=/data/KernelForge-Agent:${PYTHONPATH:-}
+```
+
+- Verify imports before rerunning the failing case:
+
+```bash
+python -c "import importlib.util; print(importlib.util.find_spec('tbe'))"
+```
+
+For `t3/causal_conv1d`, this fixed the official reference path and the case
+passed with speedup `0.9971x` and weighted score `119.65`.
+
 ### GELU Absolute Error Passes But Relative Error Fails
 
 Observed in `gelu_triton_v1` after a real Triton-Ascend launch:

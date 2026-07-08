@@ -3,8 +3,10 @@ case_set: remaining_reference_operators
 supersedes: experiments/reports/2026-07-08-remaining-reference-preeval.yaml
 akg_commit: 47aa428fcdc8c68f78d331dc578bc6c74fb9d91d
 project_commit: 4a4c2cb5bce30599e78256c2d052b5a916c6aa80
+corrected_single_case_project_commit: 72ab6fc36b5f0dee8d40572302e7d3c66c8d862d
 official_runner:
   result_root: outputs/results/remaining_reference_2026_07_09
+  corrected_single_case_result_root: outputs/results/causal_conv1d_envfix_2026_07_09
   warmup: 10
   iterations: 100
   num_trials: 3
@@ -14,10 +16,10 @@ official_runner:
     - nan_inf_rejection_before_performance_measurement
 summary:
   total_cases: 9
-  passed: 8
-  failed: 1
+  passed: 9
+  failed: 0
   correctness_failures: 0
-  runtime_failures: 1
+  runtime_failures: 0
   timeout_failures: 0
 cases:
 - case: t1/matmul_basic
@@ -88,16 +90,22 @@ cases:
   weighted_score: 90.15
 - case: t3/causal_conv1d
   team_name: reference_t3_causal_conv1d
-  status: error
-  failure_category: environment_error
-  correctness: false
-  max_abs_diff: null
-  max_rel_diff: null
-  baseline_ms: null
-  solution_ms: null
-  speedup: null
-  weighted_score: 0.0
-  error_summary: "Official reference failed in F.conv1d while initializing the NPU ACL/TBE compile path: ModuleNotFoundError: No module named 'tbe'."
+  status: pass
+  failure_category: null
+  correctness: true
+  max_abs_diff: 0.0
+  max_rel_diff: 0.0
+  baseline_ms: 0.3176
+  solution_ms: 0.3185
+  speedup: 0.9971
+  weighted_score: 119.65
+  corrected_result_path: outputs/results/causal_conv1d_envfix_2026_07_09/reference_t3_causal_conv1d.json
+  environment_fix: >
+    The initial July 9 all-case invocation overwrote CANN's `PYTHONPATH` with
+    `PYTHONPATH=/data/KernelForge-Agent`, hiding the existing CANN/TBE Python
+    packages. Re-running the single case with
+    `PYTHONPATH=/data/KernelForge-Agent:$PYTHONPATH` preserved the paths from
+    `set_env.sh` and the official reference passed.
 - case: t3/decode_mla
   team_name: reference_t3_decode_mla
   status: pass
@@ -123,12 +131,13 @@ cases:
 comparison_to_previous:
   previous_report: experiments/reports/2026-07-08-remaining-reference-preeval.yaml
   previous_akg_commit: bea77cb38db5713056a7e06e5e8a0cbe9d26954b
-  outcome_change: none
+  outcome_change: causal_conv1d_environment_failure_resolved
   interpretation: >
-    Pass/fail status did not change: eight reference candidates still pass and
-    `t3/causal_conv1d` still fails before candidate comparison in the official
-    reference path. The updated runner should be used as the active baseline
-    because the standalone correctness protocol changed.
+    The eight previously passing reference candidates still pass. The
+    `t3/causal_conv1d` environment failure was resolved without installing new
+    packages by preserving the CANN Python paths from `set_env.sh` when adding
+    the repository to `PYTHONPATH`. The updated runner plus corrected
+    invocation should be used as the active baseline.
   score_deltas:
   - case: t1/matmul_basic
     old_speedup: 1.0012
@@ -174,11 +183,11 @@ comparison_to_previous:
     delta_weighted_score: 0.14
   - case: t3/causal_conv1d
     old_speedup: null
-    new_speedup: null
+    new_speedup: 0.9971
     delta_speedup: null
     old_weighted_score: 0.0
-    new_weighted_score: 0.0
-    delta_weighted_score: 0.0
+    new_weighted_score: 119.65
+    delta_weighted_score: 119.65
   - case: t3/decode_mla
     old_speedup: 1.0004
     new_speedup: 0.9983
@@ -198,4 +207,6 @@ notes: >
   updating the AKG submodule to commit
   `47aa428fcdc8c68f78d331dc578bc6c74fb9d91d`. Use this July 9 report, not
   the July 8 report, for any next-step goals that depend on the current
-  benchmark runner.
+  benchmark runner. The final baseline combines the original July 9 all-case
+  rerun for the eight unaffected operators with the corrected single-case
+  `t3/causal_conv1d` rerun that preserved CANN's Python paths.
