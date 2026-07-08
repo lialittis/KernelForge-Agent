@@ -193,11 +193,17 @@ templates, Pass@N reporting, and first positive non-GELU NPU result.
   `experiments/reports/2026-07-08-fused-silu-and-mul-pass4.yaml`.
 - Promoted the fused SwiGLU split-indexing, UB-pressure, and negative
   performance lessons into the Skill Library.
+- Added the first pluggable provider scaffold with deterministic replay
+  generation for `t1/sigmoid_scale_sum` Pass@4.
+- Added prompt templates for Code, Repair, and Skill Writer agents.
+- Added `scripts/generate_candidate.py` to generate provider-traceable
+  candidates, prompts, submissions, and experiment metadata.
+- Added decision record
+  `docs/decisions/0005-replay-first-provider-adapter.md`.
 
 ## In Progress
 
-- Implementing the first pluggable LLM/provider adapter for the generation
-  loop.
+- Validating replay-generated `t1/sigmoid_scale_sum` submissions on Ascend.
 
 ## Blockers
 
@@ -219,19 +225,17 @@ templates, Pass@N reporting, and first positive non-GELU NPU result.
 
 ## Next Actions
 
-1. Implement the first pluggable LLM/provider adapter for Sketch/Code/Repair
-   experiments.
+1. Sync the replay provider scaffold to Ascend and run the generated
+   `t1/sigmoid_scale_sum` replay Pass@4 submissions.
 2. Use the completed manual Pass@4 cycles as retrieval examples:
    `sigmoid_scale_sum_v2` for a positive reduction trajectory and
    `fused_silu_and_mul` for a correctness-positive but performance-negative
    fused-elementwise trajectory.
-3. Keep `sigmoid_scale_sum_v2` as the first positive non-GELU reduction
-   trajectory for retrieval and prompt examples.
-4. Add backend-probe fields to future generated experiment records by default.
-5. Keep model/provider information explicit in every generated experiment
+3. Add backend-probe fields to future generated experiment records by default.
+4. Keep model/provider information explicit in every generated experiment
    record.
-6. Draft `docs/technical_design.md` before final submission/report work.
-7. Run `t1/softmax` only after the provider adapter can generate or repair
+5. Draft `docs/technical_design.md` before final submission/report work.
+6. Run `t1/softmax` only after the provider adapter can generate or repair
    candidates through the same deterministic evaluation loop.
 
 ## Latest Handoff

@@ -130,6 +130,23 @@ Use AKG Agents plus retrieved skills to generate multiple Triton-Ascend
 candidates from OpSpec and Sketch. Save prompt, Sketch, retrieved skills,
 generated code, and metadata for each candidate.
 
+The first provider implementation is deterministic replay. It validates the
+same provider boundary and metadata flow that live LLM providers will use:
+
+```bash
+python scripts/generate_candidate.py \
+  --opspec benchmarks/parsed/t1_sigmoid_scale_sum.yaml \
+  --provider replay \
+  --backend triton_ascend \
+  --pass-n 4 \
+  --run-id replay-sigmoid-scale-sum-pass4 \
+  --output-root outputs/generated
+```
+
+Generated artifacts are runtime outputs under `outputs/generated/` and should
+not be committed by default. Commit only the provider code, prompt templates,
+tests, documentation, and concise experiment records.
+
 ### Stage 5: Correctness Loop
 
 Build compile/run/correctness verification before deep performance work. Track:

@@ -2,14 +2,15 @@
 from __future__ import annotations
 
 import argparse
-import json
-import re
-import shutil
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parents[1]
+import sys
 
-TEAM_RE = re.compile(r"^[A-Za-z0-9_-]+$")
+ROOT = Path(__file__).resolve().parents[1]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+
+from kernel_forge.submission import create_submission_layout, parse_case_mapping
 
 
 def main() -> int:
@@ -36,66 +37,21 @@ def main() -> int:
     )
     args = parser.parse_args()
 
-    if not TEAM_RE.match(args.team):
-        parser.error("--team must contain only letters, numbers, underscores, and hyphens")
-
     try:
-        mappings = [_parse_case_mapping(item) for item in args.case]
-    except argparse.ArgumentTypeError as exc:
-        parser.error(str(exc))
-    output_root = ROOT / args.output_root
-    if args.layout == "nested":
-        submission_root = output_root / args.team / args.team
-    else:
-        submission_root = output_root / args.team
-    submission_root.mkdir(parents=True, exist_ok=True)
-
-    cases_meta = []
-    for case_id, source in mappings:
-        tier, name = case_id.split("/", 1)
-        target_dir = submission_root / tier
-        target_dir.mkdir(parents=True, exist_ok=True)
-        target_path = target_dir / f"{name}.py"
-        source_path = (ROOT / source).resolve()
-        shutil.copyfile(source_path, target_path)
-        cases_meta.append(
-            {
-                "case": case_id,
-                "source": _display_path(source_path),
-                "target": _display_path(target_path),
-            }
+        mappings = [parse_case_mapping(item) for item in args.case]
+        submission_root = create_submission_layout(
+            team=args.team,
+            candidate=args.candidate,
+            cases=mappings,
+            output_root=args.output_root,
+            layout=args.layout,
+            repo_root=ROOT,
         )
-
-    meta = {
-        "team_name": args.team,
-        "candidate": args.candidate,
-        "cases": cases_meta,
-    }
-    (submission_root / "meta.json").write_text(
-        json.dumps(meta, indent=2, ensure_ascii=False) + "\n",
-        encoding="utf-8",
-    )
+    except ValueError as exc:
+        parser.error(str(exc))
 
     print(f"Submission created: {submission_root}")
     return 0
-
-
-def _parse_case_mapping(value: str) -> tuple[str, str]:
-    if "=" not in value:
-        raise argparse.ArgumentTypeError("case mapping must use CASE_ID=SOURCE")
-    case_id, source = value.split("=", 1)
-    if "/" not in case_id:
-        raise argparse.ArgumentTypeError("case id must look like tier/name")
-    if not source:
-        raise argparse.ArgumentTypeError("source path must not be empty")
-    return case_id, source
-
-
-def _display_path(path: Path) -> str:
-    try:
-        return path.resolve().relative_to(ROOT).as_posix()
-    except ValueError:
-        return path.as_posix()
 
 
 if __name__ == "__main__":

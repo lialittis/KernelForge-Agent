@@ -5,16 +5,15 @@ and agents.
 
 ## Current Priorities
 
-1. Commit and push the completed `t1/fused_silu_and_mul` Pass@4 result record.
-2. Sync the final result commit to the Ascend worker.
-3. Implement the first pluggable LLM/provider adapter for Sketch/Code/Repair
-   experiments.
-4. Use completed manual Pass@4 cycles as retrieval examples:
+1. Commit and push the replay provider scaffold.
+2. Sync the replay provider commit to the Ascend worker.
+3. Generate `t1/sigmoid_scale_sum` replay Pass@4 submissions with
+   `scripts/generate_candidate.py`.
+4. Run the replay-generated submissions on Ascend and record Pass@4.
+5. Use completed manual Pass@4 cycles as retrieval examples:
    `sigmoid_scale_sum_v2` for a positive reduction trajectory and
    `fused_silu_and_mul` for a correctness-positive but performance-negative
    fused-elementwise trajectory.
-5. Reuse `sigmoid_scale_sum_v2` as the first positive non-GELU retrieval
-   example for rowwise reductions.
 6. Add backend-probe fields to future generated experiment records by default.
 7. Record model/provider, prompt version, retrieved skills, and candidate index
    for every generated experiment.
