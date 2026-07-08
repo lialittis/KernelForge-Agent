@@ -11,7 +11,11 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from kernel_forge.experiments import import_benchmark_result
+from kernel_forge.experiments import (
+    apply_passn_to_generated_experiment,
+    enrich_passn_summary,
+    import_benchmark_result,
+)
 
 
 def test_importer_updates_single_case_experiment(tmp_path):
@@ -91,6 +95,132 @@ def test_import_result_cli_writes_yaml(tmp_path):
     data = yaml.safe_load(output.read_text())
     assert data["team_name"] == "gelu_triton_v13"
     assert data["cases"][0]["speedup"] == 0.6059
+
+
+def test_enrich_passn_summary_adds_generation_and_probe_metadata():
+    summary = {
+        "case": "t1/sigmoid_scale_sum",
+        "candidate_count": 1,
+        "pass_at_1": True,
+        "pass_at_n": True,
+        "n": 1,
+        "passed_count": 1,
+        "best_candidate": {
+            "candidate_index": 1,
+            "team_name": "sigmoid_scale_sum_replay_v1",
+            "correctness": True,
+            "speedup": 1.0,
+        },
+        "candidates": [
+            {
+                "candidate_index": 1,
+                "team_name": "sigmoid_scale_sum_replay_v1",
+                "correctness": True,
+                "speedup": 1.0,
+            }
+        ],
+    }
+
+    enriched = enrich_passn_summary(
+        summary,
+        generated_candidates=[
+            {
+                "team_name": "sigmoid_scale_sum_replay_v1",
+                "provider": "replay",
+                "model": "replay-v1",
+                "prompt_version": "code_agent.v1",
+                "candidate_path": "outputs/generated/run/candidates/v1.py",
+                "submission_root": "outputs/generated/run/submissions/v1",
+                "provider_metadata": {"candidate_index": 1},
+            }
+        ],
+        probes={
+            "sigmoid_scale_sum_replay_v1": {
+                "last_backend": "torch_reference",
+                "last_error": None,
+                "allclose": True,
+                "output_device": "npu:0",
+                "output_dtype": "torch.float32",
+            }
+        },
+    )
+
+    row = enriched["candidates"][0]
+    assert row["provider"] == "replay"
+    assert row["provider_metadata"] == {"candidate_index": 1}
+    assert row["observed_backend"] == "torch_reference"
+    assert row["backend_probe"]["allclose"] is True
+    assert enriched["best_candidate"]["observed_backend"] == "torch_reference"
+
+
+def test_apply_passn_to_generated_experiment_updates_candidates():
+    experiment = {
+        "id": "run",
+        "status": "generated",
+        "benchmark": {"task_id": "t1/sigmoid_scale_sum"},
+        "generation": {
+            "candidates": [
+                {"team_name": "sigmoid_scale_sum_replay_v1", "index": 1},
+            ],
+        },
+        "results": {
+            "correctness": {"status": "not_run"},
+            "pass_n": {"pass_at_1": None, "pass_at_4": None},
+            "performance": {"status": "not_run"},
+        },
+        "artifacts": {},
+    }
+    summary = {
+        "candidate_count": 1,
+        "pass_at_1": True,
+        "pass_at_n": True,
+        "n": 1,
+        "passed_count": 1,
+        "best_candidate": {
+            "team_name": "sigmoid_scale_sum_replay_v1",
+            "baseline_ms": 0.1,
+            "solution_ms": 0.05,
+            "speedup": 2.0,
+            "weighted_score": 70.0,
+        },
+        "candidates": [
+            {
+                "candidate_index": 1,
+                "team_name": "sigmoid_scale_sum_replay_v1",
+                "result_path": "outputs/results/run/v1.json",
+                "status": "pass",
+                "correctness": True,
+                "baseline_ms": 0.1,
+                "solution_ms": 0.05,
+                "speedup": 2.0,
+                "weighted_score": 70.0,
+                "observed_backend": "triton_row_reduce_bs8192",
+                "backend_probe": {"last_backend": "triton_row_reduce_bs8192"},
+            }
+        ],
+    }
+
+    updated = apply_passn_to_generated_experiment(
+        experiment,
+        summary,
+        results_dir="outputs/results/run",
+        probes_dir="outputs/generated/run/probes",
+        report_path="outputs/generated/run/passn_report.yaml",
+        date="2026-07-09",
+        machine="ascend-worker",
+        branch="main",
+        commit="abc123",
+        akg_commit="def456",
+    )
+
+    assert updated["status"] == "completed"
+    assert updated["benchmark"]["source_commit"] == "def456"
+    assert updated["results"]["pass_n"]["pass_at_1"] is True
+    assert updated["results"]["pass_n"]["pass_at_n"] is True
+    assert updated["results"]["performance"]["best_speedup_vs_baseline"] == 2.0
+    assert updated["generation"]["candidates"][0]["observed_backend"] == "triton_row_reduce_bs8192"
+    assert updated["generation"]["candidates"][0]["benchmark_result"]["weighted_score"] == 70.0
+    assert updated["artifacts"]["probes"] == "outputs/generated/run/probes"
 
 
 def _write_result_json(tmp_path: Path) -> Path:
