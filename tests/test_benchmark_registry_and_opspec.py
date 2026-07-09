@@ -82,6 +82,17 @@ def test_extracts_matmul_basic_opspec():
     assert spec["semantics"]["accumulation_dtype"] == "float32"
     assert spec["sketch"]["compute_pattern"] == "matmul_basic"
     assert spec["sketch"]["tile_plan"]["shape"] == [32, 8192, 8192]
+    assert spec["sketch"]["tile_plan"]["axes"] == ["M", "N", "K"]
+    assert spec["sketch"]["axis_map"]["M"]["extent"] == 32
+    assert spec["sketch"]["axis_map"]["K"]["lhs"]["extent"] == 8192
+    assert spec["sketch"]["dtype_plan"] == {
+        "lhs": "bfloat16",
+        "rhs": "bfloat16",
+        "bias": None,
+        "accumulator": "float32",
+        "output": "bfloat16",
+    }
+    assert "matmul_backend_selection" in spec["sketch"]["known_risks"]
 
 
 def test_extracts_matmul_biasadd_opspec():
@@ -96,7 +107,10 @@ def test_extracts_matmul_biasadd_opspec():
     assert spec["semantics"]["broadcast"] == "bias broadcasts over the M axis"
     assert spec["semantics"]["reduction_axes"] == ["K"]
     assert spec["sketch"]["compute_pattern"] == "matmul_biasadd"
-    assert spec["sketch"]["memory_plan"]["bias"] == "row_broadcast_bias_read"
+    assert spec["sketch"]["axis_map"]["N"]["extent"] == 4096
+    assert spec["sketch"]["memory_plan"]["bias"]["broadcast"] == "bias[0, n] broadcasts over M"
+    assert spec["sketch"]["dtype_plan"]["bias"] == "float16"
+    assert "bias_broadcast_correctness" in spec["sketch"]["known_risks"]
 
 
 def test_extracts_softmax_opspec():
@@ -151,6 +165,14 @@ def test_extracts_moe_topk_softmax_opspec():
     assert spec["semantics"]["layout_transform"] == "topk_tuple_output"
     assert spec["sketch"]["compute_pattern"] == "moe_topk_softmax"
     assert spec["sketch"]["tile_plan"]["shape"] == [1024, 8, 2]
+    assert spec["sketch"]["axis_map"]["experts"]["extent"] == 8
+    assert spec["sketch"]["axis_map"]["top_k"] == 2
+    assert spec["sketch"]["output_contract"][0]["name"] == "top_k_probs"
+    assert spec["sketch"]["output_contract"][1]["dtype"] == "int64"
+    assert spec["sketch"]["numerical_plan"]["topk_renormalization"] == (
+        "divide_selected_probabilities_by_selected_sum"
+    )
+    assert "stable_topk_ordering" in spec["sketch"]["known_risks"]
 
 
 def test_extracts_rope_opspec():

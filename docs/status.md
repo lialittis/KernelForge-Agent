@@ -522,6 +522,9 @@ External PR and email submission are manual user actions.
   `by_support.opspec_supported: 13`.
 - Added non-generic NPU-aware Sketch templates for blocked-M/N/K matmul,
   matmul+bias, and rowwise MoE top-k softmax tuple-output generation.
+- Hardened the new Sketch templates with explicit M/N/K and row/expert/top-k
+  axis maps, dtype plans, initial tile candidates, bias and tuple-output
+  contracts, numerical plans, and backend-risk tags.
 - Added `docs/tasks/pre_submission_no_key_dev_plan.md` to track remaining
   provider-independent work before first submission.
 
@@ -632,6 +635,7 @@ Verification:
 - Local: `python scripts/extract_opspec_batch.py --bench-dir third_party/akg/akg_agents/benchmark/akg_kernels_bench_lite --repo-root . --output-dir benchmarks/parsed`
 - Local: `python -m py_compile kernel_forge/benchmark/extractor.py kernel_forge/benchmark/sketch.py`
 - Local: `PYTHONPATH=/home/tianchi/.local/lib/python3.10/site-packages python -m pytest -q tests/test_benchmark_registry_and_opspec.py`
+- Local: `python -m py_compile kernel_forge/benchmark/sketch.py`
 - Local: `PYTHONPATH=/home/tianchi/.local/lib/python3.10/site-packages python -m pytest -q`
   passed 92 project-owned tests.
 - Local: `PYTHONPATH=/home/tianchi/.local/lib/python3.10/site-packages python scripts/audit_pre_key_readiness.py --json`

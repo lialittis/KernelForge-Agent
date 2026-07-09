@@ -67,6 +67,16 @@ sketch:
   parallel_axes:
   - token_rows
   - expert_dim
+  axis_map:
+    rows:
+      source: gating_logits
+      axes: all_except_last
+      extent: 1024
+    experts:
+      source: gating_logits
+      axis: -1
+      extent: 8
+    top_k: 2
   tile_plan:
     strategy: rowwise_softmax_topk
     shape:
@@ -74,6 +84,20 @@ sketch:
     - 8
     - 2
     tunable: true
+    axes:
+    - rows
+    - experts
+    - top_k
+    initial_candidates:
+    - row_tile: 1
+      expert_tile: 8
+      top_k: 2
+    - row_tile: 4
+      expert_tile: 8
+      top_k: 2
+    - row_tile: 8
+      expert_tile: 8
+      top_k: 2
   memory_plan:
     inputs:
     - gating_logits
@@ -102,8 +126,26 @@ sketch:
     expert_tile: 8
     top_k: 2
     num_warps_or_cores: null
+  output_contract:
+  - name: top_k_probs
+    shape:
+    - 1024
+    - 2
+    dtype: float32
+    semantics: renormalized probabilities for selected experts
+  - name: top_k_indices
+    shape:
+    - 1024
+    - 2
+    dtype: int64
+    semantics: expert indices from torch.topk-compatible ordering
+  numerical_plan:
+    softmax: subtract_row_max_before_exp
+    topk_renormalization: divide_selected_probabilities_by_selected_sum
+    tie_policy: match_torch_topk_ordering_for_equal_probabilities
   known_risks:
   - torch_topk_tie_ordering
+  - stable_topk_ordering
   - softmax_numerical_stability
   - topk_probability_renormalization
   - indices_int64_output

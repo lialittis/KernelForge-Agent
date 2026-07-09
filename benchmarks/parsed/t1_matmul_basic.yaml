@@ -63,6 +63,29 @@ sketch:
   - m_tiles
   - n_tiles
   - k_reduction_tiles
+  axis_map:
+    M:
+      source: a
+      axis: 0
+      extent: 32
+    K:
+      lhs:
+        source: a
+        axis: 1
+        extent: 8192
+      rhs:
+        source: b
+        axis: 0
+        extent: 8192
+    N:
+      source: b
+      axis: 1
+      extent: 8192
+    output:
+      shape:
+      - 32
+      - 8192
+      dtype: bfloat16
   tile_plan:
     strategy: blocked_mnk_matmul
     shape:
@@ -70,6 +93,20 @@ sketch:
     - 8192
     - 8192
     tunable: true
+    axes:
+    - M
+    - N
+    - K
+    initial_candidates:
+    - block_m: 16
+      block_n: 64
+      block_k: 64
+    - block_m: 32
+      block_n: 64
+      block_k: 64
+    - block_m: 16
+      block_n: 128
+      block_k: 64
   memory_plan:
     inputs:
     - a
@@ -77,6 +114,8 @@ sketch:
     input: a_b_global_read_with_blocked_k_reuse
     output: contiguous_global_write
     intermediate: float32_accumulator_tile
+    a_tile: GM_to_local_tile[M,K]
+    b_tile: GM_to_local_tile[K,N]
     bias: none
   pipeline_plan:
     stages:
@@ -95,6 +134,7 @@ sketch:
     block_k: null
     num_warps_or_cores: null
     use_matmul_intrinsic: null
+    accumulator_tile_limit: must fit UB/L1 budget
   known_risks:
   - bf16_input_accumulation_accuracy
   - large_k_dimension_tiling
@@ -104,6 +144,15 @@ sketch:
     M: 32
     N: 8192
     K: 8192
+  dtype_plan:
+    lhs: bfloat16
+    rhs: bfloat16
+    bias: null
+    accumulator: float32
+    output: bfloat16
+  lowering_preference:
+  - prefer_backend_matmul_or_dot_intrinsic_when_available
+  - fall_back_to_blocked_k_loop_only_for_small_validation_or_debug
   output_dtype: bfloat16
 submission:
   required_files:

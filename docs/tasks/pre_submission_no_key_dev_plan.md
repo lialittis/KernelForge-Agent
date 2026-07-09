@@ -64,7 +64,7 @@ Why this matters:
 
 ## Task 2: Add Missing Sketch Templates
 
-Status: complete for the new OpSpec cases.
+Status: complete and hardened for the new OpSpec cases.
 
 Required templates:
 
@@ -81,6 +81,18 @@ Required templates:
   - tuple outputs: probabilities and indices
   - backend risks: tie behavior, stable top-k ordering, probability
     renormalization, index dtype
+
+Implemented hardening:
+
+- Matmul sketches now include explicit `axis_map` entries for M/N/K, blocked
+  tile candidates over M/N/K, dtype plans for lhs/rhs/bias/accumulator/output,
+  bias broadcast contracts, UB/L1 accumulator tile risk, and lowering
+  preference notes for backend matmul/dot intrinsics.
+- MoE top-k softmax sketch now includes explicit row/expert/top-k axis mapping,
+  tile candidates, tuple `output_contract` entries for probabilities and
+  indices, numerical plan for max-subtracted softmax and selected-probability
+  renormalization, and risk tags for top-k tie ordering, stable ordering,
+  renormalization, and int64 indices.
 
 ## Task 3: Enforce Full Coverage In Tests
 

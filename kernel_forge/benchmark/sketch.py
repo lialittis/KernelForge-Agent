@@ -298,21 +298,48 @@ def build_matmul_sketch(
     b = input_specs[1]
     m, k = a.shape
     _, n = b.shape
+    bias_spec = input_specs[2] if has_bias and len(input_specs) > 2 else None
     return {
         "operator_category": "matmul_like",
         "compute_pattern": compute_pattern,
         "parallel_axes": ["m_tiles", "n_tiles", "k_reduction_tiles"],
+        "axis_map": {
+            "M": {"source": a.name, "axis": 0, "extent": m},
+            "K": {
+                "lhs": {"source": a.name, "axis": 1, "extent": k},
+                "rhs": {"source": b.name, "axis": 0, "extent": k},
+            },
+            "N": {"source": b.name, "axis": 1, "extent": n},
+            "output": {"shape": output_spec.shape, "dtype": output_spec.dtype},
+        },
         "tile_plan": {
             "strategy": "blocked_mnk_matmul",
             "shape": [m, n, k],
             "tunable": True,
+            "axes": ["M", "N", "K"],
+            "initial_candidates": [
+                {"block_m": 16, "block_n": 64, "block_k": 64},
+                {"block_m": 32, "block_n": 64, "block_k": 64},
+                {"block_m": 16, "block_n": 128, "block_k": 64},
+            ],
         },
         "memory_plan": {
             "inputs": [item.name for item in input_specs],
             "input": "a_b_global_read_with_blocked_k_reuse",
             "output": "contiguous_global_write",
             "intermediate": "float32_accumulator_tile",
-            "bias": "row_broadcast_bias_read" if has_bias else "none",
+            "a_tile": "GM_to_local_tile[M,K]",
+            "b_tile": "GM_to_local_tile[K,N]",
+            "bias": (
+                {
+                    "source": bias_spec.name,
+                    "shape": bias_spec.shape,
+                    "broadcast": "bias[0, n] broadcasts over M",
+                    "read": "row_broadcast_bias_read",
+                }
+                if bias_spec is not None
+                else "none"
+            ),
         },
         "pipeline_plan": {"stages": stages},
         "boundary_mask": {
@@ -327,9 +354,21 @@ def build_matmul_sketch(
             "block_k": None,
             "num_warps_or_cores": None,
             "use_matmul_intrinsic": None,
+            "accumulator_tile_limit": "must fit UB/L1 budget",
         },
         "known_risks": known_risks,
         "shape_symbols": {"M": m, "N": n, "K": k},
+        "dtype_plan": {
+            "lhs": a.dtype,
+            "rhs": b.dtype,
+            "bias": bias_spec.dtype if bias_spec is not None else None,
+            "accumulator": "float32",
+            "output": output_spec.dtype,
+        },
+        "lowering_preference": [
+            "prefer_backend_matmul_or_dot_intrinsic_when_available",
+            "fall_back_to_blocked_k_loop_only_for_small_validation_or_debug",
+        ],
         "output_dtype": output_spec.dtype,
     }
 
@@ -387,10 +426,21 @@ def build_moe_topk_softmax_sketch(
         "operator_category": "reduction",
         "compute_pattern": "moe_topk_softmax",
         "parallel_axes": ["token_rows", "expert_dim"],
+        "axis_map": {
+            "rows": {"source": input_specs[0].name, "axes": "all_except_last", "extent": rows},
+            "experts": {"source": input_specs[0].name, "axis": -1, "extent": num_experts},
+            "top_k": top_k,
+        },
         "tile_plan": {
             "strategy": "rowwise_softmax_topk",
             "shape": [rows, num_experts, top_k],
             "tunable": True,
+            "axes": ["rows", "experts", "top_k"],
+            "initial_candidates": [
+                {"row_tile": 1, "expert_tile": num_experts, "top_k": top_k},
+                {"row_tile": 4, "expert_tile": num_experts, "top_k": top_k},
+                {"row_tile": 8, "expert_tile": num_experts, "top_k": top_k},
+            ],
         },
         "memory_plan": {
             "inputs": [item.name for item in input_specs],
@@ -422,8 +472,28 @@ def build_moe_topk_softmax_sketch(
             "top_k": top_k,
             "num_warps_or_cores": None,
         },
+        "output_contract": [
+            {
+                "name": output_specs[0].name,
+                "shape": output_specs[0].shape,
+                "dtype": output_specs[0].dtype,
+                "semantics": "renormalized probabilities for selected experts",
+            },
+            {
+                "name": output_specs[1].name,
+                "shape": output_specs[1].shape,
+                "dtype": output_specs[1].dtype,
+                "semantics": "expert indices from torch.topk-compatible ordering",
+            },
+        ],
+        "numerical_plan": {
+            "softmax": "subtract_row_max_before_exp",
+            "topk_renormalization": "divide_selected_probabilities_by_selected_sum",
+            "tie_policy": "match_torch_topk_ordering_for_equal_probabilities",
+        },
         "known_risks": [
             "torch_topk_tie_ordering",
+            "stable_topk_ordering",
             "softmax_numerical_stability",
             "topk_probability_renormalization",
             "indices_int64_output",

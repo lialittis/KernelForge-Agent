@@ -56,7 +56,8 @@ validation:
     - 4096
   - - 4096
     - 4096
-  - - 1
+  - &id001
+    - 1
     - 4096
   dtype_cases:
   - float16
@@ -74,6 +75,29 @@ sketch:
   - m_tiles
   - n_tiles
   - k_reduction_tiles
+  axis_map:
+    M:
+      source: a
+      axis: 0
+      extent: 4096
+    K:
+      lhs:
+        source: a
+        axis: 1
+        extent: 4096
+      rhs:
+        source: b
+        axis: 0
+        extent: 4096
+    N:
+      source: b
+      axis: 1
+      extent: 4096
+    output:
+      shape:
+      - 4096
+      - 4096
+      dtype: float16
   tile_plan:
     strategy: blocked_mnk_matmul
     shape:
@@ -81,6 +105,20 @@ sketch:
     - 4096
     - 4096
     tunable: true
+    axes:
+    - M
+    - N
+    - K
+    initial_candidates:
+    - block_m: 16
+      block_n: 64
+      block_k: 64
+    - block_m: 32
+      block_n: 64
+      block_k: 64
+    - block_m: 16
+      block_n: 128
+      block_k: 64
   memory_plan:
     inputs:
     - a
@@ -89,7 +127,13 @@ sketch:
     input: a_b_global_read_with_blocked_k_reuse
     output: contiguous_global_write
     intermediate: float32_accumulator_tile
-    bias: row_broadcast_bias_read
+    a_tile: GM_to_local_tile[M,K]
+    b_tile: GM_to_local_tile[K,N]
+    bias:
+      source: bias
+      shape: *id001
+      broadcast: bias[0, n] broadcasts over M
+      read: row_broadcast_bias_read
   pipeline_plan:
     stages:
     - load_a_tile
@@ -109,6 +153,7 @@ sketch:
     block_k: null
     num_warps_or_cores: null
     use_matmul_intrinsic: null
+    accumulator_tile_limit: must fit UB/L1 budget
   known_risks:
   - float16_accumulation_accuracy
   - bias_broadcast_correctness
@@ -118,6 +163,15 @@ sketch:
     M: 4096
     N: 4096
     K: 4096
+  dtype_plan:
+    lhs: float16
+    rhs: float16
+    bias: float16
+    accumulator: float32
+    output: float16
+  lowering_preference:
+  - prefer_backend_matmul_or_dot_intrinsic_when_available
+  - fall_back_to_blocked_k_loop_only_for_small_validation_or_debug
   output_dtype: float16
 submission:
   required_files:
