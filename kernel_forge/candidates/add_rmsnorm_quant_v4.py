@@ -9,8 +9,8 @@ except Exception:
     tl = None
 
 
-_CHUNK_SIZE = 1024
-_SUPPORTED_HIDDEN = 4096
+_BLOCK_SIZE = 4096
+_ROWS_PER_PROGRAM = 4
 _HAS_TRITON = (
     triton is not None
     and tl is not None
@@ -29,6 +29,40 @@ _HAS_TRITON = (
 if _HAS_TRITON:
 
     @triton.jit
+    def _quant_row(
+        x_ptr,
+        residual_ptr,
+        gamma_ptr,
+        scale_ptr,
+        zero_point_ptr,
+        out_ptr,
+        row,
+        n_rows: tl.constexpr,
+        n_cols: tl.constexpr,
+        eps: tl.constexpr,
+        BLOCK_SIZE: tl.constexpr,
+    ):
+        offsets = tl.arange(0, BLOCK_SIZE)
+        row_mask = row < n_rows
+        col_mask = offsets < n_cols
+        mask = row_mask & col_mask
+        base = row * n_cols + offsets
+
+        added = tl.load(x_ptr + base, mask=mask, other=0.0) + tl.load(
+            residual_ptr + base, mask=mask, other=0.0
+        )
+        gamma = tl.load(gamma_ptr + offsets, mask=col_mask, other=0.0)
+        variance = tl.sum(added * added, axis=0) / n_cols
+        rstd = 1.0 / tl.sqrt(variance + eps)
+
+        scale = tl.load(scale_ptr)
+        zero_point = tl.load(zero_point_ptr)
+        quant = added * rstd * gamma / scale + zero_point
+        rounded = tl.floor(quant + 0.5)
+        clamped = tl.minimum(tl.maximum(rounded, -128.0), 127.0)
+        tl.store(out_ptr + base, clamped.to(tl.int8), mask=mask)
+
+    @triton.jit
     def _add_rmsnorm_quant_kernel(
         x_ptr,
         residual_ptr,
@@ -36,51 +70,64 @@ if _HAS_TRITON:
         scale_ptr,
         zero_point_ptr,
         out_ptr,
+        n_rows: tl.constexpr,
         n_cols: tl.constexpr,
         eps: tl.constexpr,
-        CHUNK_SIZE: tl.constexpr,
+        BLOCK_SIZE: tl.constexpr,
     ):
-        row = tl.program_id(0)
-        offsets0 = tl.arange(0, CHUNK_SIZE)
-        offsets1 = offsets0 + CHUNK_SIZE
-        offsets2 = offsets0 + CHUNK_SIZE * 2
-        offsets3 = offsets0 + CHUNK_SIZE * 3
-        base = row * n_cols
-
-        added0 = tl.load(x_ptr + base + offsets0) + tl.load(residual_ptr + base + offsets0)
-        added1 = tl.load(x_ptr + base + offsets1) + tl.load(residual_ptr + base + offsets1)
-        added2 = tl.load(x_ptr + base + offsets2) + tl.load(residual_ptr + base + offsets2)
-        added3 = tl.load(x_ptr + base + offsets3) + tl.load(residual_ptr + base + offsets3)
-        sumsq = (
-            tl.sum(added0 * added0, axis=0)
-            + tl.sum(added1 * added1, axis=0)
-            + tl.sum(added2 * added2, axis=0)
-            + tl.sum(added3 * added3, axis=0)
+        base_row = tl.program_id(0) * 4
+        _quant_row(
+            x_ptr,
+            residual_ptr,
+            gamma_ptr,
+            scale_ptr,
+            zero_point_ptr,
+            out_ptr,
+            base_row,
+            n_rows,
+            n_cols,
+            eps,
+            BLOCK_SIZE,
         )
-        rstd = 1.0 / tl.sqrt(sumsq / n_cols + eps)
-
-        scale = tl.load(scale_ptr)
-        zero_point = tl.load(zero_point_ptr)
-        gamma0 = tl.load(gamma_ptr + offsets0)
-        gamma1 = tl.load(gamma_ptr + offsets1)
-        gamma2 = tl.load(gamma_ptr + offsets2)
-        gamma3 = tl.load(gamma_ptr + offsets3)
-        quant0 = added0 * rstd * gamma0 / scale + zero_point
-        quant1 = added1 * rstd * gamma1 / scale + zero_point
-        quant2 = added2 * rstd * gamma2 / scale + zero_point
-        quant3 = added3 * rstd * gamma3 / scale + zero_point
-        rounded0 = tl.floor(quant0 + 0.5)
-        rounded1 = tl.floor(quant1 + 0.5)
-        rounded2 = tl.floor(quant2 + 0.5)
-        rounded3 = tl.floor(quant3 + 0.5)
-        clamped0 = tl.minimum(tl.maximum(rounded0, -128.0), 127.0)
-        clamped1 = tl.minimum(tl.maximum(rounded1, -128.0), 127.0)
-        clamped2 = tl.minimum(tl.maximum(rounded2, -128.0), 127.0)
-        clamped3 = tl.minimum(tl.maximum(rounded3, -128.0), 127.0)
-        tl.store(out_ptr + base + offsets0, clamped0.to(tl.int8))
-        tl.store(out_ptr + base + offsets1, clamped1.to(tl.int8))
-        tl.store(out_ptr + base + offsets2, clamped2.to(tl.int8))
-        tl.store(out_ptr + base + offsets3, clamped3.to(tl.int8))
+        _quant_row(
+            x_ptr,
+            residual_ptr,
+            gamma_ptr,
+            scale_ptr,
+            zero_point_ptr,
+            out_ptr,
+            base_row + 1,
+            n_rows,
+            n_cols,
+            eps,
+            BLOCK_SIZE,
+        )
+        _quant_row(
+            x_ptr,
+            residual_ptr,
+            gamma_ptr,
+            scale_ptr,
+            zero_point_ptr,
+            out_ptr,
+            base_row + 2,
+            n_rows,
+            n_cols,
+            eps,
+            BLOCK_SIZE,
+        )
+        _quant_row(
+            x_ptr,
+            residual_ptr,
+            gamma_ptr,
+            scale_ptr,
+            zero_point_ptr,
+            out_ptr,
+            base_row + 3,
+            n_rows,
+            n_cols,
+            eps,
+            BLOCK_SIZE,
+        )
 
 else:
     _add_rmsnorm_quant_kernel = None
@@ -104,18 +151,20 @@ class ModelNew(nn.Module):
         n_cols = x.shape[-1]
         n_rows = x.numel() // n_cols
         try:
-            _add_rmsnorm_quant_kernel[(n_rows,)](
+            grid = ((n_rows + _ROWS_PER_PROGRAM - 1) // _ROWS_PER_PROGRAM,)
+            _add_rmsnorm_quant_kernel[grid](
                 x,
                 residual,
                 gamma,
                 scale,
                 zero_point,
                 output,
+                n_rows,
                 n_cols,
                 eps=float(self.epsilon),
-                CHUNK_SIZE=_CHUNK_SIZE,
+                BLOCK_SIZE=_BLOCK_SIZE,
             )
-            self._last_backend = "triton_row_rmsnorm_quant_bs1024x4"
+            self._last_backend = "triton_row_rmsnorm_quant_bs4096_rpp4"
             self._last_error = None
             return output
         except Exception as exc:
@@ -142,7 +191,7 @@ class ModelNew(nn.Module):
             and gamma.shape[0] == x.shape[-1]
             and scale.numel() == 1
             and zero_point.numel() == 1
-            and x.shape[-1] == _SUPPORTED_HIDDEN
+            and x.shape[-1] <= _BLOCK_SIZE
             and x.dtype == torch.float32
             and residual.dtype == torch.float32
             and gamma.dtype == torch.float32
