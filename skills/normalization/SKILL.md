@@ -77,3 +77,22 @@ operators.
 - Treat quantized normalization as a poor pure-Triton target until there is a
   reliable exact-rounding path, a safe framework quantization fallback, or a
   backend-specific quantization primitive.
+
+### `t3/layernorm_gated` Fp16 Gated RMSNorm
+
+- Source: `experiments/reports/2026-07-09-layernorm-gated-pass4.yaml`.
+- Pattern: RMSNorm over hidden size 4096 on fp16 `x`, multiply by fp16
+  `weight`, then multiply by `sigmoid(z)`.
+- PyTorch NPU keeps the visible intermediates as fp16 for `pow`, `mean`,
+  `rsqrt`, `sigmoid`, and output. A fp32-heavy Triton implementation failed
+  the official correctness gate with `max_abs_diff=0.01171875`.
+- Matching fp16 intermediate rounding in Triton fixed correctness: cast the
+  square, variance, rstd, sigmoid output, and each multiply stage back to
+  `tl.float16`.
+- Chunked reductions (`2048x2`, `1024x4`) passed small probes but failed the
+  full-shape official runner. Preserve one 4096-wide reduction per row for
+  numerical stability.
+- Row grouping is useful after correctness is fixed. The best seed,
+  `layernorm_gated_v4`, groups four rows per Triton program, passed the
+  official benchmark exactly, and reached speedup `1.5137x` with weighted
+  score `130.27`.

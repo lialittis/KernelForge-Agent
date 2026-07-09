@@ -458,6 +458,25 @@ External PR and email submission are manual user actions.
   `skills/normalization/SKILL.md`; `t2/add_rmsnorm_quant` is now a negative
   pure-Triton pre-key target unless exact rounding or framework quantization
   fallback is added.
+- Added a deterministic T3 Pass@4 seed batch for `t3/layernorm_gated`: one
+  torch reference candidate and three Triton-Ascend gated-RMSNorm variants.
+- Repaired the `layernorm_gated` Triton candidates after the first fp32-heavy
+  implementation exceeded the official error gate. The final kernels preserve
+  fp16 intermediate rounding and use `tl.sigmoid`; v3/v4 group two or four rows
+  per Triton program while preserving one 4096-wide reduction per row.
+- Probed all four `t3/layernorm_gated` Pass@4 candidates on Ascend; v2, v3,
+  and v4 launched through real Triton-Ascend backend paths.
+- Ran the official AKG Bench Lite benchmark for `t3/layernorm_gated`:
+  - `layernorm_gated_v1`: pass, speedup `0.9993x`, score `119.91`
+  - `layernorm_gated_v2`: pass, speedup `0.9206x`, score `110.48`
+  - `layernorm_gated_v3`: pass, speedup `1.5131x`, score `130.26`
+  - `layernorm_gated_v4`: pass, speedup `1.5137x`, score `130.27`
+- Added completed experiment metadata at
+  `experiments/runs/2026-07-09-layernorm-gated-pass4.yaml` and Pass@4 report
+  at `experiments/reports/2026-07-09-layernorm-gated-pass4.yaml`.
+- Promoted the fp16 gated-RMSNorm and row-grouping lesson into
+  `skills/normalization/SKILL.md`; `layernorm_gated_v4` is now the strongest
+  positive T3 pre-key seed.
 
 ## In Progress
 
@@ -490,9 +509,9 @@ External PR and email submission are manual user actions.
 5. Record the PR link, email date, and submission status in `docs/status.md`.
 6. Use `add_rmsnorm_cast_v2` as the positive normalization retrieval example
    in deterministic replay/prompt assembly before live provider generation.
-7. Use `t3/layernorm_gated` for the next manual seed based on expected reuse;
-   `t2/add_rmsnorm_quant` is now recorded as a negative exact-int8
-   quantization lesson.
+7. Use `layernorm_gated_v4` as a positive T3 normalization retrieval example;
+   `t2/add_rmsnorm_quant` is recorded as a negative exact-int8 quantization
+   lesson.
 8. Keep `replay` as the deterministic CI/regression provider; use
    `scripts/run_replay_regression.py` for the current updated-AKG
    `t1/sigmoid_scale_sum` replay regression path.
@@ -504,7 +523,8 @@ External PR and email submission are manual user actions.
    trajectory, and `add_rmsnorm_cast_v2` for a positive T2 normalization
    trajectory, and `rope_v4`/`rope_v1` for a RoPE intrinsic-vs-Triton parity
    trajectory, and `add_rmsnorm_quant_v2`-`v4` for a quantized-normalization
-   boundary-failure trajectory.
+   boundary-failure trajectory, and `layernorm_gated_v4` for a positive T3
+   fp16 gated-RMSNorm row-grouping trajectory.
 10. Use
     `experiments/reports/2026-07-09-remaining-reference-preeval-updated-akg.yaml`
     as the baseline for all remaining AKG Bench Lite operators before live
@@ -529,39 +549,38 @@ Date: 2026-07-09
 Agent: Codex
 Branch: main
 Summary:
-- Added and evaluated a deterministic `t2/add_rmsnorm_quant` Pass@4 seed batch
+- Added and evaluated a deterministic `t3/layernorm_gated` Pass@4 seed batch
   on the Ascend worker under updated AKG.
-- The torch reference candidate passed with speedup `0.9981x`; all three pure
-  Triton quant variants launched but failed official correctness with one-int8
-  boundary differences.
-- Recorded the run as a negative quantized-normalization lesson before live AI
-  provider generation.
+- Repaired Triton numerical behavior by matching fp16 intermediates, then
+  changed v3/v4 to row-grouped 4096-wide kernels after chunked reductions
+  failed full-shape correctness.
+- All four final candidates passed; `layernorm_gated_v4` is best with speedup
+  `1.5137x` and weighted score `130.27`.
 
 Changed Files:
 - `docs/status.md`
-- `experiments/reports/2026-07-09-add-rmsnorm-quant-pass4.yaml`
-- `experiments/runs/2026-07-09-add-rmsnorm-quant-pass4.yaml`
-- `kernel_forge/candidates/add_rmsnorm_quant_v1.py`
-- `kernel_forge/candidates/add_rmsnorm_quant_v2.py`
-- `kernel_forge/candidates/add_rmsnorm_quant_v3.py`
-- `kernel_forge/candidates/add_rmsnorm_quant_v4.py`
-- `scripts/create_add_rmsnorm_quant_pass4_submissions.sh`
-- `scripts/probe_add_rmsnorm_quant_backend.py`
+- `experiments/reports/2026-07-09-layernorm-gated-pass4.yaml`
+- `experiments/runs/2026-07-09-layernorm-gated-pass4.yaml`
+- `kernel_forge/candidates/layernorm_gated_v1.py`
+- `kernel_forge/candidates/layernorm_gated_v2.py`
+- `kernel_forge/candidates/layernorm_gated_v3.py`
+- `kernel_forge/candidates/layernorm_gated_v4.py`
+- `scripts/create_layernorm_gated_pass4_submissions.sh`
+- `scripts/probe_layernorm_gated_backend.py`
 - `skills/normalization/SKILL.md`
 - `tasks/active.md`
-- `tests/test_add_rmsnorm_quant_pass4.py`
+- `tests/test_layernorm_gated_pass4.py`
 
 Verification:
-- Local: `python -m pytest tests/test_add_rmsnorm_quant_pass4.py`
-- Local: `python -m py_compile` for all four quant candidates and the probe
-  script.
+- Local: `python -m pytest tests/test_layernorm_gated_pass4.py`
+- Local: `python -m py_compile` for all four layernorm-gated candidates and
+  the probe script.
 - Ascend: generated submissions with
-  `OUTPUT_ROOT=outputs/submissions/add_rmsnorm_quant_pass4_2026_07_09`.
+  `OUTPUT_ROOT=outputs/submissions/layernorm_gated_pass4_2026_07_09`.
 - Ascend: probed all four candidates with
-  `scripts/probe_add_rmsnorm_quant_backend.py --shape 128 4096`.
+  `scripts/probe_layernorm_gated_backend.py --shape 128 4096`.
 - Ascend: official `run_bench.py` for all four candidates with CANN's
-  `PYTHONPATH` preserved; v1 passed and v2/v3/v4 failed exact int8
-  correctness.
+  `PYTHONPATH` preserved; all four passed, with v4 best at `1.5137x`.
 
 Open Issues:
 - GitLink PR is not opened yet; this is a manual user action.
@@ -575,5 +594,6 @@ Open Issues:
   replay/manual Pass@4 results when credentials/model selection are available.
 
 Next Suggested Step:
-- Before an AI API key/model config is available, use `t3/layernorm_gated` as
-  the next deterministic manual seed target.
+- Before an AI API key/model config is available, either perform a completion
+  audit of the pre-key objective or choose a non-priority operator such as
+  `t2/moe_topk_softmax` for extra manual evidence.
