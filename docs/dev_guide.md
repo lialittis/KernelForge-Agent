@@ -173,6 +173,19 @@ API key, but successful Agent attempts require an AKG Agents `standard` model
 level configured via `AKG_AGENTS_STANDARD_*`, `~/.akg/settings.json`, or
 `.akg/settings*.json`.
 
+After a `standard` model level is configured, use the project wrapper for the
+full runner-path comparison:
+
+```bash
+CASE=sigmoid_scale_sum \
+OUTPUT=outputs/results/akg_agents_full_sigmoid_scale_sum_$(date +%Y_%m_%d).json \
+bash scripts/run_akg_agents_full_comparison.sh
+```
+
+The wrapper sources CANN and the known venv when present, preserves CANN's
+Python paths, adds the AKG Agents Python path, and fails early with a clear
+message if no `standard` model configuration is visible.
+
 Use environment variables if the rented machine differs:
 
 ```bash

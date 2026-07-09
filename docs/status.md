@@ -482,6 +482,10 @@ External PR and email submission are manual user actions.
   OpSpecs, priority sketches, replay regression, and priority manual seeds are
   complete; full AKG Agents runner parity remains blocked until a `standard`
   model level is configured.
+- Added `scripts/run_akg_agents_full_comparison.sh` as the repeatable
+  post-configuration entry point for AKG Agents full runner comparison. It
+  preserves CANN's Python paths, adds the AKG Agents path, and fails early with
+  a clear message when no `standard` model configuration is visible.
 
 ## In Progress
 
@@ -542,8 +546,8 @@ External PR and email submission are manual user actions.
     manual `t1/sigmoid_scale_sum`, `t1/softmax`, `t1/fused_silu_and_mul`, and
     replay `t1/sigmoid_scale_sum` have been rebaselined.
 13. Configure an AKG Agents `standard` model level, then rerun
-    `run_torch_bench_lite.py --backend npu --mode full --cases
-    sigmoid_scale_sum --pass-n 4` for a full runner-path comparison.
+    `scripts/run_akg_agents_full_comparison.sh` for a full runner-path
+    comparison.
 14. Run a first live `provider=openai` Pass@4 generation cycle for
     `t1/sigmoid_scale_sum` once credentials and model selection are available.
 15. Import live generated benchmark results after Ascend verification.
@@ -564,19 +568,16 @@ Summary:
 
 Changed Files:
 - `docs/status.md`
+- `docs/dev_guide.md`
 - `docs/tasks/pre_key_objective_audit.md`
+- `scripts/run_akg_agents_full_comparison.sh`
 - `tasks/active.md`
 
 Verification:
-- Local: inspected `docs/status.md`, `tasks/active.md`,
-  `experiments/reports/2026-07-09-runner-path-comparison-sigmoid-scale-sum.yaml`,
-  `scripts/run_replay_regression.py`, `kernel_forge/experiments/passn.py`,
-  `tests/test_experiment_result_import.py`, and
-  `tests/test_benchmark_registry_and_opspec.py`.
+- Local: `bash -n scripts/run_akg_agents_full_comparison.sh`
+- Local: `bash scripts/run_akg_agents_full_comparison.sh --help`
 - Local: `python -m pytest tests/test_experiment_result_import.py
-  tests/test_benchmark_registry_and_opspec.py tests/test_layernorm_gated_pass4.py`.
-- Local: YAML parse check for `docs/tasks/pre_key_objective_audit.md` was not
-  needed; it is Markdown.
+  tests/test_benchmark_registry_and_opspec.py tests/test_layernorm_gated_pass4.py`
 - Local: `git diff --check`.
 
 Open Issues:

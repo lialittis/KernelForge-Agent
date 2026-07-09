@@ -54,7 +54,8 @@ and agents.
    non-priority operator such as `t2/moe_topk_softmax` if more manual evidence
    is needed.
 14. Configure an AKG Agents `standard` model level before rerunning
-   `run_torch_bench_lite.py --mode full` for full runner-path comparison.
+   `scripts/run_akg_agents_full_comparison.sh` for full runner-path
+   comparison.
 15. Record model/provider, prompt version, retrieved skills, and candidate index
    for every generated experiment.
 16. Promote reusable generation, repair, or tuning lessons into `skills/`.

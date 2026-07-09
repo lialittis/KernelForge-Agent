@@ -77,6 +77,18 @@ python third_party/akg/akg_agents/examples/kernel_related/run_torch_bench_lite.p
   --output outputs/results/akg_agents_full_sigmoid_YYYY_MM_DD.json
 ```
 
+Equivalent project wrapper:
+
+```bash
+CASE=sigmoid_scale_sum \
+OUTPUT=outputs/results/akg_agents_full_sigmoid_YYYY_MM_DD.json \
+bash scripts/run_akg_agents_full_comparison.sh
+```
+
+Before a model is configured, the wrapper exits early with a clear missing
+`standard` model configuration message. Use `--check-only` to print the
+resolved command without launching the runner.
+
 ### Generated-Result Import Automation
 
 Status: complete for replay/provider-generated candidates.
