@@ -595,6 +595,12 @@ Verification:
   launching the runner.
 - Ascend: no-key preflight exited `2` with the expected missing AKG Agents
   `standard` model configuration message.
+- Ascend: `scripts/compare_runner_results.py` compared the current standalone
+  replay Pass@4 report with
+  `outputs/results/akg_agents_runner_probe_sigmoid_2026_07_09.json`; it
+  reported `comparable=false`, AKG status
+  `blocked_pre_key_provider_config`, and decision
+  `standalone_tools_run_bench_py`.
 
 Open Issues:
 - GitLink PR is not opened yet; this is a manual user action.
