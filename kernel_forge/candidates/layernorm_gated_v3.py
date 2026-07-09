@@ -9,8 +9,8 @@ except Exception:
     tl = None
 
 
-_CHUNK_SIZE = 2048
-_SUPPORTED_HIDDEN = 4096
+_BLOCK_SIZE = 4096
+_ROWS_PER_PROGRAM = 2
 _HAS_TRITON = (
     triton is not None
     and tl is not None
@@ -27,39 +27,52 @@ _HAS_TRITON = (
 if _HAS_TRITON:
 
     @triton.jit
+    def _gated_rmsnorm_row(
+        x_ptr,
+        weight_ptr,
+        z_ptr,
+        out_ptr,
+        row,
+        n_rows: tl.constexpr,
+        n_cols: tl.constexpr,
+        eps: tl.constexpr,
+        BLOCK_SIZE: tl.constexpr,
+    ):
+        offsets = tl.arange(0, BLOCK_SIZE)
+        row_mask = row < n_rows
+        col_mask = offsets < n_cols
+        mask = row_mask & col_mask
+        base = row * n_cols + offsets
+
+        x = tl.load(x_ptr + base, mask=mask, other=0.0)
+        weight = tl.load(weight_ptr + offsets, mask=col_mask, other=0.0)
+        z = tl.load(z_ptr + base, mask=mask, other=0.0)
+        x2 = (x * x).to(tl.float16)
+        variance = (tl.sum(x2, axis=0) / n_cols).to(tl.float16)
+        rstd = tl.rsqrt((variance + eps).to(tl.float16)).to(tl.float16)
+        gate = tl.sigmoid(z).to(tl.float16)
+        normed = (x * rstd).to(tl.float16)
+        scaled = (normed * weight).to(tl.float16)
+        tl.store(out_ptr + base, (scaled * gate).to(tl.float16), mask=mask)
+
+    @triton.jit
     def _layernorm_gated_kernel(
         x_ptr,
         weight_ptr,
         z_ptr,
         out_ptr,
+        n_rows: tl.constexpr,
         n_cols: tl.constexpr,
         eps: tl.constexpr,
-        CHUNK_SIZE: tl.constexpr,
+        BLOCK_SIZE: tl.constexpr,
     ):
-        row = tl.program_id(0)
-        offsets0 = tl.arange(0, CHUNK_SIZE)
-        offsets1 = offsets0 + CHUNK_SIZE
-        base = row * n_cols
-
-        x0 = tl.load(x_ptr + base + offsets0)
-        x1 = tl.load(x_ptr + base + offsets1)
-        x20 = (x0 * x0).to(tl.float16)
-        x21 = (x1 * x1).to(tl.float16)
-        variance = ((tl.sum(x20, axis=0) + tl.sum(x21, axis=0)) / n_cols).to(tl.float16)
-        rstd = tl.rsqrt((variance + eps).to(tl.float16)).to(tl.float16)
-
-        w0 = tl.load(weight_ptr + offsets0)
-        w1 = tl.load(weight_ptr + offsets1)
-        z0 = tl.load(z_ptr + base + offsets0)
-        z1 = tl.load(z_ptr + base + offsets1)
-        gate0 = tl.sigmoid(z0).to(tl.float16)
-        gate1 = tl.sigmoid(z1).to(tl.float16)
-        normed0 = (x0 * rstd).to(tl.float16)
-        normed1 = (x1 * rstd).to(tl.float16)
-        scaled0 = (normed0 * w0).to(tl.float16)
-        scaled1 = (normed1 * w1).to(tl.float16)
-        tl.store(out_ptr + base + offsets0, (scaled0 * gate0).to(tl.float16))
-        tl.store(out_ptr + base + offsets1, (scaled1 * gate1).to(tl.float16))
+        base_row = tl.program_id(0) * 2
+        _gated_rmsnorm_row(
+            x_ptr, weight_ptr, z_ptr, out_ptr, base_row, n_rows, n_cols, eps, BLOCK_SIZE
+        )
+        _gated_rmsnorm_row(
+            x_ptr, weight_ptr, z_ptr, out_ptr, base_row + 1, n_rows, n_cols, eps, BLOCK_SIZE
+        )
 
 else:
     _layernorm_gated_kernel = None
@@ -83,16 +96,18 @@ class ModelNew(nn.Module):
         n_cols = x.shape[-1]
         n_rows = x.numel() // n_cols
         try:
-            _layernorm_gated_kernel[(n_rows,)](
+            grid = ((n_rows + _ROWS_PER_PROGRAM - 1) // _ROWS_PER_PROGRAM,)
+            _layernorm_gated_kernel[grid](
                 x,
                 weight,
                 z,
                 output,
+                n_rows,
                 n_cols,
                 eps=float(self.eps),
-                CHUNK_SIZE=_CHUNK_SIZE,
+                BLOCK_SIZE=_BLOCK_SIZE,
             )
-            self._last_backend = "triton_row_gated_rmsnorm_bs2048x2"
+            self._last_backend = "triton_row_gated_rmsnorm_bs4096_rpp2"
             self._last_error = None
             return output
         except Exception as exc:
@@ -115,7 +130,7 @@ class ModelNew(nn.Module):
             and x.ndim >= 2
             and weight.ndim == 1
             and weight.shape[0] == x.shape[-1]
-            and x.shape[-1] == _SUPPORTED_HIDDEN
+            and x.shape[-1] <= _BLOCK_SIZE
             and x.dtype == torch.float16
             and weight.dtype == torch.float16
             and z.dtype == torch.float16
