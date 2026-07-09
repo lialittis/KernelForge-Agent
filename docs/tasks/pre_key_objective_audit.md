@@ -49,6 +49,12 @@ pre-key artifacts are complete, standalone `tools/run_bench.py` remains the
 authoritative pre-key scorer, and full AKG Agents runner comparison is gated on
 `standard` model configuration.
 
+Use `scripts/audit_pre_key_readiness.py --check-ascend-ssh --json` when
+checking whether the local machine can also reach the Ascend worker through
+BatchMode SSH. This optional check is not part of the default local audit
+because it contacts the remote worker, but it records the same external access
+gate that blocks `scripts/run_ascend_verifier_probe.sh`.
+
 ## Requirement Status
 
 ### Runner Path Comparison
@@ -235,7 +241,8 @@ Evidence:
 ## Remaining Work Before Full Objective Completion
 
 1. Run `scripts/audit_pre_key_readiness.py --json` before changing provider or
-   runner state; use `--require-standard-config` after credentials exist.
+   runner state; use `--check-ascend-ssh` when diagnosing remote-worker access
+   and `--require-standard-config` after credentials exist.
 2. Configure an AKG Agents `standard` model level and verify it with
    `scripts/check_akg_agents_model_config.py --level standard`.
 3. Run `run_torch_bench_lite.py --mode full --backend npu --cases

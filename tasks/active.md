@@ -30,7 +30,9 @@ and agents.
 9. Use `scripts/audit_pre_key_readiness.py --json` as the machine-checkable
    pre-key readiness gate. Current expected status without a key is
    `pre_key_deterministic_complete_provider_config_missing`; after credentials
-   exist, run it with `--require-standard-config`.
+   exist, run it with `--require-standard-config`. Add `--check-ascend-ssh`
+   when diagnosing whether the local machine currently has BatchMode SSH access
+   to the Ascend worker.
 10. Use completed manual Pass@4 cycles as retrieval examples:
    updated-AKG `sigmoid_scale_sum_v2` for a positive reduction trajectory and
    updated-AKG `fused_silu_and_mul_v3` for a correctness-positive but

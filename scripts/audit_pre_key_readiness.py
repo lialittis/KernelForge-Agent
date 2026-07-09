@@ -4,6 +4,8 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import shlex
+import subprocess
 import sys
 from pathlib import Path
 from typing import Any, Mapping
@@ -75,10 +77,30 @@ def main() -> int:
         action="store_true",
         help="Return exit code 2 when deterministic work is complete but AKG Agents standard config is missing.",
     )
+    parser.add_argument(
+        "--check-ascend-ssh",
+        action="store_true",
+        help="Optionally check BatchMode SSH access to the Ascend worker.",
+    )
+    parser.add_argument("--ascend-host", default="ascend-kf", help="SSH host alias for the Ascend worker.")
+    parser.add_argument(
+        "--remote-dir",
+        default="/data/KernelForge-Agent",
+        help="Repository path on the Ascend worker.",
+    )
+    parser.add_argument("--ssh-timeout", type=int, default=10, help="SSH connection timeout in seconds.")
     args = parser.parse_args()
 
     repo_root = Path(args.repo_root).resolve()
-    audit = audit_pre_key_readiness(repo_root, environ=os.environ, home=Path.home())
+    audit = audit_pre_key_readiness(
+        repo_root,
+        environ=os.environ,
+        home=Path.home(),
+        check_ascend_ssh=args.check_ascend_ssh,
+        ascend_host=args.ascend_host,
+        remote_dir=args.remote_dir,
+        ssh_timeout=args.ssh_timeout,
+    )
 
     if args.output:
         output = Path(args.output)
@@ -102,6 +124,10 @@ def audit_pre_key_readiness(
     *,
     environ: Mapping[str, str],
     home: Path,
+    check_ascend_ssh: bool = False,
+    ascend_host: str = "ascend-kf",
+    remote_dir: str = "/data/KernelForge-Agent",
+    ssh_timeout: int = 10,
 ) -> dict[str, Any]:
     checks: list[dict[str, Any]] = []
 
@@ -113,12 +139,22 @@ def audit_pre_key_readiness(
     checks.append(_replay_report_check(repo_root))
     checks.append(_priority_report_check(repo_root))
     checks.append(_standard_model_config_check(repo_root, environ=environ, home=home))
+    if check_ascend_ssh:
+        checks.append(
+            _ascend_ssh_check(
+                repo_root,
+                host=ascend_host,
+                remote_dir=remote_dir,
+                timeout=ssh_timeout,
+            )
+        )
 
     blocking = [check for check in checks if check["status"] == "blocked"]
     failing = [check for check in checks if check["status"] == "fail"]
     deterministic_complete = not failing
     model_check = next(check for check in checks if check["id"] == "akg_agents_standard_model_config")
     full_runner_ready = model_check["status"] == "pass"
+    ascend_check = next((check for check in checks if check["id"] == "ascend_batchmode_ssh"), None)
 
     if not deterministic_complete:
         status = "incomplete"
@@ -136,6 +172,7 @@ def audit_pre_key_readiness(
             "failing_checks": [check["id"] for check in failing],
             "blocked_checks": [check["id"] for check in blocking],
             "authoritative_pre_key_runner": "standalone_tools_run_bench_py",
+            "ascend_batchmode_ssh_ready": None if ascend_check is None else ascend_check["status"] == "pass",
             "next_unblock": (
                 "Configure AKG Agents standard model credentials, then run "
                 "scripts/run_akg_agents_full_comparison.sh and compare with "
@@ -315,6 +352,71 @@ def _standard_model_config_check(
         "available_levels": result["available_levels"],
         "checked_paths": result["checked_paths"],
     }
+
+
+def _ascend_ssh_check(
+    repo_root: Path,
+    *,
+    host: str,
+    remote_dir: str,
+    timeout: int,
+) -> dict[str, Any]:
+    remote_cmd = f"cd {shlex.quote(remote_dir)} && git status --short --branch"
+    cmd = [
+        "ssh",
+        "-o",
+        "BatchMode=yes",
+        "-o",
+        f"ConnectTimeout={timeout}",
+        host,
+        remote_cmd,
+    ]
+    try:
+        completed = subprocess.run(
+            cmd,
+            cwd=repo_root,
+            text=True,
+            capture_output=True,
+            check=False,
+            timeout=max(timeout + 5, 10),
+        )
+    except subprocess.TimeoutExpired as exc:
+        return {
+            "id": "ascend_batchmode_ssh",
+            "status": "blocked",
+            "host": host,
+            "remote_dir": remote_dir,
+            "command": _redacted_command(cmd),
+            "returncode": None,
+            "reason": f"timeout after {exc.timeout} seconds",
+        }
+    except OSError as exc:
+        return {
+            "id": "ascend_batchmode_ssh",
+            "status": "blocked",
+            "host": host,
+            "remote_dir": remote_dir,
+            "command": _redacted_command(cmd),
+            "returncode": None,
+            "reason": f"{type(exc).__name__}: {exc}",
+        }
+
+    output = (completed.stdout or "").strip()
+    error = (completed.stderr or "").strip()
+    return {
+        "id": "ascend_batchmode_ssh",
+        "status": "pass" if completed.returncode == 0 else "blocked",
+        "host": host,
+        "remote_dir": remote_dir,
+        "command": _redacted_command(cmd),
+        "returncode": completed.returncode,
+        "branch_status": output if completed.returncode == 0 else None,
+        "reason": None if completed.returncode == 0 else (error or output or "ssh command failed"),
+    }
+
+
+def _redacted_command(cmd: list[str]) -> list[str]:
+    return [str(part) for part in cmd]
 
 
 def _load_yaml(path: Path) -> dict[str, Any]:

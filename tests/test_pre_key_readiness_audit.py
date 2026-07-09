@@ -53,6 +53,45 @@ def test_pre_key_audit_detects_standard_config_from_env(tmp_path):
     assert model_check["source"] == "env: AKG_AGENTS_STANDARD_*"
 
 
+def test_pre_key_audit_optional_ssh_check_reports_ready(tmp_path):
+    fake_ssh = _write_fake_ssh(tmp_path, 'printf "## main...origin/main\\n"\nexit 0\n')
+    completed = _run_audit(
+        tmp_path,
+        "--json",
+        "--check-ascend-ssh",
+        extra_env={"PATH": f"{fake_ssh.parent}{os.pathsep}{os.environ['PATH']}"},
+    )
+
+    assert completed.returncode == 0
+    payload = json.loads(completed.stdout)
+    assert payload["overall"]["ascend_batchmode_ssh_ready"] is True
+    ssh_check = _check(payload, "ascend_batchmode_ssh")
+    assert ssh_check["status"] == "pass"
+    assert ssh_check["branch_status"] == "## main...origin/main"
+
+
+def test_pre_key_audit_optional_ssh_check_reports_blocked(tmp_path):
+    fake_ssh = _write_fake_ssh(
+        tmp_path,
+        'printf "Permission denied (password).\\n" >&2\nexit 255\n',
+    )
+    completed = _run_audit(
+        tmp_path,
+        "--json",
+        "--check-ascend-ssh",
+        extra_env={"PATH": f"{fake_ssh.parent}{os.pathsep}{os.environ['PATH']}"},
+    )
+
+    assert completed.returncode == 0
+    payload = json.loads(completed.stdout)
+    assert payload["overall"]["ascend_batchmode_ssh_ready"] is False
+    assert "ascend_batchmode_ssh" in payload["overall"]["blocked_checks"]
+    ssh_check = _check(payload, "ascend_batchmode_ssh")
+    assert ssh_check["status"] == "blocked"
+    assert ssh_check["returncode"] == 255
+    assert "Permission denied" in ssh_check["reason"]
+
+
 def _run_audit(
     tmp_path: Path,
     *args: str,
@@ -89,3 +128,12 @@ def _check(payload: dict, check_id: str) -> dict:
         if check["id"] == check_id:
             return check
     raise AssertionError(f"missing check {check_id}")
+
+
+def _write_fake_ssh(tmp_path: Path, body: str) -> Path:
+    bin_dir = tmp_path / "bin"
+    bin_dir.mkdir(exist_ok=True)
+    fake_ssh = bin_dir / "ssh"
+    fake_ssh.write_text(f"#!/bin/sh\n{body}", encoding="utf-8")
+    fake_ssh.chmod(0o755)
+    return fake_ssh
