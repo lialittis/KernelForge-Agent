@@ -249,6 +249,16 @@ The output JSON can be passed to `scripts/compare_runner_results.py`; the
 comparator will classify it as `verifier_only_probe` and keep standalone
 `tools/run_bench.py` authoritative until full-mode AKG Agents results exist.
 
+From the local machine, after the Ascend SSH `ControlMaster` session is open,
+the same probe plus comparison can be launched through the BatchMode wrapper:
+
+```bash
+bash scripts/run_ascend_verifier_probe.sh
+```
+
+Use `CHECK_ONLY=1 bash scripts/run_ascend_verifier_probe.sh` to inspect the
+remote paths and commands without connecting.
+
 Use environment variables if the rented machine differs:
 
 ```bash

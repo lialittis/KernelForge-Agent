@@ -37,6 +37,11 @@ it is deliberately classified as partial evidence because it does not exercise
 `run_torch_bench_lite.py --mode full`, generated Pass@4 attempts, extraction,
 leaderboard scoring, or full runner result schema.
 
+For local-to-Ascend execution after the SSH `ControlMaster` session is open,
+use `scripts/run_ascend_verifier_probe.sh`; it fast-forwards the worker, keeps
+CANN `PYTHONPATH` entries, runs the verifier probe, and writes the comparator
+YAML under `outputs/results/`.
+
 ## Requirement Status
 
 ### Runner Path Comparison
@@ -66,6 +71,9 @@ Evidence:
   `scripts/compare_runner_results.py` as `verifier_only_probe`, which keeps
   standalone `tools/run_bench.py` authoritative until full-mode AKG Agents
   output exists.
+- Project-owned local wrapper exists:
+  `scripts/run_ascend_verifier_probe.sh` for BatchMode SSH execution once a
+  key-backed or ControlMaster session is available.
 
 Why not complete:
 

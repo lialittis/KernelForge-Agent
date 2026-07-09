@@ -499,6 +499,9 @@ External PR and email submission are manual user actions.
   AKG Agents probe for existing candidates. `scripts/compare_runner_results.py`
   now classifies its JSON as `verifier_only_probe` so this partial evidence is
   not confused with full AKG Agents Pass@4/leaderboard output.
+- Added `scripts/run_ascend_verifier_probe.sh` as the local BatchMode wrapper
+  that fast-forwards the Ascend worker, preserves CANN `PYTHONPATH`, runs the
+  verifier-only probe, and writes the comparator YAML once SSH is available.
 
 ## In Progress
 
@@ -563,9 +566,9 @@ External PR and email submission are manual user actions.
     `scripts/run_akg_agents_full_comparison.sh` for a full runner-path
     comparison and `scripts/compare_runner_results.py` for schema/result
     comparison.
-14. Optionally run `scripts/run_akg_agents_verifier_probe.py` after reopening
-    the Ascend `ControlMaster` session to smoke-test the AKG Agents verifier
-    path on `sigmoid_scale_sum_v2`; keep it labeled as partial evidence.
+14. Optionally run `scripts/run_ascend_verifier_probe.sh` after reopening the
+    Ascend `ControlMaster` session to smoke-test the AKG Agents verifier path
+    on `sigmoid_scale_sum_v2`; keep it labeled as partial evidence.
 15. Run a first live `provider=openai` Pass@4 generation cycle for
     `t1/sigmoid_scale_sum` once credentials and model selection are available.
 16. Import live generated benchmark results after Ascend verification.
@@ -578,26 +581,22 @@ Date: 2026-07-09
 Agent: Codex
 Branch: main
 Summary:
-- Added a no-key AKG Agents verifier-only probe for existing candidates.
-- Updated the runner comparator to classify verifier-only probe JSON as partial
-  evidence, not full runner parity.
-- Could not run the new probe on Ascend in this session because the key-only
-  SSH/ControlMaster path expired and the gateway requested password auth.
+- Added a local BatchMode wrapper for the no-key AKG Agents verifier-only
+  probe on Ascend.
+- The wrapper fast-forwards the worker, preserves CANN `PYTHONPATH`, runs the
+  probe, and compares its JSON with the standalone replay Pass@4 report.
+- Ascend execution still waits for a reopened SSH `ControlMaster` session.
 
 Changed Files:
 - `docs/status.md`
 - `docs/dev_guide.md`
-- `docs/tasks/pre_key_objective_audit.md`
-- `scripts/compare_runner_results.py`
-- `scripts/run_akg_agents_verifier_probe.py`
+- `scripts/run_ascend_verifier_probe.sh`
 - `tasks/active.md`
-- `tests/test_runner_result_comparison.py`
 
 Verification:
-- Local: `python -m pytest tests/test_runner_result_comparison.py`
-- Local: `python -m py_compile scripts/run_akg_agents_verifier_probe.py
-  scripts/compare_runner_results.py`
-- Local: `python scripts/run_akg_agents_verifier_probe.py --help`
+- Local: `bash -n scripts/run_ascend_verifier_probe.sh`
+- Local: `bash scripts/run_ascend_verifier_probe.sh --help`
+- Local: `CHECK_ONLY=1 bash scripts/run_ascend_verifier_probe.sh`
 - Local: `git diff --check`
 - Ascend sync/run attempt: `ssh -o BatchMode=yes ascend-kf
   'git -C /data/KernelForge-Agent pull --ff-only'` failed with
@@ -618,6 +617,5 @@ Open Issues:
 
 Next Suggested Step:
 - Reopen the Ascend SSH `ControlMaster` session, fast-forward the worker, then
-  run `scripts/run_akg_agents_verifier_probe.py` for
-  `sigmoid_scale_sum_v2`; full runner parity still needs `standard` model
-  configuration.
+  run `bash scripts/run_ascend_verifier_probe.sh`; full runner parity still
+  needs `standard` model configuration.
