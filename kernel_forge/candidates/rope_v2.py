@@ -21,6 +21,7 @@ _HAS_TRITON = (
     and hasattr(triton, "jit")
     and hasattr(tl, "arange")
     and hasattr(tl, "where")
+    and hasattr(tl, "float32")
     and hasattr(tl, "constexpr")
 )
 
@@ -49,10 +50,10 @@ if _HAS_TRITON:
         row_base = row * head_dim
         seq = row - (row // seq_len) * seq_len
         trig_base = seq * head_dim
-        x = tl.load(x_ptr + row_base + offsets, mask=mask, other=0.0)
-        x_partner = tl.load(x_ptr + row_base + partner_offsets, mask=mask, other=0.0)
-        c = tl.load(cos_ptr + trig_base + offsets, mask=mask, other=0.0)
-        s = tl.load(sin_ptr + trig_base + offsets, mask=mask, other=0.0)
+        x = tl.load(x_ptr + row_base + offsets, mask=mask, other=0.0).to(tl.float32)
+        x_partner = tl.load(x_ptr + row_base + partner_offsets, mask=mask, other=0.0).to(tl.float32)
+        c = tl.load(cos_ptr + trig_base + offsets, mask=mask, other=0.0).to(tl.float32)
+        s = tl.load(sin_ptr + trig_base + offsets, mask=mask, other=0.0).to(tl.float32)
         y = c * x + s * (rotate_sign * x_partner)
         tl.store(out_ptr + row_base + offsets, y, mask=mask)
 
