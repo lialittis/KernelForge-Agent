@@ -10,7 +10,6 @@ except Exception:
 
 
 _BLOCK_SIZE = 4096
-_ROWS_PER_PROGRAM = 4
 _HAS_TRITON = (
     triton is not None
     and tl is not None
@@ -29,40 +28,6 @@ _HAS_TRITON = (
 if _HAS_TRITON:
 
     @triton.jit
-    def _quant_row(
-        x_ptr,
-        residual_ptr,
-        gamma_ptr,
-        scale_ptr,
-        zero_point_ptr,
-        out_ptr,
-        row,
-        n_rows: tl.constexpr,
-        n_cols: tl.constexpr,
-        eps: tl.constexpr,
-        BLOCK_SIZE: tl.constexpr,
-    ):
-        offsets = tl.arange(0, BLOCK_SIZE)
-        row_mask = row < n_rows
-        col_mask = offsets < n_cols
-        mask = row_mask & col_mask
-        base = row * n_cols + offsets
-
-        added = tl.load(x_ptr + base, mask=mask, other=0.0) + tl.load(
-            residual_ptr + base, mask=mask, other=0.0
-        )
-        gamma = tl.load(gamma_ptr + offsets, mask=col_mask, other=0.0)
-        variance = tl.sum(added * added, axis=0) / n_cols
-        rstd = 1.0 / tl.sqrt(variance + eps)
-
-        scale = tl.load(scale_ptr)
-        zero_point = tl.load(zero_point_ptr)
-        quant = added * rstd * gamma / scale + zero_point
-        rounded = tl.floor(quant + 0.5)
-        clamped = tl.minimum(tl.maximum(rounded, -128.0), 127.0)
-        tl.store(out_ptr + base, clamped.to(tl.int8), mask=mask)
-
-    @triton.jit
     def _add_rmsnorm_quant_kernel(
         x_ptr,
         residual_ptr,
@@ -70,64 +35,29 @@ if _HAS_TRITON:
         scale_ptr,
         zero_point_ptr,
         out_ptr,
-        n_rows: tl.constexpr,
         n_cols: tl.constexpr,
         eps: tl.constexpr,
         BLOCK_SIZE: tl.constexpr,
     ):
-        base_row = tl.program_id(0) * 4
-        _quant_row(
-            x_ptr,
-            residual_ptr,
-            gamma_ptr,
-            scale_ptr,
-            zero_point_ptr,
-            out_ptr,
-            base_row,
-            n_rows,
-            n_cols,
-            eps,
-            BLOCK_SIZE,
+        row = tl.program_id(0)
+        offsets = tl.arange(0, BLOCK_SIZE)
+        mask = offsets < n_cols
+        base = row * n_cols + offsets
+
+        added = tl.load(x_ptr + base, mask=mask, other=0.0) + tl.load(
+            residual_ptr + base, mask=mask, other=0.0
         )
-        _quant_row(
-            x_ptr,
-            residual_ptr,
-            gamma_ptr,
-            scale_ptr,
-            zero_point_ptr,
-            out_ptr,
-            base_row + 1,
-            n_rows,
-            n_cols,
-            eps,
-            BLOCK_SIZE,
-        )
-        _quant_row(
-            x_ptr,
-            residual_ptr,
-            gamma_ptr,
-            scale_ptr,
-            zero_point_ptr,
-            out_ptr,
-            base_row + 2,
-            n_rows,
-            n_cols,
-            eps,
-            BLOCK_SIZE,
-        )
-        _quant_row(
-            x_ptr,
-            residual_ptr,
-            gamma_ptr,
-            scale_ptr,
-            zero_point_ptr,
-            out_ptr,
-            base_row + 3,
-            n_rows,
-            n_cols,
-            eps,
-            BLOCK_SIZE,
-        )
+        gamma = tl.load(gamma_ptr + offsets, mask=mask, other=0.0)
+        variance = tl.sum(added * added, axis=0) / n_cols
+        rstd = 1.0 / tl.sqrt(variance + eps)
+        normalized = added * rstd * gamma
+
+        scale = tl.load(scale_ptr)
+        zero_point = tl.load(zero_point_ptr)
+        quant = normalized / scale + zero_point
+        rounded = tl.floor(quant + 0.5)
+        clamped = tl.minimum(tl.maximum(rounded, -128.0), 127.0)
+        tl.store(out_ptr + base, clamped.to(tl.int8), mask=mask)
 
 else:
     _add_rmsnorm_quant_kernel = None
@@ -151,20 +81,18 @@ class ModelNew(nn.Module):
         n_cols = x.shape[-1]
         n_rows = x.numel() // n_cols
         try:
-            grid = ((n_rows + _ROWS_PER_PROGRAM - 1) // _ROWS_PER_PROGRAM,)
-            _add_rmsnorm_quant_kernel[grid](
+            _add_rmsnorm_quant_kernel[(n_rows,)](
                 x,
                 residual,
                 gamma,
                 scale,
                 zero_point,
                 output,
-                n_rows,
                 n_cols,
                 eps=float(self.epsilon),
                 BLOCK_SIZE=_BLOCK_SIZE,
             )
-            self._last_backend = "triton_row_rmsnorm_quant_bs4096_rpp4"
+            self._last_backend = "triton_row_rmsnorm_quant_bs4096_exact_alt2"
             self._last_error = None
             return output
         except Exception as exc:
