@@ -584,7 +584,8 @@ Summary:
 - Added a local BatchMode wrapper for the no-key AKG Agents verifier-only
   probe on Ascend.
 - The wrapper fast-forwards the worker, preserves CANN `PYTHONPATH`, runs the
-  probe, and compares its JSON with the standalone replay Pass@4 report.
+  probe, compares its JSON with the standalone replay Pass@4 report, and can
+  fetch the ignored remote JSON/YAML artifacts back to local `outputs/`.
 - Ascend execution still waits for a reopened SSH `ControlMaster` session.
 
 Changed Files:

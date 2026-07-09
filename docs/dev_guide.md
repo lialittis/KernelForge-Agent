@@ -257,7 +257,9 @@ bash scripts/run_ascend_verifier_probe.sh
 ```
 
 Use `CHECK_ONLY=1 bash scripts/run_ascend_verifier_probe.sh` to inspect the
-remote paths and commands without connecting.
+remote paths and commands without connecting. By default the wrapper fetches
+the remote probe JSON and comparator YAML back to `outputs/results/ascend/`;
+set `FETCH_OUTPUTS=0` to leave artifacts only on the worker.
 
 Use environment variables if the rented machine differs:
 
