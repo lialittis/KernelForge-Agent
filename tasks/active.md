@@ -29,7 +29,9 @@ and agents.
    performance-negative fused-elementwise trajectory, and updated-AKG
    `softmax_v4` for a correctness-positive but still-slower rowwise softmax
    trajectory, and `add_rmsnorm_cast_v2` for a positive T2 normalization
-   trajectory, and `rope_v4`/`rope_v1` for RoPE intrinsic-vs-Triton parity.
+   trajectory, and `rope_v4`/`rope_v1` for RoPE intrinsic-vs-Triton parity,
+   and `add_rmsnorm_quant_v2`-`v4` as quantized-normalization boundary
+   failures under the exact int8 gate.
 9. Use
    `experiments/reports/2026-07-09-remaining-reference-preeval-updated-akg.yaml`
    as the deterministic reference baseline for all remaining AKG Bench Lite
@@ -42,8 +44,8 @@ and agents.
    `47aa428fcdc8c68f78d331dc578bc6c74fb9d91d` before final result claims;
    manual `t1/sigmoid_scale_sum`, `t1/softmax`, `t1/fused_silu_and_mul`, and
    replay `t1/sigmoid_scale_sum` are done.
-12. Choose between `t2/add_rmsnorm_quant` and `t3/layernorm_gated` for the next
-   deterministic manual seed before live provider generation.
+12. Use `t3/layernorm_gated` for the next deterministic manual seed before
+   live provider generation.
 13. Configure an AKG Agents `standard` model level before rerunning
    `run_torch_bench_lite.py --mode full` for full runner-path comparison.
 14. Record model/provider, prompt version, retrieved skills, and candidate index

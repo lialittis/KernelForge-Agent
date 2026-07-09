@@ -61,3 +61,19 @@ operators.
 - Numerical note: official fp16 output tolerated max absolute error
   `0.00390625` and max relative error `0.0024865244049578905`, within
   `rtol=atol=1e-2`.
+
+### `t2/add_rmsnorm_quant` Exact Int8 Boundary Failure
+
+- Source: `experiments/reports/2026-07-09-add-rmsnorm-quant-pass4.yaml`.
+- Pattern: `x_added = x + residual`; RMSNorm over hidden size 4096; multiply
+  by `gamma`; then compute `round(output / scale + zero_point).clamp(-128,
+  127).to(int8)`.
+- Triton-Ascend 3.2.0 exposed `tl.floor`, `tl.minimum`, and `tl.maximum`, but
+  not `tl.round`. Using `floor(x + 0.5)` plus int8 store launched successfully
+  but failed the official benchmark with one-int8 boundary differences.
+- For int8 outputs, the benchmark's `max_abs_diff <= 0.01` gate effectively
+  requires exact equality. Near a quantization boundary, tiny RMSNorm/reduction
+  differences are enough to fail even when probes sometimes match exactly.
+- Treat quantized normalization as a poor pure-Triton target until there is a
+  reliable exact-rounding path, a safe framework quantization fallback, or a
+  backend-specific quantization primitive.

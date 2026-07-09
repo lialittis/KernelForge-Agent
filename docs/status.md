@@ -439,6 +439,25 @@ External PR and email submission are manual user actions.
   - `t3/causal_conv1d`: depthwise causal Conv1D + SiLU with in-place state
     update
   - `t3/decode_mla`: paged MLA decode attention sketch
+- Added a deterministic T2 Pass@4 seed batch for `t2/add_rmsnorm_quant`: one
+  torch reference candidate and three conservative Triton-Ascend rowwise
+  RMSNorm + int8 quantization variants.
+- Probed the `t2/add_rmsnorm_quant` candidates on Ascend. The Triton variants
+  launched through real backend paths, but exact int8 agreement was
+  intermittent on small probes because quantization boundary flips produce
+  one-int8 differences.
+- Ran the official AKG Bench Lite benchmark for `t2/add_rmsnorm_quant`:
+  - `add_rmsnorm_quant_v1`: pass, speedup `0.9981x`, score `89.83`
+  - `add_rmsnorm_quant_v2`: fail, `max_abs_diff=1.0`, `max_rel_diff=1e8`
+  - `add_rmsnorm_quant_v3`: fail, `max_abs_diff=1.0`, `max_rel_diff=1e8`
+  - `add_rmsnorm_quant_v4`: fail, `max_abs_diff=1.0`, `max_rel_diff=1e8`
+- Added completed experiment metadata at
+  `experiments/runs/2026-07-09-add-rmsnorm-quant-pass4.yaml` and Pass@4
+  report at `experiments/reports/2026-07-09-add-rmsnorm-quant-pass4.yaml`.
+- Promoted the quantized RMSNorm exact-int8 boundary failure into
+  `skills/normalization/SKILL.md`; `t2/add_rmsnorm_quant` is now a negative
+  pure-Triton pre-key target unless exact rounding or framework quantization
+  fallback is added.
 
 ## In Progress
 
@@ -471,8 +490,9 @@ External PR and email submission are manual user actions.
 5. Record the PR link, email date, and submission status in `docs/status.md`.
 6. Use `add_rmsnorm_cast_v2` as the positive normalization retrieval example
    in deterministic replay/prompt assembly before live provider generation.
-7. Choose between `t2/add_rmsnorm_quant` and
-   `t3/layernorm_gated` for the next manual seed based on expected reuse.
+7. Use `t3/layernorm_gated` for the next manual seed based on expected reuse;
+   `t2/add_rmsnorm_quant` is now recorded as a negative exact-int8
+   quantization lesson.
 8. Keep `replay` as the deterministic CI/regression provider; use
    `scripts/run_replay_regression.py` for the current updated-AKG
    `t1/sigmoid_scale_sum` replay regression path.
@@ -483,7 +503,8 @@ External PR and email submission are manual user actions.
    `softmax_v4` for a correctness-positive but still-slower rowwise softmax
    trajectory, and `add_rmsnorm_cast_v2` for a positive T2 normalization
    trajectory, and `rope_v4`/`rope_v1` for a RoPE intrinsic-vs-Triton parity
-   trajectory.
+   trajectory, and `add_rmsnorm_quant_v2`-`v4` for a quantized-normalization
+   boundary-failure trajectory.
 10. Use
     `experiments/reports/2026-07-09-remaining-reference-preeval-updated-akg.yaml`
     as the baseline for all remaining AKG Bench Lite operators before live
@@ -508,32 +529,39 @@ Date: 2026-07-09
 Agent: Codex
 Branch: main
 Summary:
-- Installed/specified the AKG Agents runner dependency stack and re-probed
-  `run_torch_bench_lite.py` on Ascend.
-- The runner now reaches `--help`, worker registration, environment check, case
-  discovery, and correctness JSON output for `t1/sigmoid_scale_sum`.
-- The remaining runner-path blocker is missing AKG Agents `standard` model
-  configuration, not missing Python dependencies.
+- Added and evaluated a deterministic `t2/add_rmsnorm_quant` Pass@4 seed batch
+  on the Ascend worker under updated AKG.
+- The torch reference candidate passed with speedup `0.9981x`; all three pure
+  Triton quant variants launched but failed official correctness with one-int8
+  boundary differences.
+- Recorded the run as a negative quantized-normalization lesson before live AI
+  provider generation.
 
 Changed Files:
 - `docs/status.md`
-- `docs/dev_guide.md`
-- `experiments/reports/2026-07-09-runner-path-comparison-sigmoid-scale-sum.yaml`
-- `experiments/runs/2026-07-09-runner-path-comparison-sigmoid-scale-sum.yaml`
-- `scripts/setup_akg_agents_runner_deps.sh`
+- `experiments/reports/2026-07-09-add-rmsnorm-quant-pass4.yaml`
+- `experiments/runs/2026-07-09-add-rmsnorm-quant-pass4.yaml`
+- `kernel_forge/candidates/add_rmsnorm_quant_v1.py`
+- `kernel_forge/candidates/add_rmsnorm_quant_v2.py`
+- `kernel_forge/candidates/add_rmsnorm_quant_v3.py`
+- `kernel_forge/candidates/add_rmsnorm_quant_v4.py`
+- `scripts/create_add_rmsnorm_quant_pass4_submissions.sh`
+- `scripts/probe_add_rmsnorm_quant_backend.py`
+- `skills/normalization/SKILL.md`
 - `tasks/active.md`
+- `tests/test_add_rmsnorm_quant_pass4.py`
 
 Verification:
-- Ascend: installed `langchain`, `langchain-community`, `langchain-core`,
-  `langgraph`, `langchain-deepseek`, `tree-sitter`, `tree-sitter-cpp`, and
-  `pandas` into `/data/venvs/kf-triton-ascend`.
-- Ascend: `python third_party/akg/akg_agents/examples/kernel_related/run_torch_bench_lite.py --help`
-- Ascend: constrained correctness probe with `--backend npu --cases
-  sigmoid_scale_sum --pass-n 1 --max-concurrent 1 --output
-  outputs/results/akg_agents_runner_probe_sigmoid_2026_07_09.json`; it
-  produced runner JSON and failed only at missing `standard` model config.
-- YAML parse check for the updated runner comparison report and run record.
-- `git diff --check`
+- Local: `python -m pytest tests/test_add_rmsnorm_quant_pass4.py`
+- Local: `python -m py_compile` for all four quant candidates and the probe
+  script.
+- Ascend: generated submissions with
+  `OUTPUT_ROOT=outputs/submissions/add_rmsnorm_quant_pass4_2026_07_09`.
+- Ascend: probed all four candidates with
+  `scripts/probe_add_rmsnorm_quant_backend.py --shape 128 4096`.
+- Ascend: official `run_bench.py` for all four candidates with CANN's
+  `PYTHONPATH` preserved; v1 passed and v2/v3/v4 failed exact int8
+  correctness.
 
 Open Issues:
 - GitLink PR is not opened yet; this is a manual user action.
@@ -547,6 +575,5 @@ Open Issues:
   replay/manual Pass@4 results when credentials/model selection are available.
 
 Next Suggested Step:
-- Before an AI API key/model config is available, continue with a deterministic
-  manual seed target, likely `t2/add_rmsnorm_quant` for quantized normalization
-  reuse or `t3/layernorm_gated` for higher-tier normalization coverage.
+- Before an AI API key/model config is available, use `t3/layernorm_gated` as
+  the next deterministic manual seed target.
