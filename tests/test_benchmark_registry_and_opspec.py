@@ -30,20 +30,20 @@ def test_scanner_finds_official_cases_and_supported_subset():
     assert supported == {
         "t1/gelu",
         "t1/fused_silu_and_mul",
+        "t1/matmul_basic",
+        "t1/matmul_biasadd",
         "t1/sigmoid_scale_sum",
         "t1/softmax",
         "t2/add_rmsnorm_cast",
         "t2/add_rmsnorm_quant",
+        "t2/moe_topk_softmax",
         "t2/rope",
         "t3/causal_conv1d",
         "t3/decode_mla",
         "t3/layernorm_gated",
     }
+    assert registry["summary"]["by_support"]["opspec_supported"] == 13
     assert "parse_failed" not in registry["summary"]["by_support"]
-
-    matmul = {case["id"]: case for case in registry["cases"]}["t1/matmul_basic"]
-    assert matmul["category"] == "matmul_like"
-    assert matmul["support"]["status"] == "unsupported"
 
 
 def test_extracts_fused_silu_opspec():
@@ -66,6 +66,37 @@ def test_extracts_sigmoid_scale_sum_opspec():
     assert spec["outputs"][0]["shape"] == [1000, 1]
     assert spec["semantics"]["reduction_axes"] == [-1]
     assert spec["sketch"]["tile_plan"]["shape"] == [1000, 8192]
+
+
+def test_extracts_matmul_basic_opspec():
+    spec = extract_opspec(BENCH / "t1/matmul_basic.py", repo_root=ROOT)
+
+    assert spec["id"] == "t1/matmul_basic"
+    assert spec["category"] == "matmul_like"
+    assert spec["inputs"][0]["shape"] == [32, 8192]
+    assert spec["inputs"][0]["dtype"] == "bfloat16"
+    assert spec["inputs"][1]["shape"] == [8192, 8192]
+    assert spec["outputs"][0]["shape"] == [32, 8192]
+    assert spec["outputs"][0]["dtype"] == "bfloat16"
+    assert spec["semantics"]["reduction_axes"] == ["K"]
+    assert spec["semantics"]["accumulation_dtype"] == "float32"
+    assert spec["sketch"]["compute_pattern"] == "matmul_basic"
+    assert spec["sketch"]["tile_plan"]["shape"] == [32, 8192, 8192]
+
+
+def test_extracts_matmul_biasadd_opspec():
+    spec = extract_opspec(BENCH / "t1/matmul_biasadd.py", repo_root=ROOT)
+
+    assert spec["id"] == "t1/matmul_biasadd"
+    assert spec["category"] == "matmul_like"
+    assert spec["inputs"][0]["shape"] == [4096, 4096]
+    assert spec["inputs"][2]["shape"] == [1, 4096]
+    assert spec["outputs"][0]["shape"] == [4096, 4096]
+    assert spec["outputs"][0]["dtype"] == "float16"
+    assert spec["semantics"]["broadcast"] == "bias broadcasts over the M axis"
+    assert spec["semantics"]["reduction_axes"] == ["K"]
+    assert spec["sketch"]["compute_pattern"] == "matmul_biasadd"
+    assert spec["sketch"]["memory_plan"]["bias"] == "row_broadcast_bias_read"
 
 
 def test_extracts_softmax_opspec():
@@ -103,6 +134,23 @@ def test_extracts_add_rmsnorm_quant_opspec():
     assert spec["outputs"][0]["dtype"] == "int8"
     assert spec["semantics"]["quantization"]["clamp"] == [-128, 127]
     assert spec["sketch"]["compute_pattern"] == "add_rmsnorm_quant"
+
+
+def test_extracts_moe_topk_softmax_opspec():
+    spec = extract_opspec(BENCH / "t2/moe_topk_softmax.py", repo_root=ROOT)
+
+    assert spec["id"] == "t2/moe_topk_softmax"
+    assert spec["category"] == "reduction"
+    assert spec["inputs"][0]["shape"] == [1024, 8]
+    assert [item["name"] for item in spec["outputs"]] == ["top_k_probs", "top_k_indices"]
+    assert spec["outputs"][0]["shape"] == [1024, 2]
+    assert spec["outputs"][0]["dtype"] == "float32"
+    assert spec["outputs"][1]["shape"] == [1024, 2]
+    assert spec["outputs"][1]["dtype"] == "int64"
+    assert spec["semantics"]["top_k"] == 2
+    assert spec["semantics"]["layout_transform"] == "topk_tuple_output"
+    assert spec["sketch"]["compute_pattern"] == "moe_topk_softmax"
+    assert spec["sketch"]["tile_plan"]["shape"] == [1024, 8, 2]
 
 
 def test_extracts_rope_opspec():
@@ -160,17 +208,23 @@ def test_extracts_decode_mla_opspec():
     assert spec["sketch"]["tile_plan"]["shape"] == [16, 128, 1024, 512]
 
 
-def test_unsupported_case_can_emit_metadata():
-    spec = extract_opspec(
-        BENCH / "t1/matmul_basic.py",
-        repo_root=ROOT,
-        allow_unsupported=True,
-    )
-
-    assert spec["id"] == "t1/matmul_basic"
-    assert spec["category"] == "matmul_like"
-    assert spec["support"]["status"] == "unsupported"
-    assert spec["inputs"][0]["dtype"] == "bfloat16"
+def test_all_supported_cases_have_parsed_opspec_files():
+    parsed = {path.name for path in (ROOT / "benchmarks/parsed").glob("*.yaml")}
+    assert {
+        "t1_fused_silu_and_mul.yaml",
+        "t1_gelu.yaml",
+        "t1_matmul_basic.yaml",
+        "t1_matmul_biasadd.yaml",
+        "t1_sigmoid_scale_sum.yaml",
+        "t1_softmax.yaml",
+        "t2_add_rmsnorm_cast.yaml",
+        "t2_add_rmsnorm_quant.yaml",
+        "t2_moe_topk_softmax.yaml",
+        "t2_rope.yaml",
+        "t3_causal_conv1d.yaml",
+        "t3_decode_mla.yaml",
+        "t3_layernorm_gated.yaml",
+    }.issubset(parsed)
 
 
 def test_scan_cli_writes_registry_yaml(tmp_path):
@@ -192,5 +246,5 @@ def test_scan_cli_writes_registry_yaml(tmp_path):
 
     data = yaml.safe_load(output.read_text())
     assert data["summary"]["total_cases"] == 13
-    assert data["summary"]["by_support"]["opspec_supported"] == 10
+    assert data["summary"]["by_support"]["opspec_supported"] == 13
     assert "parse_failed" not in data["summary"]["by_support"]

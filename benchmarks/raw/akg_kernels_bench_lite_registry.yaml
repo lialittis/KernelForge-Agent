@@ -15,8 +15,7 @@ summary:
     reduction: 3
     transpose_layout: 1
   by_support:
-    opspec_supported: 10
-    unsupported: 3
+    opspec_supported: 13
 cases:
 - id: t1/fused_silu_and_mul
   name: fused_silu_and_mul
@@ -67,8 +66,8 @@ cases:
   category: matmul_like
   source_path: third_party/akg/akg_agents/benchmark/akg_kernels_bench_lite/t1/matmul_basic.py
   support:
-    status: unsupported
-    reason: matmul-like cases are deferred until non-matmul T1 infrastructure is stable
+    status: opspec_supported
+    reason: covered by deterministic OpSpec extraction templates
   inputs:
   - name: a
     shape:
@@ -95,8 +94,8 @@ cases:
   category: matmul_like
   source_path: third_party/akg/akg_agents/benchmark/akg_kernels_bench_lite/t1/matmul_biasadd.py
   support:
-    status: unsupported
-    reason: matmul-like cases are deferred until non-matmul T1 infrastructure is stable
+    status: opspec_supported
+    reason: covered by deterministic OpSpec extraction templates
   inputs:
   - name: a
     shape:
@@ -267,8 +266,8 @@ cases:
   category: reduction
   source_path: third_party/akg/akg_agents/benchmark/akg_kernels_bench_lite/t2/moe_topk_softmax.py
   support:
-    status: unsupported
-    reason: higher-tier cases are deferred until T1 extraction and reporting are stable
+    status: opspec_supported
+    reason: covered by deterministic OpSpec extraction templates
   inputs:
   - name: gating_logits
     shape:

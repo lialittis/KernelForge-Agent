@@ -1,0 +1,114 @@
+id: t2/moe_topk_softmax
+name: moe_topk_softmax
+tier: t2
+category: reduction
+source_path: third_party/akg/akg_agents/benchmark/akg_kernels_bench_lite/t2/moe_topk_softmax.py
+reference_class: Model
+candidate_class: ModelNew
+inputs:
+- name: gating_logits
+  shape:
+  - 1024
+  - 8
+  dtype: float32
+  layout: contiguous
+outputs:
+- name: top_k_probs
+  shape:
+  - 1024
+  - 2
+  dtype: float32
+  layout: contiguous
+- name: top_k_indices
+  shape:
+  - 1024
+  - 2
+  dtype: int64
+  layout: contiguous
+semantics:
+  expression: (top_k_probs, top_k_indices)
+  formula: topk_probs, topk_indices = topk(softmax(gating_logits, dim=-1), k); topk_probs
+    = topk_probs / sum(topk_probs, dim=-1, keepdim=True)
+  broadcast: none
+  reduction_axes:
+  - -1
+  normalization_axes:
+  - -1
+  layout_transform: topk_tuple_output
+  top_k: 2
+  outputs:
+  - name: top_k_probs
+    semantics: renormalized top-k probabilities
+  - name: top_k_indices
+    semantics: top-k expert indices
+  boundary_conditions:
+    tail_mask_required: true
+    stable_topk_tie_behavior_required: true
+    indices_dtype: int64
+validation:
+  rtol: 0.01
+  atol: 0.01
+  max_error_required: null
+  shape_cases:
+  - - 1024
+    - 8
+  dtype_cases:
+  - float32
+performance:
+  metric: median_latency_ms
+  warmup: 10
+  repeats: 100
+  num_trials: 3
+  baseline_latency_ms: null
+  baseline_source: official_reference_model
+sketch:
+  operator_category: reduction
+  compute_pattern: moe_topk_softmax
+  parallel_axes:
+  - token_rows
+  - expert_dim
+  tile_plan:
+    strategy: rowwise_softmax_topk
+    shape:
+    - 1024
+    - 8
+    - 2
+    tunable: true
+  memory_plan:
+    inputs:
+    - gating_logits
+    input: row_contiguous_logits_read
+    outputs:
+    - top_k_probs
+    - top_k_indices
+    output: topk_probability_and_index_tuple_write
+    intermediate: local_softmax_and_topk_buffers
+  pipeline_plan:
+    stages:
+    - load_logits_row
+    - max_reduce
+    - exp
+    - sum_reduce
+    - select_topk
+    - renormalize_topk_probs
+    - store_probs_and_indices
+  boundary_mask:
+    required: true
+    reason: row count may not align with backend program grouping
+  accumulation_dtype: float32
+  backend_target: triton_ascend
+  performance_knobs:
+    row_tile: null
+    expert_tile: 8
+    top_k: 2
+    num_warps_or_cores: null
+  known_risks:
+  - torch_topk_tie_ordering
+  - softmax_numerical_stability
+  - topk_probability_renormalization
+  - indices_int64_output
+  - tuple_output_submission_contract
+submission:
+  required_files:
+  - t2/moe_topk_softmax.py
+  entrypoint: ModelNew

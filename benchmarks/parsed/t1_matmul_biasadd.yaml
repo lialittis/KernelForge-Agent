@@ -1,0 +1,125 @@
+id: t1/matmul_biasadd
+name: matmul_biasadd
+tier: t1
+category: matmul_like
+source_path: third_party/akg/akg_agents/benchmark/akg_kernels_bench_lite/t1/matmul_biasadd.py
+reference_class: Model
+candidate_class: ModelNew
+inputs:
+- name: a
+  shape:
+  - 4096
+  - 4096
+  dtype: float16
+  layout: contiguous
+- name: b
+  shape:
+  - 4096
+  - 4096
+  dtype: float16
+  layout: contiguous
+- name: bias
+  shape:
+  - 1
+  - 4096
+  dtype: float16
+  layout: contiguous
+outputs:
+- name: output
+  shape:
+  - 4096
+  - 4096
+  dtype: float16
+  layout: contiguous
+semantics:
+  expression: torch.matmul(a, b) + bias
+  formula: C[m, n] = sum_k A[m, k] * B[k, n] + bias[0, n]
+  broadcast: bias broadcasts over the M axis
+  reduction_axes:
+  - K
+  normalization_axes: []
+  layout_transform: none
+  accumulation_dtype: float32
+  boundary_conditions:
+    tail_mask_required: true
+    rank: 2
+    bias_shape:
+    - 1
+    - N
+    k_dimensions_must_match: true
+validation:
+  rtol: 0.01
+  atol: 0.01
+  max_error_required: null
+  shape_cases:
+  - - 4096
+    - 4096
+  - - 4096
+    - 4096
+  - - 1
+    - 4096
+  dtype_cases:
+  - float16
+performance:
+  metric: median_latency_ms
+  warmup: 10
+  repeats: 100
+  num_trials: 3
+  baseline_latency_ms: null
+  baseline_source: official_reference_model
+sketch:
+  operator_category: matmul_like
+  compute_pattern: matmul_biasadd
+  parallel_axes:
+  - m_tiles
+  - n_tiles
+  - k_reduction_tiles
+  tile_plan:
+    strategy: blocked_mnk_matmul
+    shape:
+    - 4096
+    - 4096
+    - 4096
+    tunable: true
+  memory_plan:
+    inputs:
+    - a
+    - b
+    - bias
+    input: a_b_global_read_with_blocked_k_reuse
+    output: contiguous_global_write
+    intermediate: float32_accumulator_tile
+    bias: row_broadcast_bias_read
+  pipeline_plan:
+    stages:
+    - load_a_tile
+    - load_b_tile
+    - dot_accumulate
+    - load_bias
+    - add_bias
+    - store
+  boundary_mask:
+    required: true
+    reason: M/N/K dimensions may not divide backend tile sizes
+  accumulation_dtype: float32
+  backend_target: triton_ascend
+  performance_knobs:
+    block_m: null
+    block_n: null
+    block_k: null
+    num_warps_or_cores: null
+    use_matmul_intrinsic: null
+  known_risks:
+  - float16_accumulation_accuracy
+  - bias_broadcast_correctness
+  - large_square_matmul_tiling
+  - tail_mask_correctness
+  shape_symbols:
+    M: 4096
+    N: 4096
+    K: 4096
+  output_dtype: float16
+submission:
+  required_files:
+  - t1/matmul_biasadd.py
+  entrypoint: ModelNew

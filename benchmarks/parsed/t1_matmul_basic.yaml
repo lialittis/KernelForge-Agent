@@ -1,0 +1,111 @@
+id: t1/matmul_basic
+name: matmul_basic
+tier: t1
+category: matmul_like
+source_path: third_party/akg/akg_agents/benchmark/akg_kernels_bench_lite/t1/matmul_basic.py
+reference_class: Model
+candidate_class: ModelNew
+inputs:
+- name: a
+  shape:
+  - 32
+  - 8192
+  dtype: bfloat16
+  layout: contiguous
+- name: b
+  shape:
+  - 8192
+  - 8192
+  dtype: bfloat16
+  layout: contiguous
+outputs:
+- name: output
+  shape:
+  - 32
+  - 8192
+  dtype: bfloat16
+  layout: contiguous
+semantics:
+  expression: torch.matmul(a, b)
+  formula: C[m, n] = sum_k A[m, k] * B[k, n]
+  broadcast: none
+  reduction_axes:
+  - K
+  normalization_axes: []
+  layout_transform: none
+  accumulation_dtype: float32
+  boundary_conditions:
+    tail_mask_required: true
+    rank: 2
+    k_dimensions_must_match: true
+validation:
+  rtol: 0.01
+  atol: 0.01
+  max_error_required: null
+  shape_cases:
+  - - 32
+    - 8192
+  - - 8192
+    - 8192
+  dtype_cases:
+  - bfloat16
+performance:
+  metric: median_latency_ms
+  warmup: 10
+  repeats: 100
+  num_trials: 3
+  baseline_latency_ms: null
+  baseline_source: official_reference_model
+sketch:
+  operator_category: matmul_like
+  compute_pattern: matmul_basic
+  parallel_axes:
+  - m_tiles
+  - n_tiles
+  - k_reduction_tiles
+  tile_plan:
+    strategy: blocked_mnk_matmul
+    shape:
+    - 32
+    - 8192
+    - 8192
+    tunable: true
+  memory_plan:
+    inputs:
+    - a
+    - b
+    input: a_b_global_read_with_blocked_k_reuse
+    output: contiguous_global_write
+    intermediate: float32_accumulator_tile
+    bias: none
+  pipeline_plan:
+    stages:
+    - load_a_tile
+    - load_b_tile
+    - dot_accumulate
+    - store
+  boundary_mask:
+    required: true
+    reason: M/N/K dimensions may not divide backend tile sizes
+  accumulation_dtype: float32
+  backend_target: triton_ascend
+  performance_knobs:
+    block_m: null
+    block_n: null
+    block_k: null
+    num_warps_or_cores: null
+    use_matmul_intrinsic: null
+  known_risks:
+  - bf16_input_accumulation_accuracy
+  - large_k_dimension_tiling
+  - matmul_backend_selection
+  - tail_mask_correctness
+  shape_symbols:
+    M: 32
+    N: 8192
+    K: 8192
+  output_dtype: bfloat16
+submission:
+  required_files:
+  - t1/matmul_basic.py
+  entrypoint: ModelNew

@@ -16,10 +16,13 @@ class ExtractionError(ValueError):
 SUPPORTED_OPSPEC_CASES = {
     "t1/gelu",
     "t1/fused_silu_and_mul",
+    "t1/matmul_basic",
+    "t1/matmul_biasadd",
     "t1/sigmoid_scale_sum",
     "t1/softmax",
     "t2/add_rmsnorm_cast",
     "t2/add_rmsnorm_quant",
+    "t2/moe_topk_softmax",
     "t2/rope",
     "t3/causal_conv1d",
     "t3/decode_mla",
@@ -69,7 +72,7 @@ def extract_opspec(
             f"Forward args {forward_args} do not match inputs {expected_args}"
         )
 
-    outputs = _build_output_specs(parsed["id"], input_specs)
+    outputs = _build_output_specs(parsed["id"], input_specs, init_inputs)
     performance = _build_performance(experiment_path)
     spec = OpSpec(
         id=parsed["id"],
@@ -131,7 +134,7 @@ def case_support(case_id: str) -> dict[str, str]:
         }
     category = classify_case(case_id)
     if category == "matmul_like":
-        reason = "matmul-like cases are deferred until non-matmul T1 infrastructure is stable"
+        reason = "matmul-like case is not covered by the current extraction templates"
     elif case_id.startswith("t2/") or case_id.startswith("t3/"):
         reason = "higher-tier cases are deferred until T1 extraction and reporting are stable"
     else:
@@ -197,7 +200,11 @@ def _extract_get_init_inputs(module: ast.Module) -> list[Any]:
     raise ExtractionError("get_init_inputs() has no return statement")
 
 
-def _build_output_specs(case_id: str, input_specs: list[TensorSpec]) -> list[TensorSpec]:
+def _build_output_specs(
+    case_id: str,
+    input_specs: list[TensorSpec],
+    init_inputs: list[Any] | None = None,
+) -> list[TensorSpec]:
     if case_id in {"t1/gelu", "t1/softmax"}:
         first = input_specs[0]
         return [
@@ -232,6 +239,40 @@ def _build_output_specs(case_id: str, input_specs: list[TensorSpec]) -> list[Ten
                 dtype=x.dtype,
                 layout=x.layout,
             )
+        ]
+    if case_id in {"t1/matmul_basic", "t1/matmul_biasadd"}:
+        a = input_specs[0]
+        b = input_specs[1]
+        if len(a.shape) != 2 or len(b.shape) != 2:
+            raise ExtractionError(f"{case_id} expects rank-2 matmul inputs")
+        if a.shape[1] != b.shape[0]:
+            raise ExtractionError(
+                f"{case_id} matmul K dimensions do not match: {a.shape[1]} vs {b.shape[0]}"
+            )
+        return [
+            TensorSpec(
+                name="output",
+                shape=[a.shape[0], b.shape[1]],
+                dtype=a.dtype,
+                layout=a.layout,
+            )
+        ]
+    if case_id == "t2/moe_topk_softmax":
+        logits = input_specs[0]
+        top_k = init_inputs[0] if init_inputs else 2
+        return [
+            TensorSpec(
+                name="top_k_probs",
+                shape=[*logits.shape[:-1], top_k],
+                dtype=logits.dtype,
+                layout=logits.layout,
+            ),
+            TensorSpec(
+                name="top_k_indices",
+                shape=[*logits.shape[:-1], top_k],
+                dtype="int64",
+                layout=logits.layout,
+            ),
         ]
     if case_id == "t2/add_rmsnorm_cast":
         x = input_specs[0]
@@ -333,6 +374,37 @@ def _build_semantics(
             "layout_transform": "none",
             "boundary_conditions": {"tail_mask_required": True},
         }
+    if case_id == "t1/matmul_basic":
+        return {
+            "expression": expression,
+            "formula": "C[m, n] = sum_k A[m, k] * B[k, n]",
+            "broadcast": "none",
+            "reduction_axes": ["K"],
+            "normalization_axes": [],
+            "layout_transform": "none",
+            "accumulation_dtype": "float32",
+            "boundary_conditions": {
+                "tail_mask_required": True,
+                "rank": 2,
+                "k_dimensions_must_match": True,
+            },
+        }
+    if case_id == "t1/matmul_biasadd":
+        return {
+            "expression": expression,
+            "formula": "C[m, n] = sum_k A[m, k] * B[k, n] + bias[0, n]",
+            "broadcast": "bias broadcasts over the M axis",
+            "reduction_axes": ["K"],
+            "normalization_axes": [],
+            "layout_transform": "none",
+            "accumulation_dtype": "float32",
+            "boundary_conditions": {
+                "tail_mask_required": True,
+                "rank": 2,
+                "bias_shape": [1, "N"],
+                "k_dimensions_must_match": True,
+            },
+        }
     if case_id == "t2/add_rmsnorm_cast":
         target_dtype = init_inputs[1] if len(init_inputs) > 1 else "torch.float16"
         return {
@@ -357,6 +429,26 @@ def _build_semantics(
             "epsilon": init_inputs[0] if init_inputs else 1.0e-6,
             "quantization": {"dtype": "int8", "round": True, "clamp": [-128, 127]},
             "boundary_conditions": {"tail_mask_required": True},
+        }
+    if case_id == "t2/moe_topk_softmax":
+        top_k = init_inputs[0] if init_inputs else 2
+        return {
+            "expression": expression,
+            "formula": "topk_probs, topk_indices = topk(softmax(gating_logits, dim=-1), k); topk_probs = topk_probs / sum(topk_probs, dim=-1, keepdim=True)",
+            "broadcast": "none",
+            "reduction_axes": [-1],
+            "normalization_axes": [-1],
+            "layout_transform": "topk_tuple_output",
+            "top_k": top_k,
+            "outputs": [
+                {"name": "top_k_probs", "semantics": "renormalized top-k probabilities"},
+                {"name": "top_k_indices", "semantics": "top-k expert indices"},
+            ],
+            "boundary_conditions": {
+                "tail_mask_required": True,
+                "stable_topk_tie_behavior_required": True,
+                "indices_dtype": "int64",
+            },
         }
     if case_id == "t2/rope":
         return {

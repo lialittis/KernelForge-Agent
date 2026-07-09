@@ -40,6 +40,43 @@ def build_operator_sketch(
                 "row_boundary_mapping",
             ],
         )
+    if case_id == "t1/matmul_basic":
+        return build_matmul_sketch(
+            input_specs,
+            output_specs[0],
+            backend_target,
+            compute_pattern="matmul_basic",
+            stages=["load_a_tile", "load_b_tile", "dot_accumulate", "store"],
+            has_bias=False,
+            known_risks=[
+                "bf16_input_accumulation_accuracy",
+                "large_k_dimension_tiling",
+                "matmul_backend_selection",
+                "tail_mask_correctness",
+            ],
+        )
+    if case_id == "t1/matmul_biasadd":
+        return build_matmul_sketch(
+            input_specs,
+            output_specs[0],
+            backend_target,
+            compute_pattern="matmul_biasadd",
+            stages=[
+                "load_a_tile",
+                "load_b_tile",
+                "dot_accumulate",
+                "load_bias",
+                "add_bias",
+                "store",
+            ],
+            has_bias=True,
+            known_risks=[
+                "float16_accumulation_accuracy",
+                "bias_broadcast_correctness",
+                "large_square_matmul_tiling",
+                "tail_mask_correctness",
+            ],
+        )
     if case_id == "t1/softmax":
         return build_rowwise_reduction_sketch(
             input_specs,
@@ -97,6 +134,8 @@ def build_operator_sketch(
                 "int8_clamp_saturation",
             ],
         )
+    if case_id == "t2/moe_topk_softmax":
+        return build_moe_topk_softmax_sketch(input_specs, output_specs, backend_target)
     if case_id == "t2/rope":
         return build_rope_sketch(input_specs, output_specs[0], backend_target)
     if case_id == "t3/causal_conv1d":
@@ -245,6 +284,56 @@ def build_rowwise_reduction_sketch(
     }
 
 
+def build_matmul_sketch(
+    input_specs: list[TensorSpec],
+    output_spec: TensorSpec,
+    backend_target: str,
+    *,
+    compute_pattern: str,
+    stages: list[str],
+    has_bias: bool,
+    known_risks: list[str],
+) -> dict:
+    a = input_specs[0]
+    b = input_specs[1]
+    m, k = a.shape
+    _, n = b.shape
+    return {
+        "operator_category": "matmul_like",
+        "compute_pattern": compute_pattern,
+        "parallel_axes": ["m_tiles", "n_tiles", "k_reduction_tiles"],
+        "tile_plan": {
+            "strategy": "blocked_mnk_matmul",
+            "shape": [m, n, k],
+            "tunable": True,
+        },
+        "memory_plan": {
+            "inputs": [item.name for item in input_specs],
+            "input": "a_b_global_read_with_blocked_k_reuse",
+            "output": "contiguous_global_write",
+            "intermediate": "float32_accumulator_tile",
+            "bias": "row_broadcast_bias_read" if has_bias else "none",
+        },
+        "pipeline_plan": {"stages": stages},
+        "boundary_mask": {
+            "required": True,
+            "reason": "M/N/K dimensions may not divide backend tile sizes",
+        },
+        "accumulation_dtype": "float32",
+        "backend_target": backend_target,
+        "performance_knobs": {
+            "block_m": None,
+            "block_n": None,
+            "block_k": None,
+            "num_warps_or_cores": None,
+            "use_matmul_intrinsic": None,
+        },
+        "known_risks": known_risks,
+        "shape_symbols": {"M": m, "N": n, "K": k},
+        "output_dtype": output_spec.dtype,
+    }
+
+
 def build_rowwise_normalization_sketch(
     input_specs: list[TensorSpec],
     output_spec: TensorSpec,
@@ -284,6 +373,62 @@ def build_rowwise_normalization_sketch(
             "vector_width": None,
         },
         "known_risks": known_risks,
+    }
+
+
+def build_moe_topk_softmax_sketch(
+    input_specs: list[TensorSpec],
+    output_specs: list[TensorSpec],
+    backend_target: str,
+) -> dict:
+    rows, num_experts = _rowwise_shape(input_specs[0].shape)
+    top_k = output_specs[0].shape[-1] if output_specs else 2
+    return {
+        "operator_category": "reduction",
+        "compute_pattern": "moe_topk_softmax",
+        "parallel_axes": ["token_rows", "expert_dim"],
+        "tile_plan": {
+            "strategy": "rowwise_softmax_topk",
+            "shape": [rows, num_experts, top_k],
+            "tunable": True,
+        },
+        "memory_plan": {
+            "inputs": [item.name for item in input_specs],
+            "input": "row_contiguous_logits_read",
+            "outputs": [item.name for item in output_specs],
+            "output": "topk_probability_and_index_tuple_write",
+            "intermediate": "local_softmax_and_topk_buffers",
+        },
+        "pipeline_plan": {
+            "stages": [
+                "load_logits_row",
+                "max_reduce",
+                "exp",
+                "sum_reduce",
+                "select_topk",
+                "renormalize_topk_probs",
+                "store_probs_and_indices",
+            ]
+        },
+        "boundary_mask": {
+            "required": True,
+            "reason": "row count may not align with backend program grouping",
+        },
+        "accumulation_dtype": "float32",
+        "backend_target": backend_target,
+        "performance_knobs": {
+            "row_tile": None,
+            "expert_tile": num_experts,
+            "top_k": top_k,
+            "num_warps_or_cores": None,
+        },
+        "known_risks": [
+            "torch_topk_tie_ordering",
+            "softmax_numerical_stability",
+            "topk_probability_renormalization",
+            "indices_int64_output",
+            "tuple_output_submission_contract",
+        ],
     }
 
 

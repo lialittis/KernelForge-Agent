@@ -512,6 +512,18 @@ External PR and email submission are manual user actions.
 - Added root `pytest.ini` so `python -m pytest` runs the project-owned tests
   under `tests/` instead of collecting generated package copies and upstream
   AKG submodule tests.
+- Completed deterministic OpSpec extraction coverage for all 13 official Lite
+  benchmark cases by adding support for:
+  - `t1/matmul_basic`
+  - `t1/matmul_biasadd`
+  - `t2/moe_topk_softmax`
+- Added parsed OpSpecs under `benchmarks/parsed/` for the three remaining
+  cases and updated the raw registry summary to
+  `by_support.opspec_supported: 13`.
+- Added non-generic NPU-aware Sketch templates for blocked-M/N/K matmul,
+  matmul+bias, and rowwise MoE top-k softmax tuple-output generation.
+- Added `docs/tasks/pre_submission_no_key_dev_plan.md` to track remaining
+  provider-independent work before first submission.
 
 ## In Progress
 
@@ -534,27 +546,30 @@ External PR and email submission are manual user actions.
 
 ## Next Actions
 
-1. Manually review `docs/project_book_full_zh.md` for Chinese wording and
+1. Add provider-independent validation next: OpSpec validator, Sketch
+   validator, prompt context snapshot tests, package hygiene tests, and updated
+   submission-facing docs that claim `13/13` Lite OpSpec coverage.
+2. Manually review `docs/project_book_full_zh.md` for Chinese wording and
    team-specific details.
-2. Manually copy the generated GitLink package into the GitLink fork and open
+3. Manually copy the generated GitLink package into the GitLink fork and open
    the PR.
-3. Rerun `scripts/export_project_book.py --pr-link <GitLink PR URL>` after the
+4. Rerun `scripts/export_project_book.py --pr-link <GitLink PR URL>` after the
    PR exists.
-4. Manually email the updated project book to `contact@public.mindspore.cn`.
-5. Record the PR link, email date, and submission status in `docs/status.md`.
-6. Use `add_rmsnorm_cast_v2` as the positive normalization retrieval example
+5. Manually email the updated project book to `contact@public.mindspore.cn`.
+6. Record the PR link, email date, and submission status in `docs/status.md`.
+7. Use `add_rmsnorm_cast_v2` as the positive normalization retrieval example
    in deterministic replay/prompt assembly before live provider generation.
-7. Use `docs/tasks/pre_key_objective_audit.md` as the current pre-key
+8. Use `docs/tasks/pre_key_objective_audit.md` as the current pre-key
    objective audit, and run `scripts/audit_pre_key_readiness.py --json` as the
    machine-checkable readiness gate before changing provider or runner state.
    Add `--check-ascend-ssh` when diagnosing remote-worker access.
-8. Use `layernorm_gated_v4` as a positive T3 normalization retrieval example;
+9. Use `layernorm_gated_v4` as a positive T3 normalization retrieval example;
    `t2/add_rmsnorm_quant` is recorded as a negative exact-int8 quantization
    lesson.
-9. Keep `replay` as the deterministic CI/regression provider; use
+10. Keep `replay` as the deterministic CI/regression provider; use
    `scripts/run_replay_regression.py` for the current updated-AKG
    `t1/sigmoid_scale_sum` replay regression path.
-10. Use the completed manual Pass@4 cycles as retrieval examples:
+11. Use the completed manual Pass@4 cycles as retrieval examples:
    updated-AKG `sigmoid_scale_sum_v2` for a positive reduction trajectory and
    updated-AKG `fused_silu_and_mul_v3` for a correctness-positive but
    performance-negative fused-elementwise trajectory, and updated-AKG
@@ -564,27 +579,27 @@ External PR and email submission are manual user actions.
    trajectory, and `add_rmsnorm_quant_v2`-`v4` for a quantized-normalization
    boundary-failure trajectory, and `layernorm_gated_v4` for a positive T3
    fp16 gated-RMSNorm row-grouping trajectory.
-11. Use
+12. Use
     `experiments/reports/2026-07-09-remaining-reference-preeval-updated-akg.yaml`
     as the baseline for all remaining AKG Bench Lite operators before live
     provider generation; all nine remaining reference cases now pass when
     CANN's `PYTHONPATH` entries are preserved.
-12. Continue rerunning key Pass@4 reports under updated AKG commit
+13. Continue rerunning key Pass@4 reports under updated AKG commit
     `47aa428fcdc8c68f78d331dc578bc6c74fb9d91d` before final result claims;
     manual `t1/sigmoid_scale_sum`, `t1/softmax`, `t1/fused_silu_and_mul`, and
     replay `t1/sigmoid_scale_sum` have been rebaselined.
-13. Configure an AKG Agents `standard` model level, verify it with
+14. Configure an AKG Agents `standard` model level, verify it with
     `scripts/check_akg_agents_model_config.py --level standard`, then rerun
     `scripts/run_akg_agents_full_comparison.sh` for a full runner-path
     comparison and `scripts/compare_runner_results.py` for schema/result
     comparison.
-14. Optionally run `scripts/run_ascend_verifier_probe.sh` after reopening the
+15. Optionally run `scripts/run_ascend_verifier_probe.sh` after reopening the
     Ascend `ControlMaster` session to smoke-test the AKG Agents verifier path
     on `sigmoid_scale_sum_v2`; keep it labeled as partial evidence.
-15. Run a first live `provider=openai` Pass@4 generation cycle for
+16. Run a first live `provider=openai` Pass@4 generation cycle for
     `t1/sigmoid_scale_sum` once credentials and model selection are available.
-16. Import live generated benchmark results after Ascend verification.
-17. Keep model/provider information explicit in every generated experiment
+17. Import live generated benchmark results after Ascend verification.
+18. Keep model/provider information explicit in every generated experiment
    record.
 
 ## Latest Handoff
@@ -593,50 +608,36 @@ Date: 2026-07-09
 Agent: Codex
 Branch: main
 Summary:
-- Added a machine-checkable pre-key readiness audit and extended it with an
-  optional Ascend BatchMode SSH check.
-- The audit verifies runner-comparison artifacts, generated-result import
-  automation, T2/T3 OpSpec coverage, priority Pass@4 reports, updated-AKG replay
-  import/probe metadata, AKG Agents `standard` model configuration, and
-  optionally Ascend SSH reachability.
-- Current local status is
-  `pre_key_deterministic_complete_provider_config_missing`: deterministic
-  pre-key work is complete, standalone `tools/run_bench.py` remains the
-  authoritative pre-key scorer, and full AKG Agents runner comparison still
-  needs `standard` model configuration.
-- Escalated optional SSH audit reached the Ascend gateway but failed with
-  `Permission denied (password)` because no key-only/ControlMaster session was
-  active.
+- Completed full Lite benchmark OpSpec coverage: 13/13 official cases are now
+  `opspec_supported`.
+- Added deterministic OpSpec extraction and NPU-aware Sketches for
+  `t1/matmul_basic`, `t1/matmul_biasadd`, and `t2/moe_topk_softmax`.
+- Added the pre-submission no-key development plan under `docs/tasks/`.
 
 Changed Files:
+- `benchmarks/parsed/t1_matmul_basic.yaml`
+- `benchmarks/parsed/t1_matmul_biasadd.yaml`
+- `benchmarks/parsed/t2_moe_topk_softmax.yaml`
+- `benchmarks/raw/akg_kernels_bench_lite_registry.yaml`
+- `docs/competition_alignment.md`
 - `docs/status.md`
-- `docs/tasks/pre_key_objective_audit.md`
-- `pytest.ini`
-- `scripts/audit_pre_key_readiness.py`
+- `docs/tasks/pre_submission_no_key_dev_plan.md`
+- `kernel_forge/benchmark/extractor.py`
+- `kernel_forge/benchmark/sketch.py`
 - `tasks/active.md`
-- `tests/test_pre_key_readiness_audit.py`
+- `tests/test_benchmark_registry_and_opspec.py`
 
 Verification:
-- Local: `CHECK_ONLY=1 bash scripts/run_ascend_verifier_probe.sh`
-- Local: `python scripts/check_akg_agents_model_config.py --level standard`
-  returned the expected missing-`standard` status.
-- Local: `python scripts/audit_pre_key_readiness.py --json`
-- Local: `python scripts/audit_pre_key_readiness.py --require-standard-config
-  --json` returned exit code `2`, as expected before credentials exist.
-- Escalated: `python scripts/audit_pre_key_readiness.py --check-ascend-ssh
-  --json` returned deterministic-complete status plus blocked
-  `ascend_batchmode_ssh` with `Permission denied (password)`.
-- Local: `python -m py_compile scripts/audit_pre_key_readiness.py`
-- Local: `python -m pytest tests/test_pre_key_readiness_audit.py
-  tests/test_runner_result_comparison.py tests/test_experiment_result_import.py
-  tests/test_benchmark_registry_and_opspec.py`
-- Local: `python -m pytest` passed 89 project-owned tests after adding
-  `pytest.ini`.
+- Local: `python scripts/scan_benchmark_cases.py --bench-dir third_party/akg/akg_agents/benchmark/akg_kernels_bench_lite --repo-root . --output benchmarks/raw/akg_kernels_bench_lite_registry.yaml`
+- Local: `python scripts/extract_opspec_batch.py --bench-dir third_party/akg/akg_agents/benchmark/akg_kernels_bench_lite --repo-root . --output-dir benchmarks/parsed`
+- Local: `python -m py_compile kernel_forge/benchmark/extractor.py kernel_forge/benchmark/sketch.py`
+- Local: `PYTHONPATH=/home/tianchi/.local/lib/python3.10/site-packages python -m pytest -q tests/test_benchmark_registry_and_opspec.py`
+- Local: `PYTHONPATH=/home/tianchi/.local/lib/python3.10/site-packages python -m pytest -q`
+  passed 92 project-owned tests.
+- Local: `PYTHONPATH=/home/tianchi/.local/lib/python3.10/site-packages python scripts/audit_pre_key_readiness.py --json`
+  returned `pre_key_deterministic_complete_provider_config_missing` with
+  `opspec_supported: 13`, `unsupported: 0`, and `parse_failed: 0`.
 - Local: `git diff --check`
-- Prior Ascend wrapper attempt: `bash scripts/run_ascend_verifier_probe.sh`
-  first hit local sandbox network denial, then with escalation reached the
-  gateway and failed with `Permission denied (password)` because no key-only
-  session was active.
 
 Open Issues:
 - GitLink PR is not opened yet; this is a manual user action.
@@ -652,10 +653,6 @@ Open Issues:
   replay/manual Pass@4 results when credentials/model selection are available.
 
 Next Suggested Step:
-- Configure AKG Agents `standard` model credentials, rerun
-  `scripts/audit_pre_key_readiness.py --require-standard-config --json`, then
-  run `scripts/run_akg_agents_full_comparison.sh`; optionally reopen the Ascend
-  SSH `ControlMaster` first, verify with
-  `scripts/audit_pre_key_readiness.py --check-ascend-ssh --json`, and run
-  `bash scripts/run_ascend_verifier_probe.sh` for partial verifier-only smoke
-  evidence.
+- Add provider-independent validation: OpSpec validator, Sketch validator,
+  prompt context snapshot tests, package hygiene tests, and final
+  submission-facing wording updates for `13/13` Lite OpSpec coverage.
