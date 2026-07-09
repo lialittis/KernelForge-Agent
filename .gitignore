@@ -23,5 +23,7 @@ experiments/runs/*.log
 # Local machine files
 .env
 .env.*
+.akg/settings.local.json
+.akg/settings*.local.json
+.akg/settings.secret.json
 .DS_Store
-

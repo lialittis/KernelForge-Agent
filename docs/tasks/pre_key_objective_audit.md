@@ -68,6 +68,7 @@ Next unblock:
 source /usr/local/Ascend/ascend-toolkit/set_env.sh
 source /data/venvs/kf-triton-ascend/bin/activate
 export PYTHONPATH=/data/KernelForge-Agent:/data/KernelForge-Agent/third_party/akg/akg_agents/python:${PYTHONPATH:-}
+python scripts/check_akg_agents_model_config.py --level standard
 python third_party/akg/akg_agents/examples/kernel_related/run_torch_bench_lite.py \
   --backend npu \
   --mode full \
@@ -86,8 +87,10 @@ bash scripts/run_akg_agents_full_comparison.sh
 ```
 
 Before a model is configured, the wrapper exits early with a clear missing
-`standard` model configuration message. Use `--check-only` to print the
-resolved command without launching the runner.
+`standard` model configuration message. It uses
+`scripts/check_akg_agents_model_config.py` to reject incomplete settings before
+launching the runner. Use `--check-only` to print the resolved command without
+launching the runner.
 
 After full-mode JSON exists, compare it with the standalone Pass@N report:
 
@@ -201,7 +204,8 @@ Evidence:
 
 ## Remaining Work Before Full Objective Completion
 
-1. Configure an AKG Agents `standard` model level.
+1. Configure an AKG Agents `standard` model level and verify it with
+   `scripts/check_akg_agents_model_config.py --level standard`.
 2. Run `run_torch_bench_lite.py --mode full --backend npu --cases
    sigmoid_scale_sum --pass-n 4`, preferably through
    `scripts/run_akg_agents_full_comparison.sh`.

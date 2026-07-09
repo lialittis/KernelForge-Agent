@@ -491,6 +491,10 @@ External PR and email submission are manual user actions.
   reports schema compatibility, Pass@N agreement, best-candidate deltas,
   speedup/score deltas, optional log paths, and whether standalone remains the
   authoritative pre-key scorer.
+- Added `scripts/check_akg_agents_model_config.py` to validate AKG Agents
+  model-level configuration without calling a provider and without printing raw
+  keys. The full-comparison wrapper now uses it to reject incomplete
+  `standard` settings before launching `run_torch_bench_lite.py`.
 
 ## In Progress
 
@@ -550,7 +554,8 @@ External PR and email submission are manual user actions.
     `47aa428fcdc8c68f78d331dc578bc6c74fb9d91d` before final result claims;
     manual `t1/sigmoid_scale_sum`, `t1/softmax`, `t1/fused_silu_and_mul`, and
     replay `t1/sigmoid_scale_sum` have been rebaselined.
-13. Configure an AKG Agents `standard` model level, then rerun
+13. Configure an AKG Agents `standard` model level, verify it with
+    `scripts/check_akg_agents_model_config.py --level standard`, then rerun
     `scripts/run_akg_agents_full_comparison.sh` for a full runner-path
     comparison and `scripts/compare_runner_results.py` for schema/result
     comparison.
@@ -566,41 +571,33 @@ Date: 2026-07-09
 Agent: Codex
 Branch: main
 Summary:
-- Audited the active pre-key objective against current repository evidence.
-- Confirmed deterministic replay/import automation, T2/T3 OpSpec coverage,
-  priority sketches, replay regression, and priority manual seeds are complete.
-- Confirmed full AKG Agents runner parity remains blocked until a `standard`
-  model level is configured.
+- Hardened the AKG Agents full-runner preflight by adding a masked model config
+  checker for the required `standard` level.
+- Wired the checker into `scripts/run_akg_agents_full_comparison.sh`, so
+  incomplete settings fail before a long `run_torch_bench_lite.py` launch.
+- Confirmed full AKG Agents runner parity remains blocked until an actual
+  `standard` model/API configuration is provided.
 
 Changed Files:
+- `.gitignore`
 - `docs/status.md`
 - `docs/dev_guide.md`
 - `docs/tasks/pre_key_objective_audit.md`
-- `scripts/compare_runner_results.py`
+- `scripts/check_akg_agents_model_config.py`
 - `scripts/run_akg_agents_full_comparison.sh`
 - `tasks/active.md`
-- `tests/test_runner_result_comparison.py`
+- `tests/test_akg_agents_model_config_check.py`
 
 Verification:
-- Local: `python -m pytest tests/test_runner_result_comparison.py`
-- Local: `python -m py_compile scripts/compare_runner_results.py`
+- Local: `python -m pytest tests/test_akg_agents_model_config_check.py
+  tests/test_runner_result_comparison.py`
+- Local: `python -m py_compile scripts/check_akg_agents_model_config.py
+  scripts/compare_runner_results.py`
 - Local: `bash -n scripts/run_akg_agents_full_comparison.sh`
-- Local: `bash scripts/run_akg_agents_full_comparison.sh --help`
-- Local: `python -m pytest tests/test_experiment_result_import.py
-  tests/test_benchmark_registry_and_opspec.py tests/test_layernorm_gated_pass4.py`
-- Local: `git diff --check`.
-- Ascend: `bash -n scripts/run_akg_agents_full_comparison.sh`
-- Ascend: `CHECK_ONLY=1 bash scripts/run_akg_agents_full_comparison.sh`
-  printed the resolved full-mode `run_torch_bench_lite.py` command without
-  launching the runner.
-- Ascend: no-key preflight exited `2` with the expected missing AKG Agents
-  `standard` model configuration message.
-- Ascend: `scripts/compare_runner_results.py` compared the current standalone
-  replay Pass@4 report with
-  `outputs/results/akg_agents_runner_probe_sigmoid_2026_07_09.json`; it
-  reported `comparable=false`, AKG status
-  `blocked_pre_key_provider_config`, and decision
-  `standalone_tools_run_bench_py`.
+- Local: `python scripts/check_akg_agents_model_config.py --level standard
+  --json` exited `2` and reported missing `standard` config with no secrets.
+- Local: `bash scripts/run_akg_agents_full_comparison.sh --check-only` printed
+  the resolved full-mode command and did not launch the runner.
 
 Open Issues:
 - GitLink PR is not opened yet; this is a manual user action.
@@ -614,6 +611,6 @@ Open Issues:
   replay/manual Pass@4 results when credentials/model selection are available.
 
 Next Suggested Step:
-- Configure an AKG Agents `standard` model level to unblock full runner-path
-  comparison, or choose a non-priority operator such as `t2/moe_topk_softmax`
-  only if more manual pre-key evidence is desired.
+- Configure an AKG Agents `standard` model level, verify it with
+  `scripts/check_akg_agents_model_config.py --level standard`, then rerun the
+  AKG Agents full runner comparison.

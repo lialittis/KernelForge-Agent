@@ -173,6 +173,40 @@ API key, but successful Agent attempts require an AKG Agents `standard` model
 level configured via `AKG_AGENTS_STANDARD_*`, `~/.akg/settings.json`, or
 `.akg/settings*.json`.
 
+Before launching the full AKG Agents runner, check that the `standard` level is
+complete. This command does not call the provider and masks any key it prints:
+
+```bash
+python scripts/check_akg_agents_model_config.py --level standard
+```
+
+Environment-variable setup:
+
+```bash
+export AKG_AGENTS_STANDARD_BASE_URL="https://api.openai.com/v1"
+export AKG_AGENTS_STANDARD_API_KEY="<redacted>"
+export AKG_AGENTS_STANDARD_MODEL_NAME="<model-name>"
+```
+
+Local file setup, if environment variables are inconvenient:
+
+```json
+{
+  "models": {
+    "standard": {
+      "base_url": "https://api.openai.com/v1",
+      "api_key": "<redacted>",
+      "model_name": "<model-name>",
+      "provider_type": "openai"
+    }
+  }
+}
+```
+
+Save that as `.akg/settings.local.json` in the project or
+`~/.akg/settings.json` on the worker. The project-local
+`.akg/settings.local.json` path is ignored by Git.
+
 After a `standard` model level is configured, use the project wrapper for the
 full runner-path comparison:
 

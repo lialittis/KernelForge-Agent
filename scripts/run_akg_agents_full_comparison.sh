@@ -31,8 +31,8 @@ Environment overrides:
   OUTPUT=outputs/results/akg_agents_full_sigmoid_scale_sum_YYYY_MM_DD.json
   ASCEND_SET_ENV=/usr/local/Ascend/ascend-toolkit/set_env.sh
   ASCEND_VENV=/data/venvs/kf-triton-ascend
-  ALLOW_MISSING_MODEL_CONFIG=1   Run even if no standard model config is visible.
-  CHECK_ONLY=1                   Print the resolved command without running it.
+  ALLOW_MISSING_MODEL_CONFIG=1     Run even if no standard model config is visible.
+  CHECK_ONLY=1                     Print the resolved command without running it.
 
 Any positional arguments after -- are passed through to run_torch_bench_lite.py.
 EOF
@@ -85,36 +85,31 @@ if [[ ! -f "$RUNNER_PATH" ]]; then
   exit 1
 fi
 
-has_standard_env=0
-while IFS='=' read -r name _; do
-  if [[ "$name" == AKG_AGENTS_STANDARD_* ]]; then
-    has_standard_env=1
-    break
-  fi
-done < <(env)
+config_checker=(
+  python "$ROOT_DIR/scripts/check_akg_agents_model_config.py"
+  --level standard
+  --repo-root "$ROOT_DIR"
+)
 
-has_settings_file=0
-for settings in "$HOME/.akg/settings.json" "$ROOT_DIR/.akg/settings.json" "$ROOT_DIR"/.akg/settings*.json; do
-  if [[ -f "$settings" ]]; then
-    has_settings_file=1
-    break
-  fi
-done
+if ! "${config_checker[@]}" --quiet; then
+  config_ready=0
+else
+  config_ready=1
+fi
 
-if [[ "$has_standard_env" != "1" && "$has_settings_file" != "1" && "$CHECK_ONLY" == "1" ]]; then
+if [[ "$config_ready" != "1" && "$CHECK_ONLY" == "1" ]]; then
   cat >&2 <<'EOF'
 Warning: AKG Agents standard model configuration was not found.
 CHECK_ONLY=1 is set, so the resolved command will be printed without running.
 EOF
-elif [[ "$has_standard_env" != "1" && "$has_settings_file" != "1" && "$ALLOW_MISSING_MODEL_CONFIG" != "1" ]]; then
-  cat >&2 <<EOF
-AKG Agents standard model configuration was not found.
-
-Configure one of:
-  - AKG_AGENTS_STANDARD_* environment variables
-  - ~/.akg/settings.json
-  - .akg/settings*.json
-
+elif [[ "$config_ready" != "1" && "$ALLOW_MISSING_MODEL_CONFIG" == "1" ]]; then
+  "${config_checker[@]}" >&2 || true
+  cat >&2 <<'EOF'
+ALLOW_MISSING_MODEL_CONFIG=1 is set, so the known pre-key failure path will run.
+EOF
+elif [[ "$config_ready" != "1" ]]; then
+  "${config_checker[@]}" >&2 || true
+  cat >&2 <<'EOF'
 Then rerun this script. Use --allow-missing-model-config only for reproducing
 the known pre-key failure path.
 EOF

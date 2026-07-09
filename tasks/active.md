@@ -53,10 +53,11 @@ and agents.
    development should focus on runner comparison/provider setup, or a
    non-priority operator such as `t2/moe_topk_softmax` if more manual evidence
    is needed.
-14. Configure an AKG Agents `standard` model level before rerunning
-   `scripts/run_akg_agents_full_comparison.sh` for full runner-path
-   comparison, then use `scripts/compare_runner_results.py` to compare the
-   full-mode JSON with the standalone replay Pass@4 report.
+14. Configure an AKG Agents `standard` model level, verify it with
+   `scripts/check_akg_agents_model_config.py --level standard`, then rerun
+   `scripts/run_akg_agents_full_comparison.sh` for full runner-path comparison
+   and use `scripts/compare_runner_results.py` to compare the full-mode JSON
+   with the standalone replay Pass@4 report.
 15. Record model/provider, prompt version, retrieved skills, and candidate index
    for every generated experiment.
 16. Promote reusable generation, repair, or tuning lessons into `skills/`.
