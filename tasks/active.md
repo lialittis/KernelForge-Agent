@@ -44,14 +44,11 @@ and agents.
    replay `t1/sigmoid_scale_sum` are done.
 12. Choose between `t2/add_rmsnorm_quant` and `t3/layernorm_gated` for the next
    deterministic manual seed before live provider generation.
-13. Add expression evaluation for the remaining parser gaps:
-   `t3/causal_conv1d` (`width - 1`) and `t3/decode_mla`
-   (`qk_nope_dim + qk_rope_dim`).
-14. Install or vendor the AKG Agents dependency stack so
+13. Install or vendor the AKG Agents dependency stack so
    `run_torch_bench_lite.py` can be compared with standalone `run_bench.py`.
-15. Record model/provider, prompt version, retrieved skills, and candidate index
+14. Record model/provider, prompt version, retrieved skills, and candidate index
    for every generated experiment.
-16. Promote reusable generation, repair, or tuning lessons into `skills/`.
+15. Promote reusable generation, repair, or tuning lessons into `skills/`.
 
 ## Research Questions
 
@@ -63,8 +60,6 @@ and agents.
   reproducibility notes?
 - Should project experiments use Pass@4, or match the AKG Agents runner default
   `--pass-n 3` unless overridden?
-- What expression evaluator is needed for the remaining `t3/causal_conv1d`
-  and `t3/decode_mla` shape arithmetic?
 - Which live model should be the first measured `openai` provider backend for
   generated candidates after the initial submission package is done?
 - Can the cloud SSH gateway be configured for provider-level key auth, or do

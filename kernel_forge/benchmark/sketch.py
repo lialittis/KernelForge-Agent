@@ -99,6 +99,10 @@ def build_operator_sketch(
         )
     if case_id == "t2/rope":
         return build_rope_sketch(input_specs, output_specs[0], backend_target)
+    if case_id == "t3/causal_conv1d":
+        return build_causal_conv1d_sketch(input_specs, output_specs[0], backend_target)
+    if case_id == "t3/decode_mla":
+        return build_decode_mla_sketch(input_specs, output_specs[0], backend_target)
     if case_id == "t3/layernorm_gated":
         return build_rowwise_normalization_sketch(
             input_specs,
@@ -323,6 +327,130 @@ def build_rope_sketch(
             "cos_sin_broadcast_layout",
             "float16_accuracy",
             "last_dim_multiple_constraints",
+        ],
+    }
+
+
+def build_causal_conv1d_sketch(
+    input_specs: list[TensorSpec],
+    output_spec: TensorSpec,
+    backend_target: str,
+) -> dict:
+    x = input_specs[0]
+    weight = input_specs[2]
+    batch = x.shape[0]
+    channels = x.shape[1]
+    width = weight.shape[1]
+    return {
+        "operator_category": "convolution",
+        "compute_pattern": "causal_depthwise_conv1d_silu",
+        "parallel_axes": ["batch", "channel_dim"],
+        "tile_plan": {
+            "strategy": "batch_channel_depthwise_width_reduction",
+            "shape": [batch, channels, width],
+            "tunable": True,
+        },
+        "memory_plan": {
+            "inputs": [item.name for item in input_specs],
+            "input": "current_token_and_state_global_read",
+            "output": "contiguous_global_write",
+            "intermediate": "local_width_reduction",
+            "state_update": "in_place_conv_state_tail_copy",
+        },
+        "pipeline_plan": {
+            "stages": [
+                "load_state_and_current_token",
+                "depthwise_width_reduce",
+                "add_bias",
+                "silu",
+                "store_output",
+                "update_state",
+            ]
+        },
+        "boundary_mask": {
+            "required": True,
+            "reason": "batch/channel tiles may not divide the flattened output",
+        },
+        "accumulation_dtype": "float32",
+        "backend_target": backend_target,
+        "performance_knobs": {
+            "channel_tile": None,
+            "batch_tile": None,
+            "width_unroll": width,
+            "num_warps_or_cores": None,
+        },
+        "known_risks": [
+            "state_update_aliasing",
+            "conv_state_width_minus_one",
+            "depthwise_group_mapping",
+            "silu_accuracy",
+            "conv_state_indices_ignored_by_reference",
+        ],
+    }
+
+
+def build_decode_mla_sketch(
+    input_specs: list[TensorSpec],
+    output_spec: TensorSpec,
+    backend_target: str,
+) -> dict:
+    q = input_specs[0]
+    k_nope = input_specs[1]
+    k_rope = input_specs[2]
+    v_buffer = input_specs[3]
+    block_table = input_specs[5]
+    batch, num_q_heads, qk_total = q.shape
+    max_pages = block_table.shape[1]
+    page_size = k_nope.shape[1]
+    max_seq_len = max_pages * page_size
+    return {
+        "operator_category": "matmul_like",
+        "compute_pattern": "paged_mla_decode_attention",
+        "parallel_axes": ["batch", "query_heads", "kv_sequence", "value_dim"],
+        "tile_plan": {
+            "strategy": "paged_qk_softmax_value_pipeline",
+            "shape": [batch, num_q_heads, max_seq_len, output_spec.shape[-1]],
+            "tunable": True,
+        },
+        "memory_plan": {
+            "inputs": [item.name for item in input_specs],
+            "input": "paged_kv_cache_gather_with_block_table",
+            "output": "contiguous_attention_output_write",
+            "intermediate": "qk_scores_and_softmax_accumulators",
+        },
+        "pipeline_plan": {
+            "stages": [
+                "gather_kv_pages",
+                "split_q_nope_rope",
+                "qk_nope_matmul",
+                "qk_rope_matmul",
+                "scale_softmax",
+                "value_matmul",
+                "store",
+            ]
+        },
+        "boundary_mask": {
+            "required": True,
+            "reason": "sequence lengths and page counts vary per batch",
+        },
+        "accumulation_dtype": "float32",
+        "backend_target": backend_target,
+        "performance_knobs": {
+            "head_tile": None,
+            "sequence_tile": None,
+            "value_tile": None,
+            "page_tile": None,
+            "num_warps_or_cores": None,
+        },
+        "known_risks": [
+            "paged_cache_block_table_mapping",
+            "variable_sequence_length_masks",
+            "gqa_head_repetition",
+            "softmax_numerical_stability",
+            "large_intermediate_qk_storage",
+            "matmul_backend_selection",
+            f"qk_total_dim_{qk_total}_split_{k_nope.shape[-1]}_{k_rope.shape[-1]}",
+            f"v_buffer_dtype_{v_buffer.dtype}",
         ],
     }
 

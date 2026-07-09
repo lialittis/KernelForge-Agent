@@ -35,8 +35,11 @@ def test_scanner_finds_official_cases_and_supported_subset():
         "t2/add_rmsnorm_cast",
         "t2/add_rmsnorm_quant",
         "t2/rope",
+        "t3/causal_conv1d",
+        "t3/decode_mla",
         "t3/layernorm_gated",
     }
+    assert "parse_failed" not in registry["summary"]["by_support"]
 
     matmul = {case["id"]: case for case in registry["cases"]}["t1/matmul_basic"]
     assert matmul["category"] == "matmul_like"
@@ -128,6 +131,35 @@ def test_extracts_layernorm_gated_opspec():
     assert spec["sketch"]["compute_pattern"] == "gated_rmsnorm"
 
 
+def test_extracts_causal_conv1d_opspec():
+    spec = extract_opspec(BENCH / "t3/causal_conv1d.py", repo_root=ROOT)
+
+    assert spec["id"] == "t3/causal_conv1d"
+    assert spec["category"] == "convolution"
+    assert spec["inputs"][1]["shape"] == [32, 2048, 3]
+    assert spec["inputs"][4]["dtype"] == "int32"
+    assert spec["outputs"][0]["shape"] == [32, 2048]
+    assert spec["semantics"]["activation"] == "silu"
+    assert spec["semantics"]["state_update"] == "conv_state.copy_(x_padded[:, :, -(width - 1):])"
+    assert spec["sketch"]["compute_pattern"] == "causal_depthwise_conv1d_silu"
+    assert spec["sketch"]["tile_plan"]["shape"] == [32, 2048, 4]
+
+
+def test_extracts_decode_mla_opspec():
+    spec = extract_opspec(BENCH / "t3/decode_mla.py", repo_root=ROOT)
+
+    assert spec["id"] == "t3/decode_mla"
+    assert spec["category"] == "matmul_like"
+    assert spec["inputs"][0]["shape"] == [16, 128, 576]
+    assert spec["inputs"][4]["dtype"] == "int32"
+    assert spec["inputs"][5]["shape"] == [16, 8]
+    assert spec["outputs"][0]["shape"] == [16, 128, 512]
+    assert spec["semantics"]["page_size"] == 128
+    assert spec["semantics"]["sm_scale"] == 0.041666666666666664
+    assert spec["sketch"]["compute_pattern"] == "paged_mla_decode_attention"
+    assert spec["sketch"]["tile_plan"]["shape"] == [16, 128, 1024, 512]
+
+
 def test_unsupported_case_can_emit_metadata():
     spec = extract_opspec(
         BENCH / "t1/matmul_basic.py",
@@ -160,4 +192,5 @@ def test_scan_cli_writes_registry_yaml(tmp_path):
 
     data = yaml.safe_load(output.read_text())
     assert data["summary"]["total_cases"] == 13
-    assert data["summary"]["by_support"]["opspec_supported"] == 8
+    assert data["summary"]["by_support"]["opspec_supported"] == 10
+    assert "parse_failed" not in data["summary"]["by_support"]

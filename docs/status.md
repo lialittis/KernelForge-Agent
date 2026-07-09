@@ -421,6 +421,19 @@ External PR and email submission are manual user actions.
 - Promoted the RoPE intrinsic-vs-Triton parity lesson into
   `skills/transpose_layout/SKILL.md`; `rope_v4` is the best Triton seed but
   the intrinsic wrapper remains best overall.
+- Extended deterministic OpSpec extraction to the remaining T3 symbolic-shape
+  blockers:
+  - `t3/causal_conv1d`: supports `width - 1`, `torch.arange`, and depthwise
+    causal-convolution sketch generation.
+  - `t3/decode_mla`: supports `qk_nope_dim + qk_rope_dim`, `torch.full`,
+    `torch.arange(...).reshape(...)`, paged-KV input metadata, output
+    inference, and MLA decode sketch generation.
+- Updated the AKG Bench Lite registry summary to 10 supported OpSpecs, 3
+  unsupported cases, and 0 parse failures.
+- Added parsed OpSpecs under `benchmarks/parsed/` for:
+  - `t3/causal_conv1d`: depthwise causal Conv1D + SiLU with in-place state
+    update
+  - `t3/decode_mla`: paged MLA decode attention sketch
 
 ## In Progress
 
@@ -431,9 +444,6 @@ External PR and email submission are manual user actions.
 
 - `gelu_triton_v13` remains much slower than the PyTorch baseline, so GELU is
   not a good next single-operator tuning target without a new backend strategy.
-- Remaining parser gaps are now limited to more complex shape-expression cases:
-  `t3/causal_conv1d` still fails on `width - 1`, and `t3/decode_mla` still
-  fails on `qk_nope_dim + qk_rope_dim`.
 - The current cloud SSH endpoint is served by `SSHPiper` and only advertises
   password authentication. Local no-password SSH works only while a
   `ControlMaster` session remains alive; durable automation needs either
@@ -457,13 +467,10 @@ External PR and email submission are manual user actions.
    in deterministic replay/prompt assembly before live provider generation.
 7. Choose between `t2/add_rmsnorm_quant` and
    `t3/layernorm_gated` for the next manual seed based on expected reuse.
-8. Add expression evaluation for the remaining parser gaps:
-   `t3/causal_conv1d` (`width - 1`) and `t3/decode_mla`
-   (`qk_nope_dim + qk_rope_dim`).
-9. Keep `replay` as the deterministic CI/regression provider; use
+8. Keep `replay` as the deterministic CI/regression provider; use
    `scripts/run_replay_regression.py` for the current updated-AKG
    `t1/sigmoid_scale_sum` replay regression path.
-10. Use the completed manual Pass@4 cycles as retrieval examples:
+9. Use the completed manual Pass@4 cycles as retrieval examples:
    updated-AKG `sigmoid_scale_sum_v2` for a positive reduction trajectory and
    updated-AKG `fused_silu_and_mul_v3` for a correctness-positive but
    performance-negative fused-elementwise trajectory, and updated-AKG
@@ -471,22 +478,22 @@ External PR and email submission are manual user actions.
    trajectory, and `add_rmsnorm_cast_v2` for a positive T2 normalization
    trajectory, and `rope_v4`/`rope_v1` for a RoPE intrinsic-vs-Triton parity
    trajectory.
-11. Use
+10. Use
     `experiments/reports/2026-07-09-remaining-reference-preeval-updated-akg.yaml`
     as the baseline for all remaining AKG Bench Lite operators before live
     provider generation; all nine remaining reference cases now pass when
     CANN's `PYTHONPATH` entries are preserved.
-12. Continue rerunning key Pass@4 reports under updated AKG commit
+11. Continue rerunning key Pass@4 reports under updated AKG commit
     `47aa428fcdc8c68f78d331dc578bc6c74fb9d91d` before final result claims;
     manual `t1/sigmoid_scale_sum`, `t1/softmax`, `t1/fused_silu_and_mul`, and
     replay `t1/sigmoid_scale_sum` have been rebaselined.
-13. Install/enable the AKG Agents dependency stack, then rerun
+12. Install/enable the AKG Agents dependency stack, then rerun
     `run_torch_bench_lite.py --backend npu --mode full --cases
     sigmoid_scale_sum --pass-n 4` for a full runner-path comparison.
-14. Run a first live `provider=openai` Pass@4 generation cycle for
+13. Run a first live `provider=openai` Pass@4 generation cycle for
     `t1/sigmoid_scale_sum` once credentials and model selection are available.
-15. Import live generated benchmark results after Ascend verification.
-16. Keep model/provider information explicit in every generated experiment
+14. Import live generated benchmark results after Ascend verification.
+15. Keep model/provider information explicit in every generated experiment
    record.
 
 ## Latest Handoff
@@ -495,43 +502,38 @@ Date: 2026-07-09
 Agent: Codex
 Branch: main
 Summary:
-- Added and benchmarked the deterministic T2 Pass@4 seed batch for `t2/rope`.
-- All four candidates passed under updated AKG commit
-  `47aa428fcdc8c68f78d331dc578bc6c74fb9d91d`; v1 intrinsic wrapper is best at
-  `1.0006x` speedup and weighted score `90.01`, while v4 is the best Triton
-  seed at `1.0001x` and score `90.0`.
-- Recorded the run/report metadata and promoted the fp32-accumulation
-  rotate-half lesson into the transpose/layout skill.
+- Removed the remaining OpSpec parser failures by adding safe arithmetic,
+  `torch.full`, `torch.arange`, and reshape/view shape extraction.
+- Added supported OpSpec/sketch templates for `t3/causal_conv1d` and
+  `t3/decode_mla`.
+- Registry coverage is now 10 supported OpSpecs, 3 unsupported cases, and 0
+  parse failures.
 
 Changed Files:
-- `experiments/reports/2026-07-09-rope-pass4.yaml`
-- `experiments/runs/2026-07-09-rope-pass4.yaml`
+- `benchmarks/parsed/t3_causal_conv1d.yaml`
+- `benchmarks/parsed/t3_decode_mla.yaml`
+- `benchmarks/raw/akg_kernels_bench_lite_registry.yaml`
 - `docs/status.md`
-- `kernel_forge/candidates/rope_v1.py`
-- `kernel_forge/candidates/rope_v2.py`
-- `kernel_forge/candidates/rope_v3.py`
-- `kernel_forge/candidates/rope_v4.py`
-- `scripts/create_rope_pass4_submissions.sh`
-- `scripts/probe_rope_backend.py`
-- `skills/transpose_layout/SKILL.md`
+- `kernel_forge/benchmark/extractor.py`
+- `kernel_forge/benchmark/sketch.py`
 - `tasks/active.md`
-- `tests/test_rope_pass4.py`
+- `tests/test_benchmark_registry_and_opspec.py`
 
 Verification:
-- `python -m pytest tests/test_rope_pass4.py tests/test_benchmark_registry_and_opspec.py`
-- `python -m py_compile kernel_forge/candidates/rope_v1.py kernel_forge/candidates/rope_v2.py kernel_forge/candidates/rope_v3.py kernel_forge/candidates/rope_v4.py scripts/probe_rope_backend.py`
-- Ascend backend probe for all four candidates with
-  `export PYTHONPATH=/data/KernelForge-Agent:${PYTHONPATH:-}` preserved.
-- Ascend official standalone benchmark with `tools/run_bench.py --warmup 10
-  --iterations 100 --num-trials 3`.
+- `python -m pytest tests/test_benchmark_registry_and_opspec.py`
+- `python -m pytest tests/test_benchmark_registry_and_opspec.py tests/test_rope_pass4.py tests/test_add_rmsnorm_cast_pass4.py tests/test_experiment_result_import.py`
+- `python -m py_compile kernel_forge/benchmark/extractor.py kernel_forge/benchmark/sketch.py`
+- `python scripts/extract_opspec.py --case third_party/akg/akg_agents/benchmark/akg_kernels_bench_lite/t3/causal_conv1d.py --output benchmarks/parsed/t3_causal_conv1d.yaml --repo-root .`
+- `python scripts/extract_opspec.py --case third_party/akg/akg_agents/benchmark/akg_kernels_bench_lite/t3/decode_mla.py --output benchmarks/parsed/t3_decode_mla.yaml --repo-root .`
+- `python scripts/scan_benchmark_cases.py --bench-dir third_party/akg/akg_agents/benchmark/akg_kernels_bench_lite --repo-root . --output benchmarks/raw/akg_kernels_bench_lite_registry.yaml`
+- YAML parse check for the two new parsed OpSpecs and the updated registry.
+- `git diff --check`
 
 Open Issues:
 - GitLink PR is not opened yet; this is a manual user action.
 - The project-book email has not been sent yet; this is a manual user action.
 - After the PR is opened, rerun the exporter with `--pr-link <GitLink PR URL>`
   and attach that final output to the email.
-- `t3/causal_conv1d` and `t3/decode_mla` still require expression evaluation
-  for shape arithmetic before they can produce parsed OpSpecs.
 - Need to install or vendor the AKG Agents dependency stack before
   `run_torch_bench_lite.py` can be used for full runner-path comparison.
 - Need to run the first real live-provider generation and compare it with

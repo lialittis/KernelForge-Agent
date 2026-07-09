@@ -8,15 +8,14 @@ summary:
     t2: 4
     t3: 3
   by_category:
+    convolution: 1
     elementwise: 2
     matmul_like: 3
     normalization: 3
     reduction: 3
     transpose_layout: 1
-    unknown: 1
   by_support:
-    opspec_supported: 8
-    parse_failed: 2
+    opspec_supported: 10
     unsupported: 3
 cases:
 - id: t1/fused_silu_and_mul
@@ -328,27 +327,116 @@ cases:
 - id: t3/causal_conv1d
   name: causal_conv1d
   tier: t3
-  category: unknown
+  category: convolution
   source_path: third_party/akg/akg_agents/benchmark/akg_kernels_bench_lite/t3/causal_conv1d.py
   support:
-    status: parse_failed
-    reason: 'ExtractionError: Expected literal value, got width - 1'
-  inputs: []
-  init_inputs: []
-  forward_args: []
-  forward_expression: null
+    status: opspec_supported
+    reason: covered by deterministic OpSpec extraction templates
+  inputs:
+  - name: x
+    shape:
+    - 32
+    - 2048
+    dtype: float16
+    layout: contiguous
+  - name: conv_state
+    shape:
+    - 32
+    - 2048
+    - 3
+    dtype: float16
+    layout: contiguous
+  - name: weight
+    shape:
+    - 2048
+    - 4
+    dtype: float16
+    layout: contiguous
+  - name: bias
+    shape:
+    - 2048
+    dtype: float16
+    layout: contiguous
+  - name: conv_state_indices
+    shape:
+    - 32
+    dtype: int32
+    layout: contiguous
+  init_inputs:
+  - silu
+  forward_args:
+  - x
+  - conv_state
+  - weight
+  - bias
+  - conv_state_indices
+  forward_expression: out.to(x.dtype)
+  reference_class: Model
+  candidate_class: ModelNew
 - id: t3/decode_mla
   name: decode_mla
   tier: t3
   category: matmul_like
   source_path: third_party/akg/akg_agents/benchmark/akg_kernels_bench_lite/t3/decode_mla.py
   support:
-    status: parse_failed
-    reason: 'ExtractionError: Expected literal value, got qk_nope_dim + qk_rope_dim'
-  inputs: []
-  init_inputs: []
-  forward_args: []
-  forward_expression: null
+    status: opspec_supported
+    reason: covered by deterministic OpSpec extraction templates
+  inputs:
+  - name: q
+    shape:
+    - 16
+    - 128
+    - 576
+    dtype: float32
+    layout: contiguous
+  - name: k_nope_buffer
+    shape:
+    - 128
+    - 128
+    - 1
+    - 512
+    dtype: float32
+    layout: contiguous
+  - name: k_rope_buffer
+    shape:
+    - 128
+    - 128
+    - 1
+    - 64
+    dtype: float32
+    layout: contiguous
+  - name: v_buffer
+    shape:
+    - 128
+    - 128
+    - 1
+    - 512
+    dtype: float32
+    layout: contiguous
+  - name: seq_lens
+    shape:
+    - 16
+    dtype: int32
+    layout: contiguous
+  - name: block_table
+    shape:
+    - 16
+    - 8
+    dtype: int32
+    layout: contiguous
+  init_inputs:
+  - 0.041666666666666664
+  - 128
+  forward_args:
+  - q
+  - k_nope_buffer
+  - k_rope_buffer
+  - v_buffer
+  - seq_lens
+  - block_table
+  forward_expression: torch.cat(outputs, dim=0)
+  reference_class: Model
+  candidate_class: ModelNew
 - id: t3/layernorm_gated
   name: layernorm_gated
   tier: t3

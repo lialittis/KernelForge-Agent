@@ -1,0 +1,134 @@
+id: t3/causal_conv1d
+name: causal_conv1d
+tier: t3
+category: convolution
+source_path: third_party/akg/akg_agents/benchmark/akg_kernels_bench_lite/t3/causal_conv1d.py
+reference_class: Model
+candidate_class: ModelNew
+inputs:
+- name: x
+  shape:
+  - 32
+  - 2048
+  dtype: float16
+  layout: contiguous
+- name: conv_state
+  shape:
+  - 32
+  - 2048
+  - 3
+  dtype: float16
+  layout: contiguous
+- name: weight
+  shape:
+  - 2048
+  - 4
+  dtype: float16
+  layout: contiguous
+- name: bias
+  shape:
+  - 2048
+  dtype: float16
+  layout: contiguous
+- name: conv_state_indices
+  shape:
+  - 32
+  dtype: int32
+  layout: contiguous
+outputs:
+- name: output
+  shape:
+  - 32
+  - 2048
+  dtype: float16
+  layout: contiguous
+semantics:
+  expression: out.to(x.dtype)
+  formula: silu(sum_{w=0..W-1} padded_x[:, channel, w] * weight[channel, w] + bias[channel])
+  broadcast: bias broadcasts over batch axis
+  reduction_axes:
+  - conv_width
+  normalization_axes: []
+  layout_transform: append_current_token_to_conv_state
+  activation: silu
+  state_update: conv_state.copy_(x_padded[:, :, -(width - 1):])
+  boundary_conditions:
+    causal: true
+    tail_mask_required: true
+    state_width: weight.shape[1] - 1
+validation:
+  rtol: 0.01
+  atol: 0.01
+  max_error_required: null
+  shape_cases:
+  - - 32
+    - 2048
+  - - 32
+    - 2048
+    - 3
+  - - 2048
+    - 4
+  - - 2048
+  - - 32
+  dtype_cases:
+  - float16
+  - int32
+performance:
+  metric: median_latency_ms
+  warmup: 10
+  repeats: 100
+  num_trials: 3
+  baseline_latency_ms: null
+  baseline_source: official_reference_model
+sketch:
+  operator_category: convolution
+  compute_pattern: causal_depthwise_conv1d_silu
+  parallel_axes:
+  - batch
+  - channel_dim
+  tile_plan:
+    strategy: batch_channel_depthwise_width_reduction
+    shape:
+    - 32
+    - 2048
+    - 4
+    tunable: true
+  memory_plan:
+    inputs:
+    - x
+    - conv_state
+    - weight
+    - bias
+    - conv_state_indices
+    input: current_token_and_state_global_read
+    output: contiguous_global_write
+    intermediate: local_width_reduction
+    state_update: in_place_conv_state_tail_copy
+  pipeline_plan:
+    stages:
+    - load_state_and_current_token
+    - depthwise_width_reduce
+    - add_bias
+    - silu
+    - store_output
+    - update_state
+  boundary_mask:
+    required: true
+    reason: batch/channel tiles may not divide the flattened output
+  accumulation_dtype: float32
+  backend_target: triton_ascend
+  performance_knobs:
+    channel_tile: null
+    batch_tile: null
+    width_unroll: 4
+    num_warps_or_cores: null
+  known_risks:
+  - state_update_aliasing
+  - conv_state_width_minus_one
+  - depthwise_group_mapping
+  - silu_accuracy
+  - conv_state_indices_ignored_by_reference
+submission:
+  required_files:
+  - t3/causal_conv1d.py
+  entrypoint: ModelNew

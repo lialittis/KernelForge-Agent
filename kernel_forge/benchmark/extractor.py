@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import ast
+import operator
 from pathlib import Path
 from typing import Any
 
@@ -20,6 +21,8 @@ SUPPORTED_OPSPEC_CASES = {
     "t2/add_rmsnorm_cast",
     "t2/add_rmsnorm_quant",
     "t2/rope",
+    "t3/causal_conv1d",
+    "t3/decode_mla",
     "t3/layernorm_gated",
 }
 
@@ -34,7 +37,7 @@ CASE_CATEGORIES = {
     "t2/add_rmsnorm_cast": "normalization",
     "t2/add_rmsnorm_quant": "normalization",
     "t2/moe_topk_softmax": "reduction",
-    "t3/causal_conv1d": "unknown",
+    "t3/causal_conv1d": "convolution",
     "t3/decode_mla": "matmul_like",
     "t3/layernorm_gated": "normalization",
 }
@@ -155,6 +158,10 @@ def _extract_get_inputs(module: ast.Module) -> list[TensorSpec]:
                 tensor = _tensor_from_randn(target.id, node.value, env)
                 if tensor is None:
                     tensor = _tensor_from_cat(target.id, node.value, tensors)
+                if tensor is None:
+                    tensor = _tensor_from_full(target.id, node.value, env)
+                if tensor is None:
+                    tensor = _tensor_from_arange(target.id, node.value, env)
                 if tensor is not None:
                     tensors[target.id] = tensor
     returned = _extract_returned_names(fn)
@@ -254,6 +261,27 @@ def _build_output_specs(case_id: str, input_specs: list[TensorSpec]) -> list[Ten
                 shape=x.shape,
                 dtype=x.dtype,
                 layout=x.layout,
+            )
+        ]
+    if case_id == "t3/causal_conv1d":
+        x = input_specs[0]
+        return [
+            TensorSpec(
+                name="output",
+                shape=x.shape,
+                dtype=x.dtype,
+                layout=x.layout,
+            )
+        ]
+    if case_id == "t3/decode_mla":
+        q = input_specs[0]
+        v_buffer = input_specs[3]
+        return [
+            TensorSpec(
+                name="output",
+                shape=[q.shape[0], q.shape[1], v_buffer.shape[-1]],
+                dtype=v_buffer.dtype,
+                layout=q.layout,
             )
         ]
     raise ExtractionError(f"No output inference rule for {case_id}")
@@ -360,6 +388,41 @@ def _build_semantics(
             "is_rms_norm": is_rms_norm,
             "boundary_conditions": {"tail_mask_required": True},
         }
+    if case_id == "t3/causal_conv1d":
+        activation = init_inputs[0] if init_inputs else "silu"
+        return {
+            "expression": expression,
+            "formula": "silu(sum_{w=0..W-1} padded_x[:, channel, w] * weight[channel, w] + bias[channel])",
+            "broadcast": "bias broadcasts over batch axis",
+            "reduction_axes": ["conv_width"],
+            "normalization_axes": [],
+            "layout_transform": "append_current_token_to_conv_state",
+            "activation": activation,
+            "state_update": "conv_state.copy_(x_padded[:, :, -(width - 1):])",
+            "boundary_conditions": {
+                "causal": True,
+                "tail_mask_required": True,
+                "state_width": "weight.shape[1] - 1",
+            },
+        }
+    if case_id == "t3/decode_mla":
+        sm_scale = init_inputs[0] if init_inputs else None
+        page_size = init_inputs[1] if len(init_inputs) > 1 else None
+        return {
+            "expression": expression,
+            "formula": "softmax(((q_nope @ k_nope.T) + (q_rope @ k_rope.T)) * sm_scale) @ v",
+            "broadcast": "KV heads repeat across query heads when num_q_heads != num_kv_heads",
+            "reduction_axes": ["qk_nope_dim", "qk_rope_dim", "kv_sequence"],
+            "normalization_axes": ["kv_sequence"],
+            "layout_transform": "paged_kv_cache_gather",
+            "sm_scale": sm_scale,
+            "page_size": page_size,
+            "boundary_conditions": {
+                "variable_sequence_lengths": True,
+                "block_table_pages": True,
+                "tail_mask_required": True,
+            },
+        }
     return {"expression": expression}
 
 
@@ -450,7 +513,7 @@ def _tensor_from_randn(
     dtype = "float32"
     for keyword in call.keywords:
         if keyword.arg == "dtype":
-            dtype = _dtype_name(keyword.value)
+            dtype = _dtype_name(keyword.value, env)
     return TensorSpec(name=name, shape=shape, dtype=dtype)
 
 
@@ -501,6 +564,46 @@ def _tensor_from_cat(
     return TensorSpec(name=name, shape=shape, dtype=dtype)
 
 
+def _tensor_from_full(
+    name: str,
+    value: ast.AST,
+    env: dict[str, Any] | None = None,
+) -> TensorSpec | None:
+    call = _find_torch_call(value, "full")
+    if call is None:
+        return None
+    if len(call.args) < 2:
+        raise ExtractionError("torch.full requires shape and fill value")
+    shape = _shape_from_arg(call.args[0], env)
+    dtype = "float32"
+    for keyword in call.keywords:
+        if keyword.arg == "dtype":
+            dtype = _dtype_name(keyword.value, env)
+    return TensorSpec(name=name, shape=shape, dtype=dtype)
+
+
+def _tensor_from_arange(
+    name: str,
+    value: ast.AST,
+    env: dict[str, Any] | None = None,
+) -> TensorSpec | None:
+    call = _find_torch_call(value, "arange")
+    if call is None:
+        return None
+
+    reshape_shape = _shape_from_reshape(value, env)
+    if reshape_shape is not None:
+        shape = reshape_shape
+    else:
+        shape = [_arange_length(call, env)]
+
+    dtype = "int64"
+    for keyword in call.keywords:
+        if keyword.arg == "dtype":
+            dtype = _dtype_name(keyword.value, env)
+    return TensorSpec(name=name, shape=shape, dtype=dtype)
+
+
 def _record_assignment(target: ast.AST, value: ast.AST, env: dict[str, Any]) -> None:
     if isinstance(target, ast.Name):
         try:
@@ -532,6 +635,29 @@ def _literal_value(node: ast.AST, env: dict[str, Any] | None = None) -> Any:
         if node.id in env:
             return env[node.id]
         raise ExtractionError(f"Unsupported name literal {node.id}")
+    if isinstance(node, ast.UnaryOp):
+        operand = _literal_value(node.operand, env)
+        if isinstance(node.op, ast.USub):
+            return -operand
+        if isinstance(node.op, ast.UAdd):
+            return +operand
+        raise ExtractionError(f"Unsupported unary literal {ast.unparse(node)}")
+    if isinstance(node, ast.BinOp):
+        left = _literal_value(node.left, env)
+        right = _literal_value(node.right, env)
+        operations = {
+            ast.Add: operator.add,
+            ast.Sub: operator.sub,
+            ast.Mult: operator.mul,
+            ast.Div: operator.truediv,
+            ast.FloorDiv: operator.floordiv,
+            ast.Mod: operator.mod,
+            ast.Pow: operator.pow,
+        }
+        for op_type, op_func in operations.items():
+            if isinstance(node.op, op_type):
+                return op_func(left, right)
+        raise ExtractionError(f"Unsupported arithmetic literal {ast.unparse(node)}")
     if isinstance(node, ast.Attribute):
         return ast.unparse(node)
     if isinstance(node, ast.Tuple):
@@ -563,11 +689,62 @@ def _find_torch_call(node: ast.AST, function_name: str) -> ast.Call | None:
     return None
 
 
+def _shape_from_arg(node: ast.AST, env: dict[str, Any] | None = None) -> list[int]:
+    if isinstance(node, (ast.Tuple, ast.List)):
+        return [_literal_int(item, env) for item in node.elts]
+    value = _literal_value(node, env or {})
+    if isinstance(value, int):
+        return [value]
+    if isinstance(value, (tuple, list)):
+        if not all(isinstance(item, int) for item in value):
+            raise ExtractionError(f"Shape contains non-integer values: {value!r}")
+        return list(value)
+    raise ExtractionError(f"Expected shape literal, got {ast.unparse(node)}")
+
+
+def _shape_from_reshape(
+    value: ast.AST,
+    env: dict[str, Any] | None = None,
+) -> list[int] | None:
+    if not isinstance(value, ast.Call):
+        return None
+    if not isinstance(value.func, ast.Attribute):
+        return None
+    if value.func.attr not in {"reshape", "view"}:
+        return None
+    if len(value.args) == 1 and isinstance(value.args[0], (ast.Tuple, ast.List)):
+        return _shape_from_arg(value.args[0], env)
+    return [_literal_int(arg, env) for arg in value.args]
+
+
+def _arange_length(call: ast.Call, env: dict[str, Any] | None = None) -> int:
+    if not call.args:
+        raise ExtractionError("torch.arange requires at least one bound")
+    if len(call.args) == 1:
+        start = 0
+        stop = _literal_int(call.args[0], env)
+        step = 1
+    elif len(call.args) in {2, 3}:
+        start = _literal_int(call.args[0], env)
+        stop = _literal_int(call.args[1], env)
+        step = _literal_int(call.args[2], env) if len(call.args) == 3 else 1
+    else:
+        raise ExtractionError("torch.arange with more than three positional args is unsupported")
+    if step == 0:
+        raise ExtractionError("torch.arange step must be non-zero")
+    if (stop - start) * step <= 0:
+        return 0
+    return (abs(stop - start) + abs(step) - 1) // abs(step)
+
+
 def _normalize_dtype_name(dtype: str) -> str:
     return dtype.split(".", 1)[1] if dtype.startswith("torch.") else dtype
 
 
-def _dtype_name(node: ast.AST) -> str:
+def _dtype_name(node: ast.AST, env: dict[str, Any] | None = None) -> str:
+    if isinstance(node, ast.Name) and env and node.id in env:
+        value = str(env[node.id])
+        return _normalize_dtype_name(value)
     text = ast.unparse(node)
     if text.startswith("torch."):
         return text.split(".", 1)[1]
