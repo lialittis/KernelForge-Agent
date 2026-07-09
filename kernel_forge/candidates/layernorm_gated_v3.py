@@ -18,8 +18,9 @@ _HAS_TRITON = (
     and hasattr(tl, "arange")
     and hasattr(tl, "sigmoid")
     and hasattr(tl, "sum")
-    and hasattr(tl, "sqrt")
+    and hasattr(tl, "rsqrt")
     and hasattr(tl, "constexpr")
+    and hasattr(tl, "float16")
 )
 
 
@@ -42,17 +43,23 @@ if _HAS_TRITON:
 
         x0 = tl.load(x_ptr + base + offsets0)
         x1 = tl.load(x_ptr + base + offsets1)
-        sumsq = tl.sum(x0 * x0, axis=0) + tl.sum(x1 * x1, axis=0)
-        rstd = 1.0 / tl.sqrt(sumsq / n_cols + eps)
+        x20 = (x0 * x0).to(tl.float16)
+        x21 = (x1 * x1).to(tl.float16)
+        variance = ((tl.sum(x20, axis=0) + tl.sum(x21, axis=0)) / n_cols).to(tl.float16)
+        rstd = tl.rsqrt((variance + eps).to(tl.float16)).to(tl.float16)
 
         w0 = tl.load(weight_ptr + offsets0)
         w1 = tl.load(weight_ptr + offsets1)
         z0 = tl.load(z_ptr + base + offsets0)
         z1 = tl.load(z_ptr + base + offsets1)
-        gate0 = tl.sigmoid(z0)
-        gate1 = tl.sigmoid(z1)
-        tl.store(out_ptr + base + offsets0, x0 * rstd * w0 * gate0)
-        tl.store(out_ptr + base + offsets1, x1 * rstd * w1 * gate1)
+        gate0 = tl.sigmoid(z0).to(tl.float16)
+        gate1 = tl.sigmoid(z1).to(tl.float16)
+        normed0 = (x0 * rstd).to(tl.float16)
+        normed1 = (x1 * rstd).to(tl.float16)
+        scaled0 = (normed0 * w0).to(tl.float16)
+        scaled1 = (normed1 * w1).to(tl.float16)
+        tl.store(out_ptr + base + offsets0, (scaled0 * gate0).to(tl.float16))
+        tl.store(out_ptr + base + offsets1, (scaled1 * gate1).to(tl.float16))
 
 else:
     _layernorm_gated_kernel = None
