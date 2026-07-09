@@ -101,7 +101,12 @@ for settings in "$HOME/.akg/settings.json" "$ROOT_DIR/.akg/settings.json" "$ROOT
   fi
 done
 
-if [[ "$has_standard_env" != "1" && "$has_settings_file" != "1" && "$ALLOW_MISSING_MODEL_CONFIG" != "1" ]]; then
+if [[ "$has_standard_env" != "1" && "$has_settings_file" != "1" && "$CHECK_ONLY" == "1" ]]; then
+  cat >&2 <<'EOF'
+Warning: AKG Agents standard model configuration was not found.
+CHECK_ONLY=1 is set, so the resolved command will be printed without running.
+EOF
+elif [[ "$has_standard_env" != "1" && "$has_settings_file" != "1" && "$ALLOW_MISSING_MODEL_CONFIG" != "1" ]]; then
   cat >&2 <<EOF
 AKG Agents standard model configuration was not found.
 
