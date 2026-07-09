@@ -15,11 +15,10 @@ _HAS_TRITON = (
     and tl is not None
     and hasattr(triton, "jit")
     and hasattr(tl, "arange")
-    and hasattr(tl, "exp")
+    and hasattr(tl, "sigmoid")
     and hasattr(tl, "sum")
     and hasattr(tl, "sqrt")
     and hasattr(tl, "constexpr")
-    and hasattr(tl, "float32")
 )
 
 
@@ -40,12 +39,12 @@ if _HAS_TRITON:
         mask = offsets < n_cols
         base = row * n_cols + offsets
 
-        x = tl.load(x_ptr + base, mask=mask, other=0.0).to(tl.float32)
-        weight = tl.load(weight_ptr + offsets, mask=mask, other=0.0).to(tl.float32)
-        z = tl.load(z_ptr + base, mask=mask, other=0.0).to(tl.float32)
+        x = tl.load(x_ptr + base, mask=mask, other=0.0)
+        weight = tl.load(weight_ptr + offsets, mask=mask, other=0.0)
+        z = tl.load(z_ptr + base, mask=mask, other=0.0)
         variance = tl.sum(x * x, axis=0) / n_cols
         rstd = 1.0 / tl.sqrt(variance + eps)
-        gate = 1.0 / (1.0 + tl.exp(-z))
+        gate = tl.sigmoid(z)
         output = x * rstd * weight * gate
         tl.store(out_ptr + base, output, mask=mask)
 

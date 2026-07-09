@@ -16,11 +16,10 @@ _HAS_TRITON = (
     and tl is not None
     and hasattr(triton, "jit")
     and hasattr(tl, "arange")
-    and hasattr(tl, "exp")
+    and hasattr(tl, "sigmoid")
     and hasattr(tl, "sum")
     and hasattr(tl, "sqrt")
     and hasattr(tl, "constexpr")
-    and hasattr(tl, "float32")
 )
 
 
@@ -41,17 +40,17 @@ if _HAS_TRITON:
         offsets1 = offsets0 + CHUNK_SIZE
         base = row * n_cols
 
-        x0 = tl.load(x_ptr + base + offsets0).to(tl.float32)
-        x1 = tl.load(x_ptr + base + offsets1).to(tl.float32)
+        x0 = tl.load(x_ptr + base + offsets0)
+        x1 = tl.load(x_ptr + base + offsets1)
         sumsq = tl.sum(x0 * x0, axis=0) + tl.sum(x1 * x1, axis=0)
         rstd = 1.0 / tl.sqrt(sumsq / n_cols + eps)
 
-        w0 = tl.load(weight_ptr + offsets0).to(tl.float32)
-        w1 = tl.load(weight_ptr + offsets1).to(tl.float32)
-        z0 = tl.load(z_ptr + base + offsets0).to(tl.float32)
-        z1 = tl.load(z_ptr + base + offsets1).to(tl.float32)
-        gate0 = 1.0 / (1.0 + tl.exp(-z0))
-        gate1 = 1.0 / (1.0 + tl.exp(-z1))
+        w0 = tl.load(weight_ptr + offsets0)
+        w1 = tl.load(weight_ptr + offsets1)
+        z0 = tl.load(z_ptr + base + offsets0)
+        z1 = tl.load(z_ptr + base + offsets1)
+        gate0 = tl.sigmoid(z0)
+        gate1 = tl.sigmoid(z1)
         tl.store(out_ptr + base + offsets0, x0 * rstd * w0 * gate0)
         tl.store(out_ptr + base + offsets1, x1 * rstd * w1 * gate1)
 
