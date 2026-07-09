@@ -502,6 +502,13 @@ External PR and email submission are manual user actions.
 - Added `scripts/run_ascend_verifier_probe.sh` as the local BatchMode wrapper
   that fast-forwards the Ascend worker, preserves CANN `PYTHONPATH`, runs the
   verifier-only probe, and writes the comparator YAML once SSH is available.
+- Added `scripts/audit_pre_key_readiness.py` as the executable companion to the
+  pre-key objective audit. It checks required reports/scripts, T2/T3 OpSpec
+  coverage, updated-AKG replay import fields, priority Pass@4 reports, and AKG
+  Agents `standard` model configuration without contacting a provider.
+- Added root `pytest.ini` so `python -m pytest` runs the project-owned tests
+  under `tests/` instead of collecting generated package copies and upstream
+  AKG submodule tests.
 
 ## In Progress
 
@@ -535,7 +542,8 @@ External PR and email submission are manual user actions.
 6. Use `add_rmsnorm_cast_v2` as the positive normalization retrieval example
    in deterministic replay/prompt assembly before live provider generation.
 7. Use `docs/tasks/pre_key_objective_audit.md` as the current pre-key
-   objective audit.
+   objective audit, and run `scripts/audit_pre_key_readiness.py --json` as the
+   machine-checkable readiness gate before changing provider or runner state.
 8. Use `layernorm_gated_v4` as a positive T3 normalization retrieval example;
    `t2/add_rmsnorm_quant` is recorded as a negative exact-int8 quantization
    lesson.
@@ -581,27 +589,45 @@ Date: 2026-07-09
 Agent: Codex
 Branch: main
 Summary:
-- Added a local BatchMode wrapper for the no-key AKG Agents verifier-only
-  probe on Ascend.
-- The wrapper fast-forwards the worker, preserves CANN `PYTHONPATH`, runs the
-  probe, compares its JSON with the standalone replay Pass@4 report, and can
-  fetch the ignored remote JSON/YAML artifacts back to local `outputs/`.
-- Ascend execution still waits for a reopened SSH `ControlMaster` session.
+- Added a machine-checkable pre-key readiness audit.
+- The audit verifies runner-comparison artifacts, generated-result import
+  automation, T2/T3 OpSpec coverage, priority Pass@4 reports, updated-AKG replay
+  import/probe metadata, and AKG Agents `standard` model configuration.
+- Current local status is
+  `pre_key_deterministic_complete_provider_config_missing`: deterministic
+  pre-key work is complete, standalone `tools/run_bench.py` remains the
+  authoritative pre-key scorer, and full AKG Agents runner comparison still
+  needs `standard` model configuration.
+- Escalated Ascend verifier wrapper execution reached the SSH gateway but
+  failed with `Permission denied (password)` because no key-only/ControlMaster
+  session was active.
 
 Changed Files:
 - `docs/status.md`
-- `docs/dev_guide.md`
-- `scripts/run_ascend_verifier_probe.sh`
+- `docs/tasks/pre_key_objective_audit.md`
+- `pytest.ini`
+- `scripts/audit_pre_key_readiness.py`
 - `tasks/active.md`
+- `tests/test_pre_key_readiness_audit.py`
 
 Verification:
-- Local: `bash -n scripts/run_ascend_verifier_probe.sh`
-- Local: `bash scripts/run_ascend_verifier_probe.sh --help`
 - Local: `CHECK_ONLY=1 bash scripts/run_ascend_verifier_probe.sh`
+- Local: `python scripts/check_akg_agents_model_config.py --level standard`
+  returned the expected missing-`standard` status.
+- Local: `python scripts/audit_pre_key_readiness.py --json`
+- Local: `python scripts/audit_pre_key_readiness.py --require-standard-config
+  --json` returned exit code `2`, as expected before credentials exist.
+- Local: `python -m py_compile scripts/audit_pre_key_readiness.py`
+- Local: `python -m pytest tests/test_pre_key_readiness_audit.py
+  tests/test_runner_result_comparison.py tests/test_experiment_result_import.py
+  tests/test_benchmark_registry_and_opspec.py`
+- Local: `python -m pytest` passed 87 project-owned tests after adding
+  `pytest.ini`.
 - Local: `git diff --check`
-- Ascend sync/run attempt: `ssh -o BatchMode=yes ascend-kf
-  'git -C /data/KernelForge-Agent pull --ff-only'` failed with
-  `Permission denied (password)` because no key-only session was active.
+- Ascend wrapper attempt: `bash scripts/run_ascend_verifier_probe.sh` first hit
+  local sandbox network denial, then with escalation reached the gateway and
+  failed with `Permission denied (password)` because no key-only session was
+  active.
 
 Open Issues:
 - GitLink PR is not opened yet; this is a manual user action.
@@ -617,6 +643,8 @@ Open Issues:
   replay/manual Pass@4 results when credentials/model selection are available.
 
 Next Suggested Step:
-- Reopen the Ascend SSH `ControlMaster` session, fast-forward the worker, then
-  run `bash scripts/run_ascend_verifier_probe.sh`; full runner parity still
-  needs `standard` model configuration.
+- Configure AKG Agents `standard` model credentials, rerun
+  `scripts/audit_pre_key_readiness.py --require-standard-config --json`, then
+  run `scripts/run_akg_agents_full_comparison.sh`; optionally reopen the Ascend
+  SSH `ControlMaster` first and run `bash scripts/run_ascend_verifier_probe.sh`
+  for partial verifier-only smoke evidence.

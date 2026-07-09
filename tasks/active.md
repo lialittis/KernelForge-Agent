@@ -27,7 +27,11 @@ and agents.
    objective audit: deterministic replay/import, T2/T3 OpSpecs, priority
    sketches, and priority manual seeds are complete; full AKG Agents runner
    parity remains blocked on `standard` model configuration.
-9. Use completed manual Pass@4 cycles as retrieval examples:
+9. Use `scripts/audit_pre_key_readiness.py --json` as the machine-checkable
+   pre-key readiness gate. Current expected status without a key is
+   `pre_key_deterministic_complete_provider_config_missing`; after credentials
+   exist, run it with `--require-standard-config`.
+10. Use completed manual Pass@4 cycles as retrieval examples:
    updated-AKG `sigmoid_scale_sum_v2` for a positive reduction trajectory and
    updated-AKG `fused_silu_and_mul_v3` for a correctness-positive but
    performance-negative fused-elementwise trajectory, and updated-AKG
@@ -37,35 +41,35 @@ and agents.
    and `add_rmsnorm_quant_v2`-`v4` as quantized-normalization boundary
    failures under the exact int8 gate, and `layernorm_gated_v4` for a positive
    T3 fp16 gated-RMSNorm row-grouping trajectory.
-10. Use
+11. Use
    `experiments/reports/2026-07-09-remaining-reference-preeval-updated-akg.yaml`
    as the deterministic reference baseline for all remaining AKG Bench Lite
    cases under the current runner.
-11. Preserve CANN's `PYTHONPATH` entries in all Ascend benchmark commands;
+12. Preserve CANN's `PYTHONPATH` entries in all Ascend benchmark commands;
    prepend the repository path with
    `export PYTHONPATH=/data/KernelForge-Agent:${PYTHONPATH:-}` instead of
    replacing `PYTHONPATH`.
-12. Continue rerunning key Pass@4 reports under AKG commit
+13. Continue rerunning key Pass@4 reports under AKG commit
    `47aa428fcdc8c68f78d331dc578bc6c74fb9d91d` before final result claims;
    manual `t1/sigmoid_scale_sum`, `t1/softmax`, `t1/fused_silu_and_mul`, and
    replay `t1/sigmoid_scale_sum` are done.
-13. The priority T2/T3 pre-key manual seeds are complete; next pre-key
+14. The priority T2/T3 pre-key manual seeds are complete; next pre-key
    development should focus on runner comparison/provider setup, or a
    non-priority operator such as `t2/moe_topk_softmax` if more manual evidence
    is needed.
-14. Configure an AKG Agents `standard` model level, verify it with
+15. Configure an AKG Agents `standard` model level, verify it with
    `scripts/check_akg_agents_model_config.py --level standard`, then rerun
    `scripts/run_akg_agents_full_comparison.sh` for full runner-path comparison
    and use `scripts/compare_runner_results.py` to compare the full-mode JSON
    with the standalone replay Pass@4 report.
-15. Use `scripts/run_akg_agents_verifier_probe.py` only as a no-key
+16. Use `scripts/run_akg_agents_verifier_probe.py` only as a no-key
    verifier-only smoke path for existing candidates; from the local machine use
    `scripts/run_ascend_verifier_probe.sh` after reopening the Ascend
    `ControlMaster` session. Do not treat this as final runner parity because
    it does not produce AKG Agents full-mode Pass@4 or leaderboard scores.
-16. Record model/provider, prompt version, retrieved skills, and candidate index
+17. Record model/provider, prompt version, retrieved skills, and candidate index
    for every generated experiment.
-17. Promote reusable generation, repair, or tuning lessons into `skills/`.
+18. Promote reusable generation, repair, or tuning lessons into `skills/`.
 
 ## Research Questions
 

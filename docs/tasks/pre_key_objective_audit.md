@@ -42,6 +42,13 @@ use `scripts/run_ascend_verifier_probe.sh`; it fast-forwards the worker, keeps
 CANN `PYTHONPATH` entries, runs the verifier probe, and writes the comparator
 YAML under `outputs/results/`.
 
+Use `scripts/audit_pre_key_readiness.py --json` as the executable companion to
+this audit. In the current no-key state it should report
+`pre_key_deterministic_complete_provider_config_missing`: deterministic
+pre-key artifacts are complete, standalone `tools/run_bench.py` remains the
+authoritative pre-key scorer, and full AKG Agents runner comparison is gated on
+`standard` model configuration.
+
 ## Requirement Status
 
 ### Runner Path Comparison
@@ -227,13 +234,15 @@ Evidence:
 
 ## Remaining Work Before Full Objective Completion
 
-1. Configure an AKG Agents `standard` model level and verify it with
+1. Run `scripts/audit_pre_key_readiness.py --json` before changing provider or
+   runner state; use `--require-standard-config` after credentials exist.
+2. Configure an AKG Agents `standard` model level and verify it with
    `scripts/check_akg_agents_model_config.py --level standard`.
-2. Run `run_torch_bench_lite.py --mode full --backend npu --cases
+3. Run `run_torch_bench_lite.py --mode full --backend npu --cases
    sigmoid_scale_sum --pass-n 4`, preferably through
    `scripts/run_akg_agents_full_comparison.sh`.
-3. Compare AKG Agents full-mode generated/extracted outputs against the
+4. Compare AKG Agents full-mode generated/extracted outputs against the
    standalone runner schema, Pass@4, speedup, score, and logs with
    `scripts/compare_runner_results.py`.
-4. After API credentials exist, run the first live provider Pass@4 cycle and
+5. After API credentials exist, run the first live provider Pass@4 cycle and
    compare it with replay/manual evidence.
