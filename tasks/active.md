@@ -28,6 +28,7 @@ and agents.
    updated-AKG `fused_silu_and_mul_v3` for a correctness-positive but
    performance-negative fused-elementwise trajectory, and updated-AKG
    `softmax_v4` for a correctness-positive but still-slower rowwise softmax
+   trajectory, and `add_rmsnorm_cast_v2` for a positive T2 normalization
    trajectory.
 9. Use
    `experiments/reports/2026-07-09-remaining-reference-preeval-updated-akg.yaml`
@@ -41,11 +42,18 @@ and agents.
    `47aa428fcdc8c68f78d331dc578bc6c74fb9d91d` before final result claims;
    manual `t1/sigmoid_scale_sum`, `t1/softmax`, `t1/fused_silu_and_mul`, and
    replay `t1/sigmoid_scale_sum` are done.
-12. Use the new parsed OpSpecs to prepare deterministic Pass@4 seed candidates
-   for `t2/add_rmsnorm_cast` or `t2/rope` before live provider generation.
-13. Record model/provider, prompt version, retrieved skills, and candidate index
+12. Prepare and benchmark deterministic Pass@4 seed candidates for `t2/rope`
+   before live provider generation.
+13. Consider `t2/add_rmsnorm_quant` or `t3/layernorm_gated` for the next manual
+   seed after `t2/rope`.
+14. Add expression evaluation for the remaining parser gaps:
+   `t3/causal_conv1d` (`width - 1`) and `t3/decode_mla`
+   (`qk_nope_dim + qk_rope_dim`).
+15. Install or vendor the AKG Agents dependency stack so
+   `run_torch_bench_lite.py` can be compared with standalone `run_bench.py`.
+16. Record model/provider, prompt version, retrieved skills, and candidate index
    for every generated experiment.
-14. Promote reusable generation, repair, or tuning lessons into `skills/`.
+17. Promote reusable generation, repair, or tuning lessons into `skills/`.
 
 ## Research Questions
 

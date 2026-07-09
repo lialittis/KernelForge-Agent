@@ -1,0 +1,137 @@
+case: t2/add_rmsnorm_cast
+id: 2026-07-09-add-rmsnorm-cast-pass4
+akg_commit: 47aa428fcdc8c68f78d331dc578bc6c74fb9d91d
+project_commit: 517da36dcf785fcf6483b0c2d2d23cf2f9385b7f
+candidate_count: 4
+pass_at_1: true
+pass_at_n: true
+n: 4
+passed_count: 4
+best_candidate:
+  candidate_index: 2
+  team_name: add_rmsnorm_cast_v2
+  result_path: outputs/results/add_rmsnorm_cast_pass4_2026_07_09/add_rmsnorm_cast_v2.json
+  status: pass
+  correctness: true
+  speedup: 2.0135
+  weighted_score: 105.2
+  error: null
+  max_abs_diff: 0.00390625
+  max_rel_diff: 0.0024865244049578905
+  baseline_ms: 4.8255
+  solution_ms: 2.3965
+  observed_backend: triton_row_rmsnorm_cast_bs4096
+best_triton_candidate:
+  candidate_index: 2
+  team_name: add_rmsnorm_cast_v2
+  result_path: outputs/results/add_rmsnorm_cast_pass4_2026_07_09/add_rmsnorm_cast_v2.json
+  status: pass
+  correctness: true
+  speedup: 2.0135
+  weighted_score: 105.2
+  error: null
+  max_abs_diff: 0.00390625
+  max_rel_diff: 0.0024865244049578905
+  baseline_ms: 4.8255
+  solution_ms: 2.3965
+  observed_backend: triton_row_rmsnorm_cast_bs4096
+candidates:
+- candidate_index: 1
+  team_name: add_rmsnorm_cast_v1
+  result_path: outputs/results/add_rmsnorm_cast_pass4_2026_07_09/add_rmsnorm_cast_v1.json
+  status: pass
+  correctness: true
+  speedup: 0.9983
+  weighted_score: 89.85
+  error: null
+  max_abs_diff: 0.0
+  max_rel_diff: 0.0
+  baseline_ms: 4.8221
+  solution_ms: 4.8301
+  observed_backend: torch_reference
+  backend_probe:
+    shape: [128, 4096]
+    output_device: npu:0
+    output_dtype: torch.float16
+    last_error: null
+    allclose: true
+- candidate_index: 2
+  team_name: add_rmsnorm_cast_v2
+  result_path: outputs/results/add_rmsnorm_cast_pass4_2026_07_09/add_rmsnorm_cast_v2.json
+  status: pass
+  correctness: true
+  speedup: 2.0135
+  weighted_score: 105.2
+  error: null
+  max_abs_diff: 0.00390625
+  max_rel_diff: 0.0024865244049578905
+  baseline_ms: 4.8255
+  solution_ms: 2.3965
+  observed_backend: triton_row_rmsnorm_cast_bs4096
+  backend_probe:
+    shape: [128, 4096]
+    output_device: npu:0
+    output_dtype: torch.float16
+    last_error: null
+    max_abs_diff: 0.00390625
+    max_rel_diff: 0.0009596928139217198
+    allclose: true
+- candidate_index: 3
+  team_name: add_rmsnorm_cast_v3
+  result_path: outputs/results/add_rmsnorm_cast_pass4_2026_07_09/add_rmsnorm_cast_v3.json
+  status: pass
+  correctness: true
+  speedup: 1.9928
+  weighted_score: 104.89
+  error: null
+  max_abs_diff: 0.0078125
+  max_rel_diff: 0.0024865244049578905
+  baseline_ms: 4.8191
+  solution_ms: 2.4183
+  observed_backend: triton_row_rmsnorm_cast_bs2048x2
+  backend_probe:
+    shape: [128, 4096]
+    output_device: npu:0
+    output_dtype: torch.float16
+    last_error: null
+    max_abs_diff: 0.0009765625
+    max_rel_diff: 0.000953288865275681
+    allclose: true
+- candidate_index: 4
+  team_name: add_rmsnorm_cast_v4
+  result_path: outputs/results/add_rmsnorm_cast_pass4_2026_07_09/add_rmsnorm_cast_v4.json
+  status: pass
+  correctness: true
+  speedup: 1.9798
+  weighted_score: 104.7
+  error: null
+  max_abs_diff: 0.0078125
+  max_rel_diff: 0.0024865244049578905
+  baseline_ms: 4.8232
+  solution_ms: 2.4362
+  observed_backend: triton_row_rmsnorm_cast_bs1024x4
+  backend_probe:
+    shape: [128, 4096]
+    output_device: npu:0
+    output_dtype: torch.float16
+    last_error: null
+    max_abs_diff: 0.0009765625
+    max_rel_diff: 0.0009587727836333215
+    allclose: true
+comparison_to_reference_preeval:
+  previous_report: experiments/reports/2026-07-09-remaining-reference-preeval-updated-akg.yaml
+  reference_speedup: 0.9984
+  reference_weighted_score: 89.86
+  best_seed_speedup: 2.0135
+  best_seed_weighted_score: 105.2
+  interpretation: >
+    The first deterministic T2 seed batch is correctness-positive and
+    performance-positive. A single rowwise 4096-wide Triton program fusing
+    residual add, RMS statistics, gamma scaling, and fp16 store is the best
+    candidate so far.
+notes: >
+  Benchmark ran on the updated standalone AKG runner with CANN's Python paths
+  preserved by `export PYTHONPATH=/data/KernelForge-Agent:${PYTHONPATH:-}`
+  after sourcing `set_env.sh`. Backend probes used a smaller `[128, 4096]`
+  shape to confirm launch paths before the official benchmark used the full
+  `[32, 1024, 4096]` case.

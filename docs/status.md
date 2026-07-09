@@ -386,6 +386,22 @@ External PR and email submission are manual user actions.
   - `t2/add_rmsnorm_quant`: rowwise add + RMSNorm + int8 quant sketch
   - `t2/rope`: rotary-position embedding sketch with cos/sin broadcast
   - `t3/layernorm_gated`: gated RMSNorm sketch
+- Added the first deterministic T2 Pass@4 seed batch for
+  `t2/add_rmsnorm_cast`: one torch reference candidate and three
+  Triton-Ascend rowwise RMSNorm/cast variants.
+- Probed all four `t2/add_rmsnorm_cast` Pass@4 candidates on Ascend; v2, v3,
+  and v4 launched through real Triton-Ascend backend paths.
+- Ran the official AKG Bench Lite benchmark for `t2/add_rmsnorm_cast`:
+  - `add_rmsnorm_cast_v1`: pass, speedup `0.9983x`, score `89.85`
+  - `add_rmsnorm_cast_v2`: pass, speedup `2.0135x`, score `105.2`
+  - `add_rmsnorm_cast_v3`: pass, speedup `1.9928x`, score `104.89`
+  - `add_rmsnorm_cast_v4`: pass, speedup `1.9798x`, score `104.7`
+- Added completed experiment metadata at
+  `experiments/runs/2026-07-09-add-rmsnorm-cast-pass4.yaml` and Pass@4 report
+  at `experiments/reports/2026-07-09-add-rmsnorm-cast-pass4.yaml`.
+- Promoted the fixed-hidden-size rowwise RMSNorm/cast tiling lesson into
+  `skills/normalization/SKILL.md`; the current best pre-key T2 normalization
+  seed is `add_rmsnorm_cast_v2`.
 
 ## In Progress
 
@@ -418,34 +434,41 @@ External PR and email submission are manual user actions.
    PR exists.
 4. Manually email the updated project book to `contact@public.mindspore.cn`.
 5. Record the PR link, email date, and submission status in `docs/status.md`.
-6. Run a first live `provider=openai` Pass@4 generation cycle for
-   `t1/sigmoid_scale_sum` once credentials and model selection are available.
-7. Keep `replay` as the deterministic CI/regression provider; use
+6. Use `add_rmsnorm_cast_v2` as the positive normalization retrieval example
+   in deterministic replay/prompt assembly before live provider generation.
+7. Prepare and benchmark a deterministic Pass@4 seed batch for `t2/rope`.
+8. After `t2/rope`, choose between `t2/add_rmsnorm_quant` and
+   `t3/layernorm_gated` for the next manual seed based on expected reuse.
+9. Add expression evaluation for the remaining parser gaps:
+   `t3/causal_conv1d` (`width - 1`) and `t3/decode_mla`
+   (`qk_nope_dim + qk_rope_dim`).
+10. Keep `replay` as the deterministic CI/regression provider; use
    `scripts/run_replay_regression.py` for the current updated-AKG
    `t1/sigmoid_scale_sum` replay regression path.
-8. Import live generated benchmark results after Ascend verification.
-9. Use the completed manual Pass@4 cycles as retrieval examples:
+11. Use the completed manual Pass@4 cycles as retrieval examples:
    updated-AKG `sigmoid_scale_sum_v2` for a positive reduction trajectory and
    updated-AKG `fused_silu_and_mul_v3` for a correctness-positive but
    performance-negative fused-elementwise trajectory, and updated-AKG
    `softmax_v4` for a correctness-positive but still-slower rowwise softmax
+   trajectory, and `add_rmsnorm_cast_v2` for a positive T2 normalization
    trajectory.
-10. Use
+12. Use
     `experiments/reports/2026-07-09-remaining-reference-preeval-updated-akg.yaml`
     as the baseline for all remaining AKG Bench Lite operators before live
     provider generation; all nine remaining reference cases now pass when
     CANN's `PYTHONPATH` entries are preserved.
-11. Continue rerunning key Pass@4 reports under updated AKG commit
+13. Continue rerunning key Pass@4 reports under updated AKG commit
     `47aa428fcdc8c68f78d331dc578bc6c74fb9d91d` before final result claims;
     manual `t1/sigmoid_scale_sum`, `t1/softmax`, `t1/fused_silu_and_mul`, and
     replay `t1/sigmoid_scale_sum` have been rebaselined.
-12. Use the new parsed OpSpecs to prepare deterministic Pass@4 seed candidates
-    for `t2/add_rmsnorm_cast` or `t2/rope` before live provider generation.
-13. Keep model/provider information explicit in every generated experiment
-   record.
 14. Install/enable the AKG Agents dependency stack, then rerun
     `run_torch_bench_lite.py --backend npu --mode full --cases
     sigmoid_scale_sum --pass-n 4` for a full runner-path comparison.
+15. Run a first live `provider=openai` Pass@4 generation cycle for
+    `t1/sigmoid_scale_sum` once credentials and model selection are available.
+16. Import live generated benchmark results after Ascend verification.
+17. Keep model/provider information explicit in every generated experiment
+   record.
 
 ## Latest Handoff
 
@@ -453,33 +476,35 @@ Date: 2026-07-09
 Agent: Codex
 Branch: main
 Summary:
-- Extended OpSpec parsing and sketch generation for the highest-value pre-key
-  T2/T3 operators: `add_rmsnorm_cast`, `add_rmsnorm_quant`, `rope`, and
-  `layernorm_gated`.
-- Registry coverage is now 8 supported OpSpecs, 3 intentionally unsupported
-  cases, and 2 remaining parse failures.
-- The new sketches cover rowwise RMSNorm/cast, RMSNorm/int8 quantization,
-  rotary-position embedding with cos/sin broadcast, and gated RMSNorm.
+- Added and benchmarked the first deterministic T2 Pass@4 seed batch for
+  `t2/add_rmsnorm_cast`.
+- All four candidates passed under updated AKG commit
+  `47aa428fcdc8c68f78d331dc578bc6c74fb9d91d`; v2 is best at `2.0135x`
+  speedup and weighted score `105.2`.
+- Recorded the run/report metadata and promoted the 4096-wide rowwise
+  RMSNorm/cast Triton tiling lesson into the normalization skill.
 
 Changed Files:
-- `benchmarks/parsed/t2_add_rmsnorm_cast.yaml`
-- `benchmarks/parsed/t2_add_rmsnorm_quant.yaml`
-- `benchmarks/parsed/t2_rope.yaml`
-- `benchmarks/parsed/t3_layernorm_gated.yaml`
-- `benchmarks/raw/akg_kernels_bench_lite_registry.yaml`
+- `experiments/reports/2026-07-09-add-rmsnorm-cast-pass4.yaml`
+- `experiments/runs/2026-07-09-add-rmsnorm-cast-pass4.yaml`
 - `docs/status.md`
-- `kernel_forge/benchmark/extractor.py`
-- `kernel_forge/benchmark/sketch.py`
+- `kernel_forge/candidates/add_rmsnorm_cast_v1.py`
+- `kernel_forge/candidates/add_rmsnorm_cast_v2.py`
+- `kernel_forge/candidates/add_rmsnorm_cast_v3.py`
+- `kernel_forge/candidates/add_rmsnorm_cast_v4.py`
+- `scripts/create_add_rmsnorm_cast_pass4_submissions.sh`
+- `scripts/probe_add_rmsnorm_cast_backend.py`
+- `skills/normalization/SKILL.md`
 - `tasks/active.md`
-- `tests/test_benchmark_registry_and_opspec.py`
+- `tests/test_add_rmsnorm_cast_pass4.py`
 
 Verification:
-- `python -m pytest tests/test_benchmark_registry_and_opspec.py`
-- `python scripts/extract_opspec.py --case third_party/akg/akg_agents/benchmark/akg_kernels_bench_lite/t2/add_rmsnorm_cast.py --output benchmarks/parsed/t2_add_rmsnorm_cast.yaml --repo-root .`
-- `python scripts/extract_opspec.py --case third_party/akg/akg_agents/benchmark/akg_kernels_bench_lite/t2/add_rmsnorm_quant.py --output benchmarks/parsed/t2_add_rmsnorm_quant.yaml --repo-root .`
-- `python scripts/extract_opspec.py --case third_party/akg/akg_agents/benchmark/akg_kernels_bench_lite/t2/rope.py --output benchmarks/parsed/t2_rope.yaml --repo-root .`
-- `python scripts/extract_opspec.py --case third_party/akg/akg_agents/benchmark/akg_kernels_bench_lite/t3/layernorm_gated.py --output benchmarks/parsed/t3_layernorm_gated.yaml --repo-root .`
-- `python scripts/scan_benchmark_cases.py --bench-dir third_party/akg/akg_agents/benchmark/akg_kernels_bench_lite --repo-root . --output benchmarks/raw/akg_kernels_bench_lite_registry.yaml`
+- `python -m pytest tests/test_add_rmsnorm_cast_pass4.py tests/test_benchmark_registry_and_opspec.py`
+- `python -m py_compile kernel_forge/candidates/add_rmsnorm_cast_v1.py kernel_forge/candidates/add_rmsnorm_cast_v2.py kernel_forge/candidates/add_rmsnorm_cast_v3.py kernel_forge/candidates/add_rmsnorm_cast_v4.py scripts/probe_add_rmsnorm_cast_backend.py`
+- Ascend backend probe for all four candidates with
+  `export PYTHONPATH=/data/KernelForge-Agent:${PYTHONPATH:-}` preserved.
+- Ascend official standalone benchmark with `tools/run_bench.py --warmup 10
+  --iterations 100 --num-trials 3`.
 
 Open Issues:
 - GitLink PR is not opened yet; this is a manual user action.
@@ -494,5 +519,6 @@ Open Issues:
   replay/manual Pass@4 results when credentials/model selection are available.
 
 Next Suggested Step:
-- Implement a deterministic Pass@4 seed batch for `t2/add_rmsnorm_cast` or
-  `t2/rope`, then benchmark it on Ascend with standalone `tools/run_bench.py`.
+- Implement and benchmark a deterministic Pass@4 seed batch for `t2/rope`,
+  then use `add_rmsnorm_cast_v2` and the existing T1 updated-AKG reports as
+  retrieval examples for the first live provider run.
