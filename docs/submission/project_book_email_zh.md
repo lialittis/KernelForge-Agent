@@ -20,7 +20,7 @@ Initial Round + 算子炼金术师: SketchSkill-AKG updated project book
 5. candidate 生成、官方提交布局生成、Benchmark 结果导入和 Pass@N 报告；
 6. 昇腾环境上的 priority subset Pass@4 实验记录。
 
-当前提交结论为：Lite benchmark OpSpec coverage: 13/13. Current executable candidates and Pass@4 evidence cover a priority subset. Full live AI generation remains gated only by model/API configuration.
+当前提交结论为：AKG Bench Lite 的 OpSpec 覆盖已达到 13/13；当前可执行候选与 Pass@4 实验证据已覆盖优先验证子集；完整的实时 AI 生成对比仅受模型/API 配置限制。
 
 当前 Benchmark 证据包括：
 

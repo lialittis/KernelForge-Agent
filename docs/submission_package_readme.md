@@ -168,9 +168,8 @@ python third_party/akg/akg_agents/benchmark/akg_kernels_bench_lite/tools/run_ben
 总体提交结论：
 
 ```text
-Lite benchmark OpSpec coverage: 13/13. Current executable candidates and
-Pass@4 evidence cover a priority subset. Full live AI generation remains gated
-only by model/API configuration.
+AKG Bench Lite 的 OpSpec 覆盖已达到 13/13；当前可执行候选与 Pass@4
+实验证据已覆盖优先验证子集；完整的实时 AI 生成对比仅受模型/API 配置限制。
 ```
 
 ## PR 文案草稿

@@ -12,7 +12,7 @@ SketchSkill-AKG is not a single hand-written kernel submission. It is a reusable
 
 - Pinned AKG Bench Lite benchmark submodule.
 - Benchmark registry for all 13 official cases.
-- Lite benchmark OpSpec coverage: 13/13.
+- AKG Bench Lite 的 OpSpec 覆盖已达到 13/13。
 - NPU-aware Operator Sketch coverage for all 13 parsed Lite cases, including elementwise, fused elementwise, reduction, softmax, normalization, matmul-like, MoE top-k softmax, layout/transpose, convolution, and decode/attention patterns.
 - Deterministic OpSpec/Sketch validation gate through `scripts/validate_opspecs.py`.
 - Skill Library organized by operator pattern and engineering task.
@@ -77,9 +77,8 @@ python -m pytest -q tests/test_agent_generation_workflow.py tests/test_fused_sil
 Summary claim:
 
 ```text
-Lite benchmark OpSpec coverage: 13/13. Current executable candidates and
-Pass@4 evidence cover a priority subset. Full live AI generation remains gated
-only by model/API configuration.
+AKG Bench Lite 的 OpSpec 覆盖已达到 13/13；当前可执行候选与 Pass@4
+实验证据已覆盖优先验证子集；完整的实时 AI 生成对比仅受模型/API 配置限制。
 ```
 
 # Included Documents

@@ -22,10 +22,9 @@ SketchSkill-AKG 面向 CCF x MindSpore 昇腾 AKG 赛题，构建一个用于昇
 case 的 OpSpec/Sketch 覆盖、候选提交布局、结果导入、Pass@N 汇总、Prompt
 模板、Skill Library、确定性 `replay` 生成 provider、OpenAI Responses live
 provider 适配器、OpSpec/Sketch validator、package hygiene 测试，以及多个真
-实昇腾硬件实验。当前可用于初赛 Step 3 的总括性结论是：Lite benchmark
-OpSpec coverage: 13/13. Current executable candidates and Pass@4 evidence
-cover a priority subset. Full live AI generation remains gated only by
-model/API configuration.
+实昇腾硬件实验。当前可用于初赛 Step 3 的总括性结论是：AKG Bench Lite 的
+OpSpec 覆盖已达到 13/13；当前可执行候选与 Pass@4 实验证据已覆盖优先验证
+子集；完整的实时 AI 生成对比仅受模型/API 配置限制。
 
 已有证据包括：`t1/sigmoid_scale_sum` 手动 Pass@4 全部正确，最佳候选达到约
 `2.0279x` 加速；同一任务通过 `replay` provider 复现生成链路，最佳候选约

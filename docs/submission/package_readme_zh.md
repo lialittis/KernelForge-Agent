@@ -8,7 +8,7 @@
 
 SketchSkill-AKG 是面向昇腾 910 NPU Benchmark 的技能驱动算子自动生成与硬件反馈优化系统。项目目标不是提交单个手写最优算子，而是构建可复用的 AI/Agent 原型：从 AKG Bench Lite 任务中抽取 OpSpec，生成 NPU-aware Operator Sketch，检索 Skill Library，通过 provider 边界生成 `ModelNew` 候选，使用官方 Benchmark 在真实 Ascend 环境中验证正确性和性能，再把有效经验写回技能库。
 
-当前 Step 3 提交重点展示已经实现并可复现的确定性闭环，包括 Benchmark 元数据、13/13 Lite OpSpec/Sketch 覆盖、Skill Library、Prompt 模板、`replay` provider、OpenAI provider 边界、候选生成、官方提交布局生成、Benchmark 结果导入、Pass@N 报告和昇腾实测证据。当前结论是：Lite benchmark OpSpec coverage: 13/13. Current executable candidates and Pass@4 evidence cover a priority subset. Full live AI generation remains gated only by model/API configuration.
+当前 Step 3 提交重点展示已经实现并可复现的确定性闭环，包括 Benchmark 元数据、13/13 Lite OpSpec/Sketch 覆盖、Skill Library、Prompt 模板、`replay` provider、OpenAI provider 边界、候选生成、官方提交布局生成、Benchmark 结果导入、Pass@N 报告和昇腾实测证据。当前结论是：AKG Bench Lite 的 OpSpec 覆盖已达到 13/13；当前可执行候选与 Pass@4 实验证据已覆盖优先验证子集；完整的实时 AI 生成对比仅受模型/API 配置限制。
 
 ## 目录导览
 
