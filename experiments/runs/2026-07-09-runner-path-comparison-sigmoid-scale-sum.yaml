@@ -1,0 +1,85 @@
+id: 2026-07-09-runner-path-comparison-sigmoid-scale-sum
+date: 2026-07-09
+agent: codex
+machine: ascend-worker
+branch: main
+status: completed
+
+benchmark:
+  source: akg_kernels_bench_lite
+  source_commit: 47aa428fcdc8c68f78d331dc578bc6c74fb9d91d
+  task_id: t1/sigmoid_scale_sum
+  operator_name: sigmoid_scale_sum
+  operator_category: reduction
+  reference_path: third_party/akg/akg_agents/benchmark/akg_kernels_bench_lite/t1/sigmoid_scale_sum.py
+
+inputs:
+  replay_report: experiments/reports/2026-07-09-replay-sigmoid-scale-sum-pass4-updated-akg.yaml
+  replay_submissions: outputs/generated/2026-07-09-replay-sigmoid-scale-sum-pass4-updated-akg/submissions
+
+commands:
+  expand_remote_akg_sparse_checkout: >
+    git -C /data/KernelForge-Agent/third_party/akg sparse-checkout add
+    akg_agents/
+  standalone_runner: >
+    source /usr/local/Ascend/ascend-toolkit/set_env.sh &&
+    source /data/venvs/kf-triton-ascend/bin/activate &&
+    export PYTHONPATH=/data/KernelForge-Agent:${PYTHONPATH:-} &&
+    python third_party/akg/akg_agents/benchmark/akg_kernels_bench_lite/tools/run_bench.py
+    outputs/generated/2026-07-09-replay-sigmoid-scale-sum-pass4-updated-akg/submissions
+    --bench-dir third_party/akg/akg_agents/benchmark/akg_kernels_bench_lite
+    --output outputs/results/runner_compare_standalone_replay_sigmoid_2026_07_09
+    --warmup 10
+    --iterations 100
+    --num-trials 3
+  akg_agents_runner_probe: >
+    source /usr/local/Ascend/ascend-toolkit/set_env.sh &&
+    source /data/venvs/kf-triton-ascend/bin/activate &&
+    export PYTHONPATH=/data/KernelForge-Agent:/data/KernelForge-Agent/third_party/akg/akg_agents/python:${PYTHONPATH:-} &&
+    python third_party/akg/akg_agents/examples/kernel_related/run_torch_bench_lite.py --help
+  replay_regression_smoke: >
+    source /usr/local/Ascend/ascend-toolkit/set_env.sh &&
+    source /data/venvs/kf-triton-ascend/bin/activate &&
+    export PYTHONPATH=/data/KernelForge-Agent:${PYTHONPATH:-} &&
+    python scripts/run_replay_regression.py
+    --run-id 2026-07-09-replay-sigmoid-regression-smoke
+    --results-dir outputs/results/replay_sigmoid_regression_smoke_2026_07_09
+    --date 2026-07-09
+    --machine ascend-worker
+
+results:
+  standalone_runner:
+    status: pass
+    pass_at_1: true
+    pass_at_4: true
+    passed_count: 4
+    best_candidate: sigmoid_scale_sum_replay_v2
+    best_speedup_vs_baseline: 1.9794
+    best_weighted_score: 69.79
+    result_dir: outputs/results/runner_compare_standalone_replay_sigmoid_2026_07_09
+  akg_agents_runner:
+    status: blocked_pre_key_environment
+    failure_category: environment_error
+    failure_detail: "ModuleNotFoundError: No module named 'langchain_core'"
+    comparable_performance_results_produced: false
+  replay_regression_smoke:
+    status: pass
+    pass_at_1: true
+    pass_at_4: true
+    passed_count: 4
+    best_candidate: sigmoid_scale_sum_replay_v2
+    best_speedup_vs_baseline: 1.973
+    best_weighted_score: 69.73
+    generated_experiment_updated_with_backend_probes: true
+
+artifacts:
+  report: experiments/reports/2026-07-09-runner-path-comparison-sigmoid-scale-sum.yaml
+  standalone_results: outputs/results/runner_compare_standalone_replay_sigmoid_2026_07_09
+  replay_regression_generated_root: outputs/generated/2026-07-09-replay-sigmoid-regression-smoke
+  replay_regression_results: outputs/results/replay_sigmoid_regression_smoke_2026_07_09
+
+notes: >
+  The comparison currently decides only the pre-key evidence path. Standalone
+  `tools/run_bench.py` remains the authoritative scorer for deterministic
+  replay/manual submissions. The AKG Agents runner should be compared again
+  after its dependency stack and live provider configuration are available.

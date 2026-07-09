@@ -20,8 +20,9 @@ and agents.
 6. Manual external action: send the updated project book with
    `docs/submission/project_book_email_zh.md`, then record the email
    date/status.
-7. Keep `replay` as the deterministic CI/regression provider; updated-AKG
-   replay `t1/sigmoid_scale_sum` is the current replay baseline.
+7. Keep `replay` as the deterministic CI/regression provider; use
+   `scripts/run_replay_regression.py` for the current updated-AKG replay
+   `t1/sigmoid_scale_sum` regression baseline.
 8. Use completed manual Pass@4 cycles as retrieval examples:
    updated-AKG `sigmoid_scale_sum_v2` for a positive reduction trajectory and
    updated-AKG `fused_silu_and_mul_v3` for a correctness-positive but
@@ -40,16 +41,17 @@ and agents.
    `47aa428fcdc8c68f78d331dc578bc6c74fb9d91d` before final result claims;
    manual `t1/sigmoid_scale_sum`, `t1/softmax`, `t1/fused_silu_and_mul`, and
    replay `t1/sigmoid_scale_sum` are done.
-12. Add backend-probe fields to future generated experiment records by default.
+12. Generalize automatic backend-probe/result import beyond the replay
+   `t1/sigmoid_scale_sum` regression path.
 13. Record model/provider, prompt version, retrieved skills, and candidate index
    for every generated experiment.
 14. Promote reusable generation, repair, or tuning lessons into `skills/`.
 
 ## Research Questions
 
-- Which AKG Agents runner path should be treated as authoritative for the final
-  submission: standalone `tools/run_bench.py`, `run_torch_bench_lite.py`, or
-  both?
+- After installing the AKG Agents dependency stack, do standalone
+  `tools/run_bench.py` and AKG Agents `run_torch_bench_lite.py --mode full`
+  agree closely enough to cite both for final evidence?
 - Which Triton-Ascend APIs can be relied on across rented workers?
 - Which CANN and Ascend 910 worker variants should be included in final
   reproducibility notes?

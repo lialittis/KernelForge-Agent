@@ -353,6 +353,29 @@ External PR and email submission are manual user actions.
   GitLink package under `outputs/gitlink_package/`.
 - Added `docs/submission/step3_completion_audit.md` to record local
   deliverable status, verification commands, and manual PR/email actions.
+- Compared runner paths on updated-AKG replay `t1/sigmoid_scale_sum`:
+  standalone `tools/run_bench.py` is runnable for existing replay/manual
+  submissions, while AKG Agents `run_torch_bench_lite.py` is currently blocked
+  in the pre-key Ascend venv by missing `langchain_core` before it can parse
+  CLI arguments or produce comparable artifacts.
+- Standalone runner comparison scores for replay `t1/sigmoid_scale_sum`:
+  - `sigmoid_scale_sum_replay_v1`: pass, speedup `0.9994x`, score `59.96`
+  - `sigmoid_scale_sum_replay_v2`: pass, speedup `1.9794x`, score `69.79`
+  - `sigmoid_scale_sum_replay_v3`: pass, speedup `1.8812x`, score `68.81`
+  - `sigmoid_scale_sum_replay_v4`: pass, speedup `1.5411x`, score `65.41`
+- Recorded the pre-key runner decision: use standalone
+  `tools/run_bench.py` as the authoritative scorer for deterministic
+  replay/manual evidence; revisit AKG Agents `run_torch_bench_lite.py` after
+  installing the AKG Agents dependency stack and configuring a live provider.
+- Added deterministic replay regression automation at
+  `scripts/run_replay_regression.py`; it generates replay candidates,
+  benchmarks them, runs backend probes, writes an enriched Pass@N report, and
+  updates the generated `experiment.yaml` with benchmark/probe fields.
+- Smoke-tested `scripts/run_replay_regression.py` on Ascend with
+  `2026-07-09-replay-sigmoid-regression-smoke`: Pass@1 true, Pass@4 true,
+  4/4 pass, best candidate `sigmoid_scale_sum_replay_v2` at `1.973x` and
+  score `69.73`; generated experiment records now include observed backend
+  paths and backend probe summaries.
 
 ## In Progress
 
@@ -371,6 +394,9 @@ External PR and email submission are manual user actions.
   `ControlMaster` session remains alive; durable automation needs either
   provider-level key configuration or a manually opened persistent master
   connection.
+- AKG Agents `run_torch_bench_lite.py` is not yet runnable in the current
+  pre-key Ascend venv because `langchain_core` is missing from the AKG Agents
+  dependency stack.
 
 ## Next Actions
 
@@ -384,8 +410,9 @@ External PR and email submission are manual user actions.
 5. Record the PR link, email date, and submission status in `docs/status.md`.
 6. Run a first live `provider=openai` Pass@4 generation cycle for
    `t1/sigmoid_scale_sum` once credentials and model selection are available.
-7. Keep `replay` as the deterministic CI/regression provider; the updated-AKG
-   `t1/sigmoid_scale_sum` replay report is now current.
+7. Keep `replay` as the deterministic CI/regression provider; use
+   `scripts/run_replay_regression.py` for the current updated-AKG
+   `t1/sigmoid_scale_sum` replay regression path.
 8. Import live generated benchmark results after Ascend verification.
 9. Use the completed manual Pass@4 cycles as retrieval examples:
    updated-AKG `sigmoid_scale_sum_v2` for a positive reduction trajectory and
@@ -402,11 +429,13 @@ External PR and email submission are manual user actions.
     `47aa428fcdc8c68f78d331dc578bc6c74fb9d91d` before final result claims;
     manual `t1/sigmoid_scale_sum`, `t1/softmax`, `t1/fused_silu_and_mul`, and
     replay `t1/sigmoid_scale_sum` have been rebaselined.
-12. Add backend-probe fields to future generated experiment records by default.
+12. Generalize automatic backend-probe/result import beyond the replay
+    `t1/sigmoid_scale_sum` regression path.
 13. Keep model/provider information explicit in every generated experiment
    record.
-14. Compare the standalone `tools/run_bench.py` path with the AKG Agents
-   `run_torch_bench_lite.py` path on one completed Pass@4 case.
+14. Install/enable the AKG Agents dependency stack, then rerun
+    `run_torch_bench_lite.py --backend npu --mode full --cases
+    sigmoid_scale_sum --pass-n 4` for a full runner-path comparison.
 
 ## Latest Handoff
 
@@ -414,30 +443,42 @@ Date: 2026-07-09
 Agent: Codex
 Branch: main
 Summary:
-- Re-generated and reran the replay `t1/sigmoid_scale_sum` Pass@4 batch under
-  AKG `47aa428fcdc8c68f78d331dc578bc6c74fb9d91d` on the Ascend worker with
-  CANN's `PYTHONPATH` preserved.
-- Pass@1 and Pass@4 still hold: all four replay candidates pass.
-- The replay conclusion is unchanged: `sigmoid_scale_sum_replay_v2` remains
-  best at `1.9698x` speedup and weighted score `69.7`.
-- Backend probes confirmed replay v1 used `torch_reference`; replay v2, v3,
-  and v4 used Triton-Ascend row-reduction paths.
+- Compared the standalone `tools/run_bench.py` path with the AKG Agents
+  `run_torch_bench_lite.py` path on updated-AKG replay `t1/sigmoid_scale_sum`.
+- Standalone `tools/run_bench.py` remains the current authoritative pre-key
+  scorer for replay/manual submissions: Pass@1 true, Pass@4 true, 4/4 pass,
+  best replay candidate `sigmoid_scale_sum_replay_v2` at `1.9794x`.
+- AKG Agents `run_torch_bench_lite.py` is currently blocked before CLI
+  execution by missing `langchain_core`; it is also an Agent orchestration
+  runner whose `--submission-dir` is an output path, not a direct input for
+  existing replay/manual submissions.
+- Added and smoke-tested `scripts/run_replay_regression.py`, which now runs
+  deterministic replay generation, standalone benchmark, backend probes,
+  enriched Pass@N report writing, and generated experiment YAML result import.
 
 Changed Files:
 - `docs/status.md`
-- `experiments/reports/2026-07-09-replay-sigmoid-scale-sum-pass4-updated-akg.yaml`
-- `experiments/runs/2026-07-09-replay-sigmoid-scale-sum-pass4-updated-akg.yaml`
+- `experiments/reports/2026-07-09-runner-path-comparison-sigmoid-scale-sum.yaml`
+- `experiments/runs/2026-07-09-runner-path-comparison-sigmoid-scale-sum.yaml`
+- `kernel_forge/experiments/__init__.py`
+- `kernel_forge/experiments/passn.py`
+- `scripts/run_replay_regression.py`
 - `tasks/active.md`
+- `tests/test_experiment_result_import.py`
 
 Verification:
-- `ssh -o BatchMode=yes ascend-kf 'cd /data/KernelForge-Agent && python scripts/generate_candidate.py --opspec benchmarks/parsed/t1_sigmoid_scale_sum.yaml --provider replay --backend triton_ascend --pass-n 4 --run-id 2026-07-09-replay-sigmoid-scale-sum-pass4-updated-akg --output-root outputs/generated'`
-- `ssh -o BatchMode=yes ascend-kf 'bash -lc '\''cd /data/KernelForge-Agent && source /usr/local/Ascend/ascend-toolkit/set_env.sh >/dev/null 2>&1 && source /data/venvs/kf-triton-ascend/bin/activate && export PYTHONPATH=/data/KernelForge-Agent:${PYTHONPATH:-} && python third_party/akg/akg_agents/benchmark/akg_kernels_bench_lite/tools/run_bench.py outputs/generated/2026-07-09-replay-sigmoid-scale-sum-pass4-updated-akg/submissions --bench-dir third_party/akg/akg_agents/benchmark/akg_kernels_bench_lite --output outputs/results/replay_sigmoid_scale_sum_pass4_2026_07_09 --warmup 10 --iterations 100 --num-trials 3'\'''`
-- `ssh -o BatchMode=yes ascend-kf 'bash -lc '\''cd /data/KernelForge-Agent && source /usr/local/Ascend/ascend-toolkit/set_env.sh >/dev/null 2>&1 && source /data/venvs/kf-triton-ascend/bin/activate && export PYTHONPATH=/data/KernelForge-Agent:${PYTHONPATH:-} && for team in sigmoid_scale_sum_replay_v1 sigmoid_scale_sum_replay_v2 sigmoid_scale_sum_replay_v3 sigmoid_scale_sum_replay_v4; do python scripts/probe_sigmoid_scale_sum_backend.py --candidate outputs/generated/2026-07-09-replay-sigmoid-scale-sum-pass4-updated-akg/submissions/$team/t1/sigmoid_scale_sum.py --shape 1000 8192; done'\'''`
-- Backend probes confirmed: replay v1 `torch_reference`, replay v2
-  `triton_row_reduce_bs8192`, replay v3 `triton_row_reduce_bs4096x2`, replay
-  v4 `triton_row_reduce_bs2048x4`.
-- Result summary: Pass@1 true, Pass@4 true, 4/4 pass, best candidate
-  `sigmoid_scale_sum_replay_v2` at `1.9698x` and score `69.7`.
+- `python -m pytest tests/test_experiment_result_import.py tests/test_agent_generation_workflow.py`
+- `python -m py_compile scripts/run_replay_regression.py kernel_forge/experiments/passn.py`
+- `ssh -o BatchMode=yes ascend-kf 'bash -lc '\''cd /data/KernelForge-Agent && source /usr/local/Ascend/ascend-toolkit/set_env.sh >/dev/null 2>&1 && source /data/venvs/kf-triton-ascend/bin/activate && export PYTHONPATH=/data/KernelForge-Agent:${PYTHONPATH:-} && python third_party/akg/akg_agents/benchmark/akg_kernels_bench_lite/tools/run_bench.py outputs/generated/2026-07-09-replay-sigmoid-scale-sum-pass4-updated-akg/submissions --bench-dir third_party/akg/akg_agents/benchmark/akg_kernels_bench_lite --output outputs/results/runner_compare_standalone_replay_sigmoid_2026_07_09 --warmup 10 --iterations 100 --num-trials 3'\'''`
+- `ssh -o BatchMode=yes ascend-kf 'bash -lc '\''cd /data/KernelForge-Agent && source /usr/local/Ascend/ascend-toolkit/set_env.sh >/dev/null 2>&1 && source /data/venvs/kf-triton-ascend/bin/activate && export PYTHONPATH=/data/KernelForge-Agent:/data/KernelForge-Agent/third_party/akg/akg_agents/python:${PYTHONPATH:-} && python third_party/akg/akg_agents/examples/kernel_related/run_torch_bench_lite.py --help'\'''`
+- `ssh -o BatchMode=yes ascend-kf 'bash -lc '\''cd /data/KernelForge-Agent && source /usr/local/Ascend/ascend-toolkit/set_env.sh >/dev/null 2>&1 && source /data/venvs/kf-triton-ascend/bin/activate && export PYTHONPATH=/data/KernelForge-Agent:${PYTHONPATH:-} && python scripts/run_replay_regression.py --run-id 2026-07-09-replay-sigmoid-regression-smoke --results-dir outputs/results/replay_sigmoid_regression_smoke_2026_07_09 --date 2026-07-09 --machine ascend-worker'\'''`
+- Standalone runner result summary: Pass@1 true, Pass@4 true, 4/4 pass, best
+  `sigmoid_scale_sum_replay_v2` at `1.9794x` and score `69.79`.
+- AKG Agents runner probe failed with
+  `ModuleNotFoundError: No module named 'langchain_core'`.
+- Replay regression smoke result summary: Pass@1 true, Pass@4 true, 4/4 pass,
+  best `sigmoid_scale_sum_replay_v2` at `1.973x`; generated experiment YAML
+  contains backend probe fields for all four replay candidates.
 
 Open Issues:
 - GitLink PR is not opened yet; this is a manual user action.
@@ -445,11 +486,12 @@ Open Issues:
 - After the PR is opened, rerun the exporter with `--pr-link <GitLink PR URL>`
   and attach that final output to the email.
 - Need to extend parsing for symbolic shape construction in T2/T3 cases.
+- Need to install or vendor the AKG Agents dependency stack before
+  `run_torch_bench_lite.py` can be used for full runner-path comparison.
 - Need to run the first real live-provider generation and compare it with
   replay/manual Pass@4 results when credentials/model selection are available.
 
 Next Suggested Step:
-- Run the first live `provider=openai` Pass@4 generation for
-  `t1/sigmoid_scale_sum` when credentials and model selection are available, or
-  compare standalone `tools/run_bench.py` with AKG Agents
-  `run_torch_bench_lite.py` if staying in pre-key evaluation.
+- Extend OpSpec parsing for T2/T3 symbolic shape/local variable setup, then
+  prepare useful sketches for `t2/add_rmsnorm_cast`, `t2/add_rmsnorm_quant`,
+  `t2/rope`, and `t3/layernorm_gated` before live provider generation.

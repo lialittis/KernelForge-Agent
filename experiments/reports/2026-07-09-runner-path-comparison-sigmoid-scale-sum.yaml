@@ -1,0 +1,132 @@
+id: 2026-07-09-runner-path-comparison-sigmoid-scale-sum
+case: t1/sigmoid_scale_sum
+akg_commit: 47aa428fcdc8c68f78d331dc578bc6c74fb9d91d
+purpose: >
+  Compare the standalone AKG Bench Lite scorer with the AKG Agents
+  `run_torch_bench_lite.py` runner path before spending live AI provider
+  credits.
+
+standalone_runner:
+  path: third_party/akg/akg_agents/benchmark/akg_kernels_bench_lite/tools/run_bench.py
+  status: runnable
+  input_contract: pre-existing benchmark submission directories
+  command: >
+    source /usr/local/Ascend/ascend-toolkit/set_env.sh &&
+    source /data/venvs/kf-triton-ascend/bin/activate &&
+    export PYTHONPATH=/data/KernelForge-Agent:${PYTHONPATH:-} &&
+    python third_party/akg/akg_agents/benchmark/akg_kernels_bench_lite/tools/run_bench.py
+    outputs/generated/2026-07-09-replay-sigmoid-scale-sum-pass4-updated-akg/submissions
+    --bench-dir third_party/akg/akg_agents/benchmark/akg_kernels_bench_lite
+    --output outputs/results/runner_compare_standalone_replay_sigmoid_2026_07_09
+    --warmup 10
+    --iterations 100
+    --num-trials 3
+  result_schema: one_json_file_per_team_with_cases_and_summary
+  pass_at_1: true
+  pass_at_4: true
+  passed_count: 4
+  best_candidate: sigmoid_scale_sum_replay_v2
+  candidates:
+    - team_name: sigmoid_scale_sum_replay_v1
+      status: pass
+      correctness: true
+      speedup: 0.9994
+      weighted_score: 59.96
+      baseline_ms: 0.097
+      solution_ms: 0.097
+      max_abs_diff: 0.0
+      max_rel_diff: 0.0
+    - team_name: sigmoid_scale_sum_replay_v2
+      status: pass
+      correctness: true
+      speedup: 1.9794
+      weighted_score: 69.79
+      baseline_ms: 0.096
+      solution_ms: 0.0485
+      max_abs_diff: 0.0
+      max_rel_diff: 0.0
+    - team_name: sigmoid_scale_sum_replay_v3
+      status: pass
+      correctness: true
+      speedup: 1.8812
+      weighted_score: 68.81
+      baseline_ms: 0.0968
+      solution_ms: 0.0514
+      max_abs_diff: 0.0009765625
+      max_rel_diff: 2.3805573334811925e-07
+    - team_name: sigmoid_scale_sum_replay_v4
+      status: pass
+      correctness: true
+      speedup: 1.5411
+      weighted_score: 65.41
+      baseline_ms: 0.0969
+      solution_ms: 0.0629
+      max_abs_diff: 0.0009765625
+      max_rel_diff: 2.370963869680054e-07
+
+akg_agents_runner:
+  path: third_party/akg/akg_agents/examples/kernel_related/run_torch_bench_lite.py
+  status: blocked_pre_key_environment
+  input_contract: >
+    Agent orchestration runner. `--submission-dir` is an output directory for
+    extracted successful Agent attempts, not an input directory for
+    pre-existing replay/manual submissions.
+  attempted_command: >
+    source /usr/local/Ascend/ascend-toolkit/set_env.sh &&
+    source /data/venvs/kf-triton-ascend/bin/activate &&
+    export PYTHONPATH=/data/KernelForge-Agent:/data/KernelForge-Agent/third_party/akg/akg_agents/python:${PYTHONPATH:-} &&
+    python third_party/akg/akg_agents/examples/kernel_related/run_torch_bench_lite.py --help
+  failure:
+    category: environment_error
+    module: langchain_core
+    message: "ModuleNotFoundError: No module named 'langchain_core'"
+  result_schema: >
+    Not produced in the current environment. `RUNNER.md` specifies a single
+    JSON artifact with top-level `summary`, `results`, and, in performance/full
+    modes, `performance_results` and `performance_summary`.
+
+decision:
+  current_authoritative_pre_key_runner: standalone_tools_run_bench_py
+  rationale: >
+    The standalone runner directly evaluates existing replay/manual
+    submissions, is runnable in the current Ascend venv, and produced complete
+    correctness/performance JSON. The AKG Agents runner is the future
+    orchestration path for live Agent generation, but it currently requires the
+    broader AKG Agents dependency stack and provider/agent configuration before
+    it can produce comparable Pass@N and performance artifacts.
+  follow_up: >
+    After installing the AKG Agents runtime dependencies and configuring a live
+    provider, rerun `run_torch_bench_lite.py --backend npu --mode full --cases
+    sigmoid_scale_sum --pass-n 4` and compare its extracted submissions and
+    performance schema against the standalone scorer.
+
+automation_smoke:
+  script: scripts/run_replay_regression.py
+  status: pass
+  command: >
+    source /usr/local/Ascend/ascend-toolkit/set_env.sh &&
+    source /data/venvs/kf-triton-ascend/bin/activate &&
+    export PYTHONPATH=/data/KernelForge-Agent:${PYTHONPATH:-} &&
+    python scripts/run_replay_regression.py
+    --run-id 2026-07-09-replay-sigmoid-regression-smoke
+    --results-dir outputs/results/replay_sigmoid_regression_smoke_2026_07_09
+    --date 2026-07-09
+    --machine ascend-worker
+  outputs:
+    experiment: outputs/generated/2026-07-09-replay-sigmoid-regression-smoke/experiment.yaml
+    report: outputs/generated/2026-07-09-replay-sigmoid-regression-smoke/passn_report.yaml
+    results: outputs/results/replay_sigmoid_regression_smoke_2026_07_09
+    probes: outputs/generated/2026-07-09-replay-sigmoid-regression-smoke/probes
+  pass_at_1: true
+  pass_at_4: true
+  passed_count: 4
+  best_candidate:
+    team_name: sigmoid_scale_sum_replay_v2
+    speedup: 1.973
+    weighted_score: 69.73
+    observed_backend: triton_row_reduce_bs8192
+  observed_backends:
+    sigmoid_scale_sum_replay_v1: torch_reference
+    sigmoid_scale_sum_replay_v2: triton_row_reduce_bs8192
+    sigmoid_scale_sum_replay_v3: triton_row_reduce_bs4096x2
+    sigmoid_scale_sum_replay_v4: triton_row_reduce_bs2048x4
