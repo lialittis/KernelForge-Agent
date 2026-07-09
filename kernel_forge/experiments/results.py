@@ -72,6 +72,7 @@ def apply_result_to_experiment(
     bench_config = result.get("bench_config", {})
 
     if selected is not None:
+        output_summaries = _output_summaries(selected)
         correctness = updated.setdefault("results", {}).setdefault("correctness", {})
         correctness["status"] = "pass" if selected.get("correctness") else "fail"
         correctness["rtol"] = bench_config.get("rtol")
@@ -79,6 +80,9 @@ def apply_result_to_experiment(
         correctness["max_abs_diff"] = selected.get("max_abs_diff")
         correctness["max_rel_diff"] = selected.get("max_rel_diff")
         correctness["detail"] = selected.get("correctness_detail")
+        if output_summaries:
+            correctness["outputs"] = output_summaries
+            correctness["output_count"] = len(output_summaries)
 
         performance = updated.setdefault("results", {}).setdefault("performance", {})
         performance["status"] = (
@@ -130,7 +134,7 @@ def _select_case(
 
 
 def _case_summary(case: dict[str, Any]) -> dict[str, Any]:
-    return {
+    summary = {
         "case": case.get("case"),
         "tier": case.get("tier"),
         "status": case.get("status"),
@@ -143,6 +147,58 @@ def _case_summary(case: dict[str, Any]) -> dict[str, Any]:
         "weighted_score": case.get("weighted_score"),
         "error": case.get("error"),
     }
+    output_summaries = _output_summaries(case)
+    if output_summaries:
+        summary["outputs"] = output_summaries
+        summary["output_count"] = len(output_summaries)
+    return summary
+
+
+def _output_summaries(case: dict[str, Any]) -> list[dict[str, Any]]:
+    """Preserve per-output correctness details from richer runner schemas.
+
+    The current AKG Bench Lite runner emits aggregate max diffs at case level,
+    while tuple-output cases are checked internally. This accepts several
+    likely future key names so imports stay deterministic if the runner starts
+    emitting per-output detail.
+    """
+    raw_outputs = None
+    for key in (
+        "outputs",
+        "output_details",
+        "per_output",
+        "per_output_details",
+        "output_diffs",
+        "correctness_outputs",
+    ):
+        value = case.get(key)
+        if isinstance(value, list):
+            raw_outputs = value
+            break
+    if not raw_outputs:
+        return []
+
+    outputs: list[dict[str, Any]] = []
+    for index, output in enumerate(raw_outputs):
+        if not isinstance(output, dict):
+            outputs.append({"index": index, "detail": output})
+            continue
+        item: dict[str, Any] = {"index": output.get("index", index)}
+        for key in (
+            "name",
+            "status",
+            "correctness",
+            "shape",
+            "dtype",
+            "max_abs_diff",
+            "max_rel_diff",
+            "detail",
+            "error",
+        ):
+            if key in output:
+                item[key] = output[key]
+        outputs.append(item)
+    return outputs
 
 
 def _probe_summary(probe: dict[str, Any]) -> dict[str, Any]:

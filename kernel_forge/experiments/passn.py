@@ -34,19 +34,22 @@ def summarize_passn(
                 row["status"] = "missing_case"
                 row["error"] = f"case {case_id} not found"
             else:
-                row.update(
-                    {
-                        "status": case.get("status"),
-                        "correctness": bool(case.get("correctness")),
-                        "max_abs_diff": case.get("max_abs_diff"),
-                        "max_rel_diff": case.get("max_rel_diff"),
-                        "baseline_ms": case.get("baseline_ms"),
-                        "solution_ms": case.get("solution_ms"),
-                        "speedup": case.get("speedup"),
-                        "weighted_score": case.get("weighted_score"),
-                        "error": case.get("error"),
-                    }
-                )
+                case_update = {
+                    "status": case.get("status"),
+                    "correctness": bool(case.get("correctness")),
+                    "max_abs_diff": case.get("max_abs_diff"),
+                    "max_rel_diff": case.get("max_rel_diff"),
+                    "baseline_ms": case.get("baseline_ms"),
+                    "solution_ms": case.get("solution_ms"),
+                    "speedup": case.get("speedup"),
+                    "weighted_score": case.get("weighted_score"),
+                    "error": case.get("error"),
+                }
+                output_summaries = _output_summaries(case)
+                if output_summaries:
+                    case_update["outputs"] = output_summaries
+                    case_update["output_count"] = len(output_summaries)
+                row.update(case_update)
         rows.append(row)
 
     passed = [row for row in rows if row["correctness"]]
@@ -189,6 +192,10 @@ def apply_passn_to_generated_experiment(
         }
         for row in candidates
     ]
+    for completed_case, row in zip(results["completed_cases"], candidates):
+        if row.get("outputs"):
+            completed_case["outputs"] = row["outputs"]
+            completed_case["output_count"] = len(row["outputs"])
 
     generated_candidates = updated.setdefault("generation", {}).setdefault("candidates", [])
     generated_by_team = {
@@ -213,6 +220,9 @@ def apply_passn_to_generated_experiment(
             "max_abs_diff": row.get("max_abs_diff"),
             "max_rel_diff": row.get("max_rel_diff"),
         }
+        if row.get("outputs"):
+            target["benchmark_result"]["outputs"] = row["outputs"]
+            target["benchmark_result"]["output_count"] = len(row["outputs"])
 
     artifacts = updated.setdefault("artifacts", {})
     artifacts["results"] = results_dir
@@ -233,6 +243,46 @@ def _find_case(cases: list[dict[str, Any]], case_id: str) -> dict[str, Any] | No
         if case.get("case") == case_id:
             return case
     return None
+
+
+def _output_summaries(case: dict[str, Any]) -> list[dict[str, Any]]:
+    raw_outputs = None
+    for key in (
+        "outputs",
+        "output_details",
+        "per_output",
+        "per_output_details",
+        "output_diffs",
+        "correctness_outputs",
+    ):
+        value = case.get(key)
+        if isinstance(value, list):
+            raw_outputs = value
+            break
+    if not raw_outputs:
+        return []
+
+    outputs: list[dict[str, Any]] = []
+    for index, output in enumerate(raw_outputs):
+        if not isinstance(output, dict):
+            outputs.append({"index": index, "detail": output})
+            continue
+        item: dict[str, Any] = {"index": output.get("index", index)}
+        for key in (
+            "name",
+            "status",
+            "correctness",
+            "shape",
+            "dtype",
+            "max_abs_diff",
+            "max_rel_diff",
+            "detail",
+            "error",
+        ):
+            if key in output:
+                item[key] = output[key]
+        outputs.append(item)
+    return outputs
 
 
 def _probe_summary(probe: dict[str, Any]) -> dict[str, Any]:

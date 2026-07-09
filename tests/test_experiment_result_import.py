@@ -75,6 +75,39 @@ def test_importer_summarizes_result_without_experiment(tmp_path):
     assert summary["cases"][0]["weighted_score"] == 36.35
 
 
+def test_importer_preserves_multi_output_case_details(tmp_path):
+    result_json = _write_moe_result_json(tmp_path)
+    experiment = tmp_path / "experiment.yaml"
+    experiment.write_text(
+        yaml.safe_dump(
+            {
+                "id": "moe",
+                "status": "planned",
+                "benchmark": {"task_id": "t2/moe_topk_softmax"},
+                "results": {
+                    "runtime": {"status": "not_run"},
+                    "correctness": {"status": "not_run"},
+                    "performance": {"status": "not_run"},
+                },
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    summary = import_benchmark_result(result_json)
+    updated = import_benchmark_result(result_json, experiment_path=experiment)
+
+    case = summary["cases"][0]
+    assert case["case"] == "t2/moe_topk_softmax"
+    assert case["output_count"] == 2
+    assert case["outputs"][0]["name"] == "top_k_probs"
+    assert case["outputs"][1]["name"] == "top_k_indices"
+    assert case["outputs"][1]["dtype"] == "int64"
+    assert updated["results"]["correctness"]["output_count"] == 2
+    assert updated["results"]["correctness"]["outputs"][0]["max_abs_diff"] == 1.0e-6
+    assert updated["results"]["correctness"]["outputs"][1]["max_rel_diff"] == 0.0
+
+
 def test_import_result_cli_writes_yaml(tmp_path):
     result_json = _write_result_json(tmp_path)
     output = tmp_path / "summary.yaml"
@@ -223,6 +256,43 @@ def test_apply_passn_to_generated_experiment_updates_candidates():
     assert updated["artifacts"]["probes"] == "outputs/generated/run/probes"
 
 
+def test_passn_summary_preserves_multi_output_case_details(tmp_path):
+    result_dir = tmp_path / "results"
+    result_dir.mkdir()
+    result_json = _write_moe_result_json(result_dir, team_name="moe_topk_replay_v1")
+
+    from kernel_forge.experiments import summarize_passn
+
+    summary = summarize_passn(
+        result_dir,
+        case_id="t2/moe_topk_softmax",
+        candidates=["moe_topk_replay_v1"],
+    )
+
+    assert summary["pass_at_1"] is True
+    assert summary["best_candidate"]["outputs"][0]["name"] == "top_k_probs"
+    assert summary["best_candidate"]["outputs"][1]["name"] == "top_k_indices"
+
+    updated = apply_passn_to_generated_experiment(
+        {
+            "id": "moe-run",
+            "status": "generated",
+            "benchmark": {"task_id": "t2/moe_topk_softmax"},
+            "generation": {"candidates": [{"team_name": "moe_topk_replay_v1"}]},
+            "results": {},
+            "artifacts": {},
+        },
+        summary,
+        results_dir="outputs/results/moe-run",
+        akg_commit="47aa428fcdc8c68f78d331dc578bc6c74fb9d91d",
+    )
+
+    completed_case = updated["results"]["completed_cases"][0]
+    benchmark_result = updated["generation"]["candidates"][0]["benchmark_result"]
+    assert completed_case["output_count"] == 2
+    assert benchmark_result["outputs"][1]["dtype"] == "int64"
+
+
 def _write_result_json(tmp_path: Path) -> Path:
     result = {
         "team_name": "gelu_triton_v13",
@@ -260,5 +330,66 @@ def _write_result_json(tmp_path: Path) -> Path:
         },
     }
     path = tmp_path / "gelu_triton_v13.json"
+    path.write_text(json.dumps(result), encoding="utf-8")
+    return path
+
+
+def _write_moe_result_json(tmp_path: Path, team_name: str = "moe_topk_replay_v1") -> Path:
+    result = {
+        "team_name": team_name,
+        "device": "npu",
+        "timestamp": "2026-07-09T00:00:00",
+        "bench_config": {
+            "rtol": 0.01,
+            "atol": 0.01,
+            "warmup_runs": 10,
+            "iterations": 100,
+            "num_trials": 3,
+        },
+        "cases": [
+            {
+                "case": "t2/moe_topk_softmax",
+                "tier": "t2",
+                "correctness": True,
+                "max_abs_diff": 1.0e-6,
+                "max_rel_diff": 0.0,
+                "correctness_detail": "PASS (3 random trials)",
+                "status": "pass",
+                "baseline_ms": 0.2,
+                "solution_ms": 0.25,
+                "speedup": 0.8,
+                "weighted_score": 48.0,
+                "outputs": [
+                    {
+                        "index": 0,
+                        "name": "top_k_probs",
+                        "correctness": True,
+                        "shape": [1024, 2],
+                        "dtype": "float32",
+                        "max_abs_diff": 1.0e-6,
+                        "max_rel_diff": 0.0,
+                    },
+                    {
+                        "index": 1,
+                        "name": "top_k_indices",
+                        "correctness": True,
+                        "shape": [1024, 2],
+                        "dtype": "int64",
+                        "max_abs_diff": 0.0,
+                        "max_rel_diff": 0.0,
+                    },
+                ],
+                "error": None,
+            }
+        ],
+        "summary": {
+            "total": 1,
+            "passed": 1,
+            "failed": 0,
+            "total_weighted_score": 48.0,
+            "avg_speedup": 0.8,
+        },
+    }
+    path = tmp_path / f"{team_name}.json"
     path.write_text(json.dumps(result), encoding="utf-8")
     return path

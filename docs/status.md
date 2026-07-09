@@ -615,36 +615,34 @@ Date: 2026-07-09
 Agent: Codex
 Branch: main
 Summary:
-- Completed full Lite benchmark OpSpec coverage: 13/13 official cases are now
-  `opspec_supported`.
-- Added deterministic OpSpec extraction and NPU-aware Sketches for
-  `t1/matmul_basic`, `t1/matmul_biasadd`, and `t2/moe_topk_softmax`.
-- Added the pre-submission no-key development plan under `docs/tasks/`.
+- Completed deterministic reference/replay evaluation hardening for Task 4 of
+  the pre-submission no-key plan.
+- Preserved per-output correctness details in result import, Pass@N summaries,
+  generated experiment updates, and tests using `t2/moe_topk_softmax` as the
+  tuple-output case.
+- Added an updated-AKG commit guard to `scripts/run_replay_regression.py` and
+  tightened the readiness audit to require exact `13/13` Lite OpSpec coverage.
 
 Changed Files:
-- `benchmarks/parsed/t1_matmul_basic.yaml`
-- `benchmarks/parsed/t1_matmul_biasadd.yaml`
-- `benchmarks/parsed/t2_moe_topk_softmax.yaml`
-- `benchmarks/raw/akg_kernels_bench_lite_registry.yaml`
-- `docs/competition_alignment.md`
 - `docs/status.md`
 - `docs/tasks/pre_submission_no_key_dev_plan.md`
-- `kernel_forge/benchmark/extractor.py`
-- `kernel_forge/benchmark/sketch.py`
+- `kernel_forge/experiments/passn.py`
+- `kernel_forge/experiments/results.py`
+- `scripts/audit_pre_key_readiness.py`
+- `scripts/run_replay_regression.py`
 - `tasks/active.md`
-- `tests/test_benchmark_registry_and_opspec.py`
+- `tests/test_experiment_result_import.py`
 
 Verification:
-- Local: `python scripts/scan_benchmark_cases.py --bench-dir third_party/akg/akg_agents/benchmark/akg_kernels_bench_lite --repo-root . --output benchmarks/raw/akg_kernels_bench_lite_registry.yaml`
-- Local: `python scripts/extract_opspec_batch.py --bench-dir third_party/akg/akg_agents/benchmark/akg_kernels_bench_lite --repo-root . --output-dir benchmarks/parsed`
-- Local: `python -m py_compile kernel_forge/benchmark/extractor.py kernel_forge/benchmark/sketch.py`
-- Local: `PYTHONPATH=/home/tianchi/.local/lib/python3.10/site-packages python -m pytest -q tests/test_benchmark_registry_and_opspec.py`
-- Local: `python -m py_compile kernel_forge/benchmark/sketch.py`
-- Local: `PYTHONPATH=/home/tianchi/.local/lib/python3.10/site-packages python -m pytest -q`
-  passed 92 project-owned tests.
+- Local: `PYTHONPATH=/home/tianchi/.local/lib/python3.10/site-packages python -m pytest -q tests/test_experiment_result_import.py`
+  passed 7 tests.
+- Local: `python -m py_compile kernel_forge/experiments/results.py kernel_forge/experiments/passn.py scripts/run_replay_regression.py scripts/audit_pre_key_readiness.py`
 - Local: `PYTHONPATH=/home/tianchi/.local/lib/python3.10/site-packages python scripts/audit_pre_key_readiness.py --json`
   returned `pre_key_deterministic_complete_provider_config_missing` with
-  `opspec_supported: 13`, `unsupported: 0`, and `parse_failed: 0`.
+  `benchmark_registry_full_lite_coverage`, `opspec_supported: 13`,
+  `unsupported: 0`, and `parse_failed: 0`.
+- Local: `PYTHONPATH=/home/tianchi/.local/lib/python3.10/site-packages python -m pytest -q`
+  passed 96 tests.
 - Local: `git diff --check`
 
 Open Issues:

@@ -111,6 +111,8 @@ Implemented in `tests/test_benchmark_registry_and_opspec.py`.
 
 ## Task 4: Deterministic Reference And Replay Evaluation
 
+Status: complete for the current no-key baseline.
+
 After OpSpec coverage is complete:
 
 - rerun or refresh reference pre-evaluation records if benchmark runner inputs
@@ -120,6 +122,26 @@ After OpSpec coverage is complete:
   regression path for provider-generated candidates,
 - keep all benchmark claims tied to the updated AKG commit
   `47aa428fcdc8c68f78d331dc578bc6c74fb9d91d`.
+
+Implemented state:
+
+- The active deterministic reference baseline is
+  `experiments/reports/2026-07-09-remaining-reference-preeval-updated-akg.yaml`,
+  which supersedes the July 8 baseline and is tied to AKG commit
+  `47aa428fcdc8c68f78d331dc578bc6c74fb9d91d`.
+- Result import now preserves per-output correctness details when the runner
+  JSON includes them, while remaining compatible with the current aggregate
+  AKG Bench Lite schema.
+- Pass@N summaries and generated experiment updates now carry per-output
+  details into candidate rows, completed-case records, and benchmark-result
+  metadata.
+- `scripts/run_replay_regression.py` remains the deterministic replay
+  regression path and now guards against accidentally claiming results from an
+  unexpected AKG submodule commit. Use `--allow-akg-commit-mismatch` only for
+  explicitly labeled exploratory runs.
+- `scripts/audit_pre_key_readiness.py --json` now gates on full Lite coverage:
+  `total_cases == 13`, `opspec_supported == 13`, `unsupported == 0`, and
+  `parse_failed == 0`.
 
 ## Task 5: Pre-AI Infrastructure Improvements
 

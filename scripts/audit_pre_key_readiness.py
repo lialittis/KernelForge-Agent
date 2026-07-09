@@ -217,10 +217,10 @@ def _registry_check(repo_root: Path) -> dict[str, Any]:
     supported = by_support.get("opspec_supported", 0)
     parse_failed = by_support.get("parse_failed", 0)
     unsupported = by_support.get("unsupported", 0)
-    ok = total_cases == 13 and supported >= 10 and parse_failed == 0
+    ok = total_cases == 13 and supported == 13 and unsupported == 0 and parse_failed == 0
 
     return {
-        "id": "benchmark_registry_t2_t3_coverage",
+        "id": "benchmark_registry_full_lite_coverage",
         "status": "pass" if ok else "fail",
         "total_cases": total_cases,
         "opspec_supported": supported,

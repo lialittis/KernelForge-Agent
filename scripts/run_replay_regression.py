@@ -23,6 +23,8 @@ from kernel_forge.experiments import (
 )
 from kernel_forge.submission import display_path
 
+EXPECTED_AKG_COMMIT = "47aa428fcdc8c68f78d331dc578bc6c74fb9d91d"
+
 
 def main() -> int:
     parser = argparse.ArgumentParser(
@@ -46,6 +48,16 @@ def main() -> int:
     parser.add_argument("--date", default=date.today().isoformat())
     parser.add_argument("--machine", default=None)
     parser.add_argument("--python", default=sys.executable)
+    parser.add_argument(
+        "--expected-akg-commit",
+        default=EXPECTED_AKG_COMMIT,
+        help="Expected third_party/akg commit for benchmark claims.",
+    )
+    parser.add_argument(
+        "--allow-akg-commit-mismatch",
+        action="store_true",
+        help="Allow replay to continue when third_party/akg is not at --expected-akg-commit.",
+    )
     args = parser.parse_args()
 
     root = ROOT
@@ -124,11 +136,22 @@ def main() -> int:
 
     project_commit = _git_rev_parse(root)
     akg_commit = _git_rev_parse(root / "third_party/akg")
+    if (
+        args.expected_akg_commit
+        and akg_commit != args.expected_akg_commit
+        and not args.allow_akg_commit_mismatch
+    ):
+        parser.error(
+            "third_party/akg commit mismatch: "
+            f"expected {args.expected_akg_commit}, got {akg_commit}. "
+            "Use --allow-akg-commit-mismatch only for explicitly labeled exploratory runs."
+        )
     branch = _git_branch(root)
     report = {
         "case": case_id,
         "id": args.run_id,
         "akg_commit": akg_commit,
+        "expected_akg_commit": args.expected_akg_commit,
         "project_commit": project_commit,
         "provider": "replay",
         "model": "replay-v1",
