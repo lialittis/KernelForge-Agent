@@ -117,6 +117,58 @@ def test_compare_runner_results_computes_full_mode_deltas(tmp_path):
     assert comparison["decision"]["authoritative_runner"] == "both_compare_before_final_claim"
 
 
+def test_compare_runner_results_classifies_verifier_only_probe(tmp_path):
+    standalone = tmp_path / "standalone.yaml"
+    akg = tmp_path / "akg_verifier_probe.json"
+    standalone.write_text(yaml.safe_dump(_standalone_report()), encoding="utf-8")
+    akg.write_text(
+        json.dumps(
+            {
+                "runner_path": "akg_agents_verifier_only_workflow",
+                "case": "t1/sigmoid_scale_sum",
+                "candidate": {"team_name": "sigmoid_scale_sum_replay_v2"},
+                "config": {"backend": "ascend", "task_type": "profile"},
+                "result": {
+                    "success": True,
+                    "verifier_result": True,
+                    "profile_res": {"base_time": 100.0, "gen_time": 50.0, "speedup": 2.0},
+                    "verify_dir": "outputs/akg_agents_verifier_logs/sigmoid_scale_sum/Iteration01",
+                    "verify_sidecar": {"max_abs_diff": 0.0, "max_rel_diff": 0.0},
+                },
+                "logs": {"log_dir": "outputs/akg_agents_verifier_logs"},
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    completed = subprocess.run(
+        [
+            sys.executable,
+            str(ROOT / "scripts/compare_runner_results.py"),
+            "--standalone-report",
+            str(standalone),
+            "--akg-agents-json",
+            str(akg),
+            "--case",
+            "t1/sigmoid_scale_sum",
+        ],
+        cwd=ROOT,
+        check=True,
+        text=True,
+        capture_output=True,
+    )
+
+    comparison = yaml.safe_load(completed.stdout)
+    assert comparison["akg_agents_runner"]["status"] == "verifier_only_probe"
+    assert comparison["comparison"]["comparable"] is False
+    assert comparison["akg_agents_runner"]["best_candidate"]["speedup"] == 2.0
+    assert comparison["akg_agents_runner"]["best_candidate"]["baseline_ms"] == 0.1
+    assert (
+        comparison["decision"]["authoritative_runner"]
+        == "standalone_tools_run_bench_py_pending_akg_agents_full_results"
+    )
+
+
 def _standalone_report():
     return {
         "case": "t1/sigmoid_scale_sum",

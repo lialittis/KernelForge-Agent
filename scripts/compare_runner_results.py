@@ -94,6 +94,9 @@ def _standalone_summary(data: dict[str, Any], *, case_id: str, source_path: str)
 
 
 def _akg_agents_summary(data: dict[str, Any], *, case_id: str, source_path: str) -> dict[str, Any]:
+    if data.get("runner_path") == "akg_agents_verifier_only_workflow":
+        return _akg_verifier_probe_summary(data, case_id=case_id, source_path=source_path)
+
     schema_fields = sorted(data.keys())
     summary = data.get("summary") if isinstance(data.get("summary"), dict) else {}
     performance_results = data.get("performance_results")
@@ -163,6 +166,55 @@ def _candidate_summary(row: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def _akg_verifier_probe_summary(data: dict[str, Any], *, case_id: str, source_path: str) -> dict[str, Any]:
+    result = data.get("result") if isinstance(data.get("result"), dict) else {}
+    candidate = data.get("candidate") if isinstance(data.get("candidate"), dict) else {}
+    profile = result.get("profile_res") if isinstance(result.get("profile_res"), dict) else {}
+    success = bool(result.get("success"))
+    row = {
+        "team_name": candidate.get("team_name"),
+        "case": data.get("case") or case_id,
+        "status": "pass" if success else "fail",
+        "correctness": result.get("verifier_result"),
+        "speedup": profile.get("speedup") or profile.get("speedup_vs_baseline"),
+        "weighted_score": None,
+        "baseline_ms": _us_to_ms(profile.get("base_time") or profile.get("baseline_time_us")),
+        "solution_ms": _us_to_ms(profile.get("gen_time") or profile.get("generation_time_us")),
+        "max_abs_diff": _get_nested(result, "verify_sidecar", "max_abs_diff"),
+        "max_rel_diff": _get_nested(result, "verify_sidecar", "max_rel_diff"),
+    }
+    return {
+        "source": source_path,
+        "status": "verifier_only_probe",
+        "mode": "verifier_only",
+        "runner_version": data.get("runner_path"),
+        "schema": {
+            "top_level_fields": sorted(data.keys()),
+            "has_performance_results": False,
+            "has_performance_summary": False,
+            "has_verifier_probe_result": "result" in data,
+        },
+        "config": {
+            "backend": _get_nested(data, "config", "backend"),
+            "pass_n": 1,
+            "cases": [data.get("case") or case_id],
+        },
+        "summary": {
+            "total_cases": 1,
+            "total_attempts": 1,
+            "successful_attempts": 1 if success else 0,
+            "pass_at_n": success,
+        },
+        "failure": None if success else "verifier_probe_failed",
+        "best_candidate": row if success else None,
+        "candidates": [row],
+        "logs": {
+            "log_dir": _get_nested(data, "logs", "log_dir"),
+            "verify_dir": result.get("verify_dir"),
+        },
+    }
+
+
 def _normalise_akg_performance_row(row: Any) -> dict[str, Any] | None:
     if not isinstance(row, dict):
         return None
@@ -213,6 +265,15 @@ def _decision(
             "reason": (
                 "AKG Agents runner is schema-producing but blocked before full-mode "
                 "performance by missing standard model configuration."
+            ),
+        }
+    if akg_agents.get("status") == "verifier_only_probe":
+        return {
+            "authoritative_runner": "standalone_tools_run_bench_py_pending_akg_agents_full_results",
+            "reason": (
+                "AKG Agents verifier_only_workflow can validate an existing candidate "
+                "without a model key, but it is not the full Bench Lite runner and does "
+                "not provide Pass@4 leaderboard scoring."
             ),
         }
     return {
@@ -272,6 +333,13 @@ def _numeric_delta(left: Any, right: Any) -> float | None:
         return None
     try:
         return float(left) - float(right)
+    except Exception:
+        return None
+
+
+def _us_to_ms(value: Any) -> float | None:
+    try:
+        return float(value) / 1000.0
     except Exception:
         return None
 
