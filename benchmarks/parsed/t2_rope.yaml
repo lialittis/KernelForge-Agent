@@ -1,0 +1,122 @@
+id: t2/rope
+name: rope
+tier: t2
+category: transpose_layout
+source_path: third_party/akg/akg_agents/benchmark/akg_kernels_bench_lite/t2/rope.py
+reference_class: Model
+candidate_class: ModelNew
+inputs:
+- name: x
+  shape:
+  - 16
+  - 48
+  - 1000
+  - 128
+  dtype: float16
+  layout: contiguous
+- name: cos
+  shape:
+  - 1
+  - 1
+  - 1000
+  - 128
+  dtype: float16
+  layout: contiguous
+- name: sin
+  shape:
+  - 1
+  - 1
+  - 1000
+  - 128
+  dtype: float16
+  layout: contiguous
+outputs:
+- name: output
+  shape:
+  - 16
+  - 48
+  - 1000
+  - 128
+  dtype: float16
+  layout: contiguous
+semantics:
+  expression: torch_npu.npu_rotary_mul(x, cos, sin)
+  formula: cos * x + sin * concat(-x[..., D/2:], x[..., :D/2])
+  broadcast: cos and sin broadcast over batch and head axes
+  reduction_axes: []
+  normalization_axes: []
+  layout_transform: rotate_half_last_dim
+  boundary_conditions:
+    tail_mask_required: true
+    last_dim_even: true
+    last_dim_multiple_of_64: true
+validation:
+  rtol: 0.01
+  atol: 0.01
+  max_error_required: null
+  shape_cases:
+  - - 16
+    - 48
+    - 1000
+    - 128
+  - - 1
+    - 1
+    - 1000
+    - 128
+  - - 1
+    - 1
+    - 1000
+    - 128
+  dtype_cases:
+  - float16
+performance:
+  metric: median_latency_ms
+  warmup: 10
+  repeats: 100
+  num_trials: 3
+  baseline_latency_ms: null
+  baseline_source: official_reference_model
+sketch:
+  operator_category: transpose_layout
+  compute_pattern: rotary_position_embedding
+  parallel_axes:
+  - batch_head_sequence_rows
+  - head_dim
+  tile_plan:
+    strategy: rowwise_rotate_half_last_dim
+    shape:
+    - 768000
+    - 128
+    tunable: true
+  memory_plan:
+    inputs:
+    - x
+    - cos
+    - sin
+    input: row_contiguous_global_read_with_cos_sin_broadcast
+    output: contiguous_global_write
+    intermediate: local_register_or_vector
+  pipeline_plan:
+    stages:
+    - load_x_cos_sin
+    - rotate_half
+    - fused_mul_add
+    - store
+  boundary_mask:
+    required: true
+    reason: row count or head dimension may not align with backend tile size
+  accumulation_dtype: float16
+  backend_target: triton_ascend
+  performance_knobs:
+    row_tile: null
+    head_dim_tile: null
+    num_warps_or_cores: null
+  known_risks:
+  - rotate_half_pairing_semantics
+  - cos_sin_broadcast_layout
+  - float16_accuracy
+  - last_dim_multiple_constraints
+submission:
+  required_files:
+  - t2/rope.py
+  entrypoint: ModelNew

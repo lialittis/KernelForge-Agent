@@ -17,6 +17,10 @@ SUPPORTED_OPSPEC_CASES = {
     "t1/fused_silu_and_mul",
     "t1/sigmoid_scale_sum",
     "t1/softmax",
+    "t2/add_rmsnorm_cast",
+    "t2/add_rmsnorm_quant",
+    "t2/rope",
+    "t3/layernorm_gated",
 }
 
 CASE_CATEGORIES = {
@@ -120,7 +124,7 @@ def case_support(case_id: str) -> dict[str, str]:
     if case_id in SUPPORTED_OPSPEC_CASES:
         return {
             "status": "opspec_supported",
-            "reason": "covered by the initial T1 non-matmul extraction subset",
+            "reason": "covered by deterministic OpSpec extraction templates",
         }
     category = classify_case(case_id)
     if category == "matmul_like":
@@ -142,11 +146,13 @@ def _display_path(path: Path, root: Path) -> str:
 def _extract_get_inputs(module: ast.Module) -> list[TensorSpec]:
     fn = _find_function(module, "get_inputs")
     tensors: dict[str, TensorSpec] = {}
+    env: dict[str, Any] = {}
     for node in fn.body:
         if isinstance(node, ast.Assign) and len(node.targets) == 1:
             target = node.targets[0]
+            _record_assignment(target, node.value, env)
             if isinstance(target, ast.Name):
-                tensor = _tensor_from_randn(target.id, node.value)
+                tensor = _tensor_from_randn(target.id, node.value, env)
                 if tensor is None:
                     tensor = _tensor_from_cat(target.id, node.value, tensors)
                 if tensor is not None:
@@ -164,8 +170,9 @@ def _extract_get_init_inputs(module: ast.Module) -> list[Any]:
     for node in fn.body:
         if isinstance(node, ast.Assign) and len(node.targets) == 1:
             target = node.targets[0]
+            _record_assignment(target, node.value, assignments)
             if isinstance(target, ast.Name):
-                assignments[target.id] = ast.literal_eval(node.value)
+                assignments[target.id] = _literal_value(node.value, assignments)
         if isinstance(node, ast.Return):
             if not isinstance(node.value, ast.List):
                 raise ExtractionError("get_init_inputs() must return a list")
@@ -178,7 +185,7 @@ def _extract_get_init_inputs(module: ast.Module) -> list[Any]:
                         )
                     values.append(assignments[element.id])
                 else:
-                    values.append(ast.literal_eval(element))
+                    values.append(_literal_value(element, assignments))
             return values
     raise ExtractionError("get_init_inputs() has no return statement")
 
@@ -215,6 +222,36 @@ def _build_output_specs(case_id: str, input_specs: list[TensorSpec]) -> list[Ten
             TensorSpec(
                 name="output",
                 shape=[*x.shape[:-1], 1],
+                dtype=x.dtype,
+                layout=x.layout,
+            )
+        ]
+    if case_id == "t2/add_rmsnorm_cast":
+        x = input_specs[0]
+        return [
+            TensorSpec(
+                name="output",
+                shape=x.shape,
+                dtype="float16",
+                layout=x.layout,
+            )
+        ]
+    if case_id == "t2/add_rmsnorm_quant":
+        x = input_specs[0]
+        return [
+            TensorSpec(
+                name="output",
+                shape=x.shape,
+                dtype="int8",
+                layout=x.layout,
+            )
+        ]
+    if case_id in {"t2/rope", "t3/layernorm_gated"}:
+        x = input_specs[0]
+        return [
+            TensorSpec(
+                name="output",
+                shape=x.shape,
                 dtype=x.dtype,
                 layout=x.layout,
             )
@@ -266,6 +303,61 @@ def _build_semantics(
             "reduction_axes": [dim],
             "normalization_axes": [dim],
             "layout_transform": "none",
+            "boundary_conditions": {"tail_mask_required": True},
+        }
+    if case_id == "t2/add_rmsnorm_cast":
+        target_dtype = init_inputs[1] if len(init_inputs) > 1 else "torch.float16"
+        return {
+            "expression": expression,
+            "formula": "cast(((x + residual) * rsqrt(mean((x + residual)^2, dim=-1) + eps)) * gamma, target_dtype)",
+            "broadcast": "gamma broadcasts over batch and sequence axes",
+            "reduction_axes": [-1],
+            "normalization_axes": [-1],
+            "layout_transform": "none",
+            "epsilon": init_inputs[0] if init_inputs else 1.0e-6,
+            "target_dtype": _normalize_dtype_name(str(target_dtype)),
+            "boundary_conditions": {"tail_mask_required": True},
+        }
+    if case_id == "t2/add_rmsnorm_quant":
+        return {
+            "expression": expression,
+            "formula": "round((((x + residual) * rsqrt(mean((x + residual)^2, dim=-1) + eps)) * gamma) / scale + zero_point).clamp(-128, 127).to(int8)",
+            "broadcast": "gamma broadcasts over batch and sequence axes; scale and zero_point are scalar tensors",
+            "reduction_axes": [-1],
+            "normalization_axes": [-1],
+            "layout_transform": "none",
+            "epsilon": init_inputs[0] if init_inputs else 1.0e-6,
+            "quantization": {"dtype": "int8", "round": True, "clamp": [-128, 127]},
+            "boundary_conditions": {"tail_mask_required": True},
+        }
+    if case_id == "t2/rope":
+        return {
+            "expression": expression,
+            "formula": "cos * x + sin * concat(-x[..., D/2:], x[..., :D/2])",
+            "broadcast": "cos and sin broadcast over batch and head axes",
+            "reduction_axes": [],
+            "normalization_axes": [],
+            "layout_transform": "rotate_half_last_dim",
+            "boundary_conditions": {
+                "tail_mask_required": True,
+                "last_dim_even": True,
+                "last_dim_multiple_of_64": True,
+            },
+        }
+    if case_id == "t3/layernorm_gated":
+        eps = init_inputs[0] if init_inputs else 1.0e-6
+        norm_before_gate = init_inputs[1] if len(init_inputs) > 1 else True
+        is_rms_norm = init_inputs[2] if len(init_inputs) > 2 else True
+        return {
+            "expression": expression,
+            "formula": "((x * rsqrt(mean(x^2, dim=-1) + eps)) * weight) * sigmoid(z)",
+            "broadcast": "weight broadcasts over batch and sequence axes",
+            "reduction_axes": [-1],
+            "normalization_axes": [-1],
+            "layout_transform": "none",
+            "epsilon": eps,
+            "norm_before_gate": norm_before_gate,
+            "is_rms_norm": is_rms_norm,
             "boundary_conditions": {"tail_mask_required": True},
         }
     return {"expression": expression}
@@ -346,12 +438,17 @@ def _build_performance(experiment_path: str | Path | None) -> dict[str, Any]:
     return performance
 
 
-def _tensor_from_randn(name: str, value: ast.AST) -> TensorSpec | None:
-    if not isinstance(value, ast.Call) or ast.unparse(value.func) != "torch.randn":
+def _tensor_from_randn(
+    name: str,
+    value: ast.AST,
+    env: dict[str, Any] | None = None,
+) -> TensorSpec | None:
+    call = _find_torch_call(value, "randn")
+    if call is None:
         return None
-    shape = [_literal_int(arg) for arg in value.args]
+    shape = [_literal_int(arg, env) for arg in call.args]
     dtype = "float32"
-    for keyword in value.keywords:
+    for keyword in call.keywords:
         if keyword.arg == "dtype":
             dtype = _dtype_name(keyword.value)
     return TensorSpec(name=name, shape=shape, dtype=dtype)
@@ -404,14 +501,70 @@ def _tensor_from_cat(
     return TensorSpec(name=name, shape=shape, dtype=dtype)
 
 
-def _literal_int(node: ast.AST) -> int:
-    try:
-        value = ast.literal_eval(node)
-    except ValueError as exc:
-        raise ExtractionError(f"Expected integer shape literal, got {ast.unparse(node)}") from exc
+def _record_assignment(target: ast.AST, value: ast.AST, env: dict[str, Any]) -> None:
+    if isinstance(target, ast.Name):
+        try:
+            env[target.id] = _literal_value(value, env)
+        except ExtractionError:
+            return
+        return
+    if isinstance(target, ast.Tuple) and isinstance(value, ast.Tuple):
+        if len(target.elts) != len(value.elts):
+            return
+        for target_item, value_item in zip(target.elts, value.elts):
+            if isinstance(target_item, ast.Name):
+                try:
+                    env[target_item.id] = _literal_value(value_item, env)
+                except ExtractionError:
+                    continue
+
+
+def _literal_int(node: ast.AST, env: dict[str, Any] | None = None) -> int:
+    value = _literal_value(node, env or {})
     if not isinstance(value, int):
         raise ExtractionError(f"Expected integer shape literal, got {value!r}")
     return value
+
+
+def _literal_value(node: ast.AST, env: dict[str, Any] | None = None) -> Any:
+    env = env or {}
+    if isinstance(node, ast.Name):
+        if node.id in env:
+            return env[node.id]
+        raise ExtractionError(f"Unsupported name literal {node.id}")
+    if isinstance(node, ast.Attribute):
+        return ast.unparse(node)
+    if isinstance(node, ast.Tuple):
+        return tuple(_literal_value(item, env) for item in node.elts)
+    if isinstance(node, ast.List):
+        return [_literal_value(item, env) for item in node.elts]
+    try:
+        return ast.literal_eval(node)
+    except (ValueError, TypeError) as exc:
+        raise ExtractionError(f"Expected literal value, got {ast.unparse(node)}") from exc
+
+
+def _find_torch_call(node: ast.AST, function_name: str) -> ast.Call | None:
+    if isinstance(node, ast.Call):
+        if ast.unparse(node.func) == f"torch.{function_name}":
+            return node
+        if isinstance(node.func, ast.Attribute):
+            nested = _find_torch_call(node.func.value, function_name)
+            if nested is not None:
+                return nested
+        for arg in node.args:
+            nested = _find_torch_call(arg, function_name)
+            if nested is not None:
+                return nested
+    if isinstance(node, ast.BinOp):
+        return _find_torch_call(node.left, function_name) or _find_torch_call(node.right, function_name)
+    if isinstance(node, ast.UnaryOp):
+        return _find_torch_call(node.operand, function_name)
+    return None
+
+
+def _normalize_dtype_name(dtype: str) -> str:
+    return dtype.split(".", 1)[1] if dtype.startswith("torch.") else dtype
 
 
 def _dtype_name(node: ast.AST) -> str:

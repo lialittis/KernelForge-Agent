@@ -15,8 +15,8 @@ summary:
     transpose_layout: 1
     unknown: 1
   by_support:
-    opspec_supported: 4
-    parse_failed: 6
+    opspec_supported: 8
+    parse_failed: 2
     unsupported: 3
 cases:
 - id: t1/fused_silu_and_mul
@@ -26,7 +26,7 @@ cases:
   source_path: third_party/akg/akg_agents/benchmark/akg_kernels_bench_lite/t1/fused_silu_and_mul.py
   support:
     status: opspec_supported
-    reason: covered by the initial T1 non-matmul extraction subset
+    reason: covered by deterministic OpSpec extraction templates
   inputs:
   - name: combined
     shape:
@@ -47,7 +47,7 @@ cases:
   source_path: third_party/akg/akg_agents/benchmark/akg_kernels_bench_lite/t1/gelu.py
   support:
     status: opspec_supported
-    reason: covered by the initial T1 non-matmul extraction subset
+    reason: covered by deterministic OpSpec extraction templates
   inputs:
   - name: input_tensor
     shape:
@@ -132,7 +132,7 @@ cases:
   source_path: third_party/akg/akg_agents/benchmark/akg_kernels_bench_lite/t1/sigmoid_scale_sum.py
   support:
     status: opspec_supported
-    reason: covered by the initial T1 non-matmul extraction subset
+    reason: covered by deterministic OpSpec extraction templates
   inputs:
   - name: x
     shape:
@@ -159,7 +159,7 @@ cases:
   source_path: third_party/akg/akg_agents/benchmark/akg_kernels_bench_lite/t1/softmax.py
   support:
     status: opspec_supported
-    reason: covered by the initial T1 non-matmul extraction subset
+    reason: covered by deterministic OpSpec extraction templates
   inputs:
   - name: input_tensor
     shape:
@@ -181,24 +181,87 @@ cases:
   category: normalization
   source_path: third_party/akg/akg_agents/benchmark/akg_kernels_bench_lite/t2/add_rmsnorm_cast.py
   support:
-    status: parse_failed
-    reason: 'ExtractionError: Expected integer shape literal, got batch_size'
-  inputs: []
-  init_inputs: []
-  forward_args: []
-  forward_expression: null
+    status: opspec_supported
+    reason: covered by deterministic OpSpec extraction templates
+  inputs:
+  - name: x
+    shape:
+    - 32
+    - 1024
+    - 4096
+    dtype: float32
+    layout: contiguous
+  - name: residual
+    shape:
+    - 32
+    - 1024
+    - 4096
+    dtype: float32
+    layout: contiguous
+  - name: gamma
+    shape:
+    - 4096
+    dtype: float32
+    layout: contiguous
+  init_inputs:
+  - 1.0e-06
+  - torch.float16
+  forward_args:
+  - x
+  - residual
+  - gamma
+  forward_expression: output.to(self.target_dtype)
+  reference_class: Model
+  candidate_class: ModelNew
 - id: t2/add_rmsnorm_quant
   name: add_rmsnorm_quant
   tier: t2
   category: normalization
   source_path: third_party/akg/akg_agents/benchmark/akg_kernels_bench_lite/t2/add_rmsnorm_quant.py
   support:
-    status: parse_failed
-    reason: 'ExtractionError: Expected integer shape literal, got batch_size'
-  inputs: []
-  init_inputs: []
-  forward_args: []
-  forward_expression: null
+    status: opspec_supported
+    reason: covered by deterministic OpSpec extraction templates
+  inputs:
+  - name: x
+    shape:
+    - 32
+    - 1024
+    - 4096
+    dtype: float32
+    layout: contiguous
+  - name: residual
+    shape:
+    - 32
+    - 1024
+    - 4096
+    dtype: float32
+    layout: contiguous
+  - name: gamma
+    shape:
+    - 4096
+    dtype: float32
+    layout: contiguous
+  - name: scale
+    shape:
+    - 1
+    dtype: float32
+    layout: contiguous
+  - name: zero_point
+    shape:
+    - 1
+    dtype: float32
+    layout: contiguous
+  init_inputs:
+  - 1.0e-06
+  forward_args:
+  - x
+  - residual
+  - gamma
+  - scale
+  - zero_point
+  forward_expression: torch.round(output / scale + zero_point).clamp(-128, 127).to(torch.int8)
+  reference_class: Model
+  candidate_class: ModelNew
 - id: t2/moe_topk_softmax
   name: moe_topk_softmax
   tier: t2
@@ -227,12 +290,41 @@ cases:
   category: transpose_layout
   source_path: third_party/akg/akg_agents/benchmark/akg_kernels_bench_lite/t2/rope.py
   support:
-    status: parse_failed
-    reason: 'ExtractionError: Expected integer shape literal, got batch'
-  inputs: []
+    status: opspec_supported
+    reason: covered by deterministic OpSpec extraction templates
+  inputs:
+  - name: x
+    shape:
+    - 16
+    - 48
+    - 1000
+    - 128
+    dtype: float16
+    layout: contiguous
+  - name: cos
+    shape:
+    - 1
+    - 1
+    - 1000
+    - 128
+    dtype: float16
+    layout: contiguous
+  - name: sin
+    shape:
+    - 1
+    - 1
+    - 1000
+    - 128
+    dtype: float16
+    layout: contiguous
   init_inputs: []
-  forward_args: []
-  forward_expression: null
+  forward_args:
+  - x
+  - cos
+  - sin
+  forward_expression: torch_npu.npu_rotary_mul(x, cos, sin)
+  reference_class: Model
+  candidate_class: ModelNew
 - id: t3/causal_conv1d
   name: causal_conv1d
   tier: t3
@@ -240,7 +332,7 @@ cases:
   source_path: third_party/akg/akg_agents/benchmark/akg_kernels_bench_lite/t3/causal_conv1d.py
   support:
     status: parse_failed
-    reason: 'ExtractionError: Expected integer shape literal, got batch'
+    reason: 'ExtractionError: Expected literal value, got width - 1'
   inputs: []
   init_inputs: []
   forward_args: []
@@ -252,7 +344,7 @@ cases:
   source_path: third_party/akg/akg_agents/benchmark/akg_kernels_bench_lite/t3/decode_mla.py
   support:
     status: parse_failed
-    reason: 'ExtractionError: Expected integer shape literal, got batch'
+    reason: 'ExtractionError: Expected literal value, got qk_nope_dim + qk_rope_dim'
   inputs: []
   init_inputs: []
   forward_args: []
@@ -263,9 +355,36 @@ cases:
   category: normalization
   source_path: third_party/akg/akg_agents/benchmark/akg_kernels_bench_lite/t3/layernorm_gated.py
   support:
-    status: parse_failed
-    reason: 'ExtractionError: Expected integer shape literal, got batch'
-  inputs: []
-  init_inputs: []
-  forward_args: []
-  forward_expression: null
+    status: opspec_supported
+    reason: covered by deterministic OpSpec extraction templates
+  inputs:
+  - name: x
+    shape:
+    - 32
+    - 512
+    - 4096
+    dtype: float16
+    layout: contiguous
+  - name: weight
+    shape:
+    - 4096
+    dtype: float16
+    layout: contiguous
+  - name: z
+    shape:
+    - 32
+    - 512
+    - 4096
+    dtype: float16
+    layout: contiguous
+  init_inputs:
+  - 1.0e-06
+  - true
+  - true
+  forward_args:
+  - x
+  - weight
+  - z
+  forward_expression: out
+  reference_class: Model
+  candidate_class: ModelNew

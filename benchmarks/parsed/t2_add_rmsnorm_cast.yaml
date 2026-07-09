@@ -1,0 +1,118 @@
+id: t2/add_rmsnorm_cast
+name: add_rmsnorm_cast
+tier: t2
+category: normalization
+source_path: third_party/akg/akg_agents/benchmark/akg_kernels_bench_lite/t2/add_rmsnorm_cast.py
+reference_class: Model
+candidate_class: ModelNew
+inputs:
+- name: x
+  shape:
+  - 32
+  - 1024
+  - 4096
+  dtype: float32
+  layout: contiguous
+- name: residual
+  shape:
+  - 32
+  - 1024
+  - 4096
+  dtype: float32
+  layout: contiguous
+- name: gamma
+  shape:
+  - 4096
+  dtype: float32
+  layout: contiguous
+outputs:
+- name: output
+  shape:
+  - 32
+  - 1024
+  - 4096
+  dtype: float16
+  layout: contiguous
+semantics:
+  expression: output.to(self.target_dtype)
+  formula: cast(((x + residual) * rsqrt(mean((x + residual)^2, dim=-1) + eps)) * gamma,
+    target_dtype)
+  broadcast: gamma broadcasts over batch and sequence axes
+  reduction_axes:
+  - -1
+  normalization_axes:
+  - -1
+  layout_transform: none
+  epsilon: 1.0e-06
+  target_dtype: float16
+  boundary_conditions:
+    tail_mask_required: true
+validation:
+  rtol: 0.01
+  atol: 0.01
+  max_error_required: null
+  shape_cases:
+  - - 32
+    - 1024
+    - 4096
+  - - 32
+    - 1024
+    - 4096
+  - - 4096
+  dtype_cases:
+  - float32
+performance:
+  metric: median_latency_ms
+  warmup: 10
+  repeats: 100
+  num_trials: 3
+  baseline_latency_ms: null
+  baseline_source: official_reference_model
+sketch:
+  operator_category: normalization
+  compute_pattern: add_rmsnorm_cast
+  parallel_axes:
+  - outer_rows
+  - hidden_dim
+  tile_plan:
+    strategy: rowwise_last_dim_normalization
+    shape:
+    - 32768
+    - 4096
+    tunable: true
+  memory_plan:
+    inputs:
+    - x
+    - residual
+    - gamma
+    input: row_contiguous_global_read
+    output: contiguous_global_write
+    intermediate: local_vector_reduction
+  pipeline_plan:
+    stages:
+    - load_x_residual_gamma
+    - add_residual
+    - sum_square_reduce
+    - rsqrt
+    - scale_gamma
+    - cast_output
+    - store
+  boundary_mask:
+    required: true
+    reason: outer rows and hidden dimension may not align with tile size
+  accumulation_dtype: float32
+  backend_target: triton_ascend
+  performance_knobs:
+    row_tile: null
+    hidden_tile: null
+    num_warps_or_cores: null
+    vector_width: null
+  known_risks:
+  - rmsnorm_reduction_accuracy
+  - gamma_broadcast_correctness
+  - float32_accumulation_before_cast
+  - tail_mask_correctness
+submission:
+  required_files:
+  - t2/add_rmsnorm_cast.py
+  entrypoint: ModelNew

@@ -376,6 +376,16 @@ External PR and email submission are manual user actions.
   4/4 pass, best candidate `sigmoid_scale_sum_replay_v2` at `1.973x` and
   score `69.73`; generated experiment records now include observed backend
   paths and backend probe summaries.
+- Extended deterministic OpSpec extraction beyond the original T1 subset:
+  `t2/add_rmsnorm_cast`, `t2/add_rmsnorm_quant`, `t2/rope`, and
+  `t3/layernorm_gated` now produce useful OpSpecs and NPU-aware sketches.
+- Updated the AKG Bench Lite registry summary from 4 supported OpSpecs and 6
+  parse failures to 8 supported OpSpecs and 2 parse failures.
+- Added parsed OpSpecs under `benchmarks/parsed/` for:
+  - `t2/add_rmsnorm_cast`: rowwise add + RMSNorm + cast sketch
+  - `t2/add_rmsnorm_quant`: rowwise add + RMSNorm + int8 quant sketch
+  - `t2/rope`: rotary-position embedding sketch with cos/sin broadcast
+  - `t3/layernorm_gated`: gated RMSNorm sketch
 
 ## In Progress
 
@@ -386,9 +396,9 @@ External PR and email submission are manual user actions.
 
 - `gelu_triton_v13` remains much slower than the PyTorch baseline, so GELU is
   not a good next single-operator tuning target without a new backend strategy.
-- T2/T3 cases with symbolic shape setup are currently discovered by the
-  registry but marked `parse_failed` until the extractor supports local shape
-  variables and more complex input construction.
+- Remaining parser gaps are now limited to more complex shape-expression cases:
+  `t3/causal_conv1d` still fails on `width - 1`, and `t3/decode_mla` still
+  fails on `qk_nope_dim + qk_rope_dim`.
 - The current cloud SSH endpoint is served by `SSHPiper` and only advertises
   password authentication. Local no-password SSH works only while a
   `ControlMaster` session remains alive; durable automation needs either
@@ -429,8 +439,8 @@ External PR and email submission are manual user actions.
     `47aa428fcdc8c68f78d331dc578bc6c74fb9d91d` before final result claims;
     manual `t1/sigmoid_scale_sum`, `t1/softmax`, `t1/fused_silu_and_mul`, and
     replay `t1/sigmoid_scale_sum` have been rebaselined.
-12. Generalize automatic backend-probe/result import beyond the replay
-    `t1/sigmoid_scale_sum` regression path.
+12. Use the new parsed OpSpecs to prepare deterministic Pass@4 seed candidates
+    for `t2/add_rmsnorm_cast` or `t2/rope` before live provider generation.
 13. Keep model/provider information explicit in every generated experiment
    record.
 14. Install/enable the AKG Agents dependency stack, then rerun
@@ -443,55 +453,46 @@ Date: 2026-07-09
 Agent: Codex
 Branch: main
 Summary:
-- Compared the standalone `tools/run_bench.py` path with the AKG Agents
-  `run_torch_bench_lite.py` path on updated-AKG replay `t1/sigmoid_scale_sum`.
-- Standalone `tools/run_bench.py` remains the current authoritative pre-key
-  scorer for replay/manual submissions: Pass@1 true, Pass@4 true, 4/4 pass,
-  best replay candidate `sigmoid_scale_sum_replay_v2` at `1.9794x`.
-- AKG Agents `run_torch_bench_lite.py` is currently blocked before CLI
-  execution by missing `langchain_core`; it is also an Agent orchestration
-  runner whose `--submission-dir` is an output path, not a direct input for
-  existing replay/manual submissions.
-- Added and smoke-tested `scripts/run_replay_regression.py`, which now runs
-  deterministic replay generation, standalone benchmark, backend probes,
-  enriched Pass@N report writing, and generated experiment YAML result import.
+- Extended OpSpec parsing and sketch generation for the highest-value pre-key
+  T2/T3 operators: `add_rmsnorm_cast`, `add_rmsnorm_quant`, `rope`, and
+  `layernorm_gated`.
+- Registry coverage is now 8 supported OpSpecs, 3 intentionally unsupported
+  cases, and 2 remaining parse failures.
+- The new sketches cover rowwise RMSNorm/cast, RMSNorm/int8 quantization,
+  rotary-position embedding with cos/sin broadcast, and gated RMSNorm.
 
 Changed Files:
+- `benchmarks/parsed/t2_add_rmsnorm_cast.yaml`
+- `benchmarks/parsed/t2_add_rmsnorm_quant.yaml`
+- `benchmarks/parsed/t2_rope.yaml`
+- `benchmarks/parsed/t3_layernorm_gated.yaml`
+- `benchmarks/raw/akg_kernels_bench_lite_registry.yaml`
 - `docs/status.md`
-- `experiments/reports/2026-07-09-runner-path-comparison-sigmoid-scale-sum.yaml`
-- `experiments/runs/2026-07-09-runner-path-comparison-sigmoid-scale-sum.yaml`
-- `kernel_forge/experiments/__init__.py`
-- `kernel_forge/experiments/passn.py`
-- `scripts/run_replay_regression.py`
+- `kernel_forge/benchmark/extractor.py`
+- `kernel_forge/benchmark/sketch.py`
 - `tasks/active.md`
-- `tests/test_experiment_result_import.py`
+- `tests/test_benchmark_registry_and_opspec.py`
 
 Verification:
-- `python -m pytest tests/test_experiment_result_import.py tests/test_agent_generation_workflow.py`
-- `python -m py_compile scripts/run_replay_regression.py kernel_forge/experiments/passn.py`
-- `ssh -o BatchMode=yes ascend-kf 'bash -lc '\''cd /data/KernelForge-Agent && source /usr/local/Ascend/ascend-toolkit/set_env.sh >/dev/null 2>&1 && source /data/venvs/kf-triton-ascend/bin/activate && export PYTHONPATH=/data/KernelForge-Agent:${PYTHONPATH:-} && python third_party/akg/akg_agents/benchmark/akg_kernels_bench_lite/tools/run_bench.py outputs/generated/2026-07-09-replay-sigmoid-scale-sum-pass4-updated-akg/submissions --bench-dir third_party/akg/akg_agents/benchmark/akg_kernels_bench_lite --output outputs/results/runner_compare_standalone_replay_sigmoid_2026_07_09 --warmup 10 --iterations 100 --num-trials 3'\'''`
-- `ssh -o BatchMode=yes ascend-kf 'bash -lc '\''cd /data/KernelForge-Agent && source /usr/local/Ascend/ascend-toolkit/set_env.sh >/dev/null 2>&1 && source /data/venvs/kf-triton-ascend/bin/activate && export PYTHONPATH=/data/KernelForge-Agent:/data/KernelForge-Agent/third_party/akg/akg_agents/python:${PYTHONPATH:-} && python third_party/akg/akg_agents/examples/kernel_related/run_torch_bench_lite.py --help'\'''`
-- `ssh -o BatchMode=yes ascend-kf 'bash -lc '\''cd /data/KernelForge-Agent && source /usr/local/Ascend/ascend-toolkit/set_env.sh >/dev/null 2>&1 && source /data/venvs/kf-triton-ascend/bin/activate && export PYTHONPATH=/data/KernelForge-Agent:${PYTHONPATH:-} && python scripts/run_replay_regression.py --run-id 2026-07-09-replay-sigmoid-regression-smoke --results-dir outputs/results/replay_sigmoid_regression_smoke_2026_07_09 --date 2026-07-09 --machine ascend-worker'\'''`
-- Standalone runner result summary: Pass@1 true, Pass@4 true, 4/4 pass, best
-  `sigmoid_scale_sum_replay_v2` at `1.9794x` and score `69.79`.
-- AKG Agents runner probe failed with
-  `ModuleNotFoundError: No module named 'langchain_core'`.
-- Replay regression smoke result summary: Pass@1 true, Pass@4 true, 4/4 pass,
-  best `sigmoid_scale_sum_replay_v2` at `1.973x`; generated experiment YAML
-  contains backend probe fields for all four replay candidates.
+- `python -m pytest tests/test_benchmark_registry_and_opspec.py`
+- `python scripts/extract_opspec.py --case third_party/akg/akg_agents/benchmark/akg_kernels_bench_lite/t2/add_rmsnorm_cast.py --output benchmarks/parsed/t2_add_rmsnorm_cast.yaml --repo-root .`
+- `python scripts/extract_opspec.py --case third_party/akg/akg_agents/benchmark/akg_kernels_bench_lite/t2/add_rmsnorm_quant.py --output benchmarks/parsed/t2_add_rmsnorm_quant.yaml --repo-root .`
+- `python scripts/extract_opspec.py --case third_party/akg/akg_agents/benchmark/akg_kernels_bench_lite/t2/rope.py --output benchmarks/parsed/t2_rope.yaml --repo-root .`
+- `python scripts/extract_opspec.py --case third_party/akg/akg_agents/benchmark/akg_kernels_bench_lite/t3/layernorm_gated.py --output benchmarks/parsed/t3_layernorm_gated.yaml --repo-root .`
+- `python scripts/scan_benchmark_cases.py --bench-dir third_party/akg/akg_agents/benchmark/akg_kernels_bench_lite --repo-root . --output benchmarks/raw/akg_kernels_bench_lite_registry.yaml`
 
 Open Issues:
 - GitLink PR is not opened yet; this is a manual user action.
 - The project-book email has not been sent yet; this is a manual user action.
 - After the PR is opened, rerun the exporter with `--pr-link <GitLink PR URL>`
   and attach that final output to the email.
-- Need to extend parsing for symbolic shape construction in T2/T3 cases.
+- `t3/causal_conv1d` and `t3/decode_mla` still require expression evaluation
+  for shape arithmetic before they can produce parsed OpSpecs.
 - Need to install or vendor the AKG Agents dependency stack before
   `run_torch_bench_lite.py` can be used for full runner-path comparison.
 - Need to run the first real live-provider generation and compare it with
   replay/manual Pass@4 results when credentials/model selection are available.
 
 Next Suggested Step:
-- Extend OpSpec parsing for T2/T3 symbolic shape/local variable setup, then
-  prepare useful sketches for `t2/add_rmsnorm_cast`, `t2/add_rmsnorm_quant`,
-  `t2/rope`, and `t3/layernorm_gated` before live provider generation.
+- Implement a deterministic Pass@4 seed batch for `t2/add_rmsnorm_cast` or
+  `t2/rope`, then benchmark it on Ascend with standalone `tools/run_bench.py`.

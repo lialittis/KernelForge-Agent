@@ -1,0 +1,118 @@
+id: t3/layernorm_gated
+name: layernorm_gated
+tier: t3
+category: normalization
+source_path: third_party/akg/akg_agents/benchmark/akg_kernels_bench_lite/t3/layernorm_gated.py
+reference_class: Model
+candidate_class: ModelNew
+inputs:
+- name: x
+  shape:
+  - 32
+  - 512
+  - 4096
+  dtype: float16
+  layout: contiguous
+- name: weight
+  shape:
+  - 4096
+  dtype: float16
+  layout: contiguous
+- name: z
+  shape:
+  - 32
+  - 512
+  - 4096
+  dtype: float16
+  layout: contiguous
+outputs:
+- name: output
+  shape:
+  - 32
+  - 512
+  - 4096
+  dtype: float16
+  layout: contiguous
+semantics:
+  expression: out
+  formula: ((x * rsqrt(mean(x^2, dim=-1) + eps)) * weight) * sigmoid(z)
+  broadcast: weight broadcasts over batch and sequence axes
+  reduction_axes:
+  - -1
+  normalization_axes:
+  - -1
+  layout_transform: none
+  epsilon: 1.0e-06
+  norm_before_gate: true
+  is_rms_norm: true
+  boundary_conditions:
+    tail_mask_required: true
+validation:
+  rtol: 0.01
+  atol: 0.01
+  max_error_required: null
+  shape_cases:
+  - - 32
+    - 512
+    - 4096
+  - - 4096
+  - - 32
+    - 512
+    - 4096
+  dtype_cases:
+  - float16
+performance:
+  metric: median_latency_ms
+  warmup: 10
+  repeats: 100
+  num_trials: 3
+  baseline_latency_ms: null
+  baseline_source: official_reference_model
+sketch:
+  operator_category: normalization
+  compute_pattern: gated_rmsnorm
+  parallel_axes:
+  - outer_rows
+  - hidden_dim
+  tile_plan:
+    strategy: rowwise_last_dim_normalization
+    shape:
+    - 16384
+    - 4096
+    tunable: true
+  memory_plan:
+    inputs:
+    - x
+    - weight
+    - z
+    input: row_contiguous_global_read
+    output: contiguous_global_write
+    intermediate: local_vector_reduction
+  pipeline_plan:
+    stages:
+    - load_x_weight_gate
+    - sum_square_reduce
+    - rsqrt
+    - scale_weight
+    - sigmoid_gate
+    - multiply_gate
+    - store
+  boundary_mask:
+    required: true
+    reason: outer rows and hidden dimension may not align with tile size
+  accumulation_dtype: float32
+  backend_target: triton_ascend
+  performance_knobs:
+    row_tile: null
+    hidden_tile: null
+    num_warps_or_cores: null
+    vector_width: null
+  known_risks:
+  - rmsnorm_reduction_accuracy
+  - weight_broadcast_correctness
+  - sigmoid_fp16_accuracy
+  - norm_before_gate_semantics
+submission:
+  required_files:
+  - t3/layernorm_gated.py
+  entrypoint: ModelNew

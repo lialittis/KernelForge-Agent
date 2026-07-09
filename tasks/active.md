@@ -41,8 +41,8 @@ and agents.
    `47aa428fcdc8c68f78d331dc578bc6c74fb9d91d` before final result claims;
    manual `t1/sigmoid_scale_sum`, `t1/softmax`, `t1/fused_silu_and_mul`, and
    replay `t1/sigmoid_scale_sum` are done.
-12. Generalize automatic backend-probe/result import beyond the replay
-   `t1/sigmoid_scale_sum` regression path.
+12. Use the new parsed OpSpecs to prepare deterministic Pass@4 seed candidates
+   for `t2/add_rmsnorm_cast` or `t2/rope` before live provider generation.
 13. Record model/provider, prompt version, retrieved skills, and candidate index
    for every generated experiment.
 14. Promote reusable generation, repair, or tuning lessons into `skills/`.
@@ -57,7 +57,8 @@ and agents.
   reproducibility notes?
 - Should project experiments use Pass@4, or match the AKG Agents runner default
   `--pass-n 3` unless overridden?
-- What is the minimum symbolic-shape parser needed for T2/T3 case metadata?
+- What expression evaluator is needed for the remaining `t3/causal_conv1d`
+  and `t3/decode_mla` shape arithmetic?
 - Which live model should be the first measured `openai` provider backend for
   generated candidates after the initial submission package is done?
 - Can the cloud SSH gateway be configured for provider-level key auth, or do

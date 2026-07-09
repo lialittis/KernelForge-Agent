@@ -32,6 +32,10 @@ def test_scanner_finds_official_cases_and_supported_subset():
         "t1/fused_silu_and_mul",
         "t1/sigmoid_scale_sum",
         "t1/softmax",
+        "t2/add_rmsnorm_cast",
+        "t2/add_rmsnorm_quant",
+        "t2/rope",
+        "t3/layernorm_gated",
     }
 
     matmul = {case["id"]: case for case in registry["cases"]}["t1/matmul_basic"]
@@ -71,6 +75,59 @@ def test_extracts_softmax_opspec():
     assert spec["sketch"]["compute_pattern"] == "rowwise_softmax"
 
 
+def test_extracts_add_rmsnorm_cast_opspec():
+    spec = extract_opspec(BENCH / "t2/add_rmsnorm_cast.py", repo_root=ROOT)
+
+    assert spec["id"] == "t2/add_rmsnorm_cast"
+    assert spec["category"] == "normalization"
+    assert spec["inputs"][0]["shape"] == [32, 1024, 4096]
+    assert spec["inputs"][2]["shape"] == [4096]
+    assert spec["outputs"][0]["shape"] == [32, 1024, 4096]
+    assert spec["outputs"][0]["dtype"] == "float16"
+    assert spec["semantics"]["target_dtype"] == "float16"
+    assert spec["semantics"]["normalization_axes"] == [-1]
+    assert spec["sketch"]["compute_pattern"] == "add_rmsnorm_cast"
+    assert spec["sketch"]["tile_plan"]["shape"] == [32768, 4096]
+
+
+def test_extracts_add_rmsnorm_quant_opspec():
+    spec = extract_opspec(BENCH / "t2/add_rmsnorm_quant.py", repo_root=ROOT)
+
+    assert spec["id"] == "t2/add_rmsnorm_quant"
+    assert spec["category"] == "normalization"
+    assert [item["name"] for item in spec["inputs"]] == ["x", "residual", "gamma", "scale", "zero_point"]
+    assert spec["inputs"][3]["shape"] == [1]
+    assert spec["outputs"][0]["dtype"] == "int8"
+    assert spec["semantics"]["quantization"]["clamp"] == [-128, 127]
+    assert spec["sketch"]["compute_pattern"] == "add_rmsnorm_quant"
+
+
+def test_extracts_rope_opspec():
+    spec = extract_opspec(BENCH / "t2/rope.py", repo_root=ROOT)
+
+    assert spec["id"] == "t2/rope"
+    assert spec["category"] == "transpose_layout"
+    assert spec["inputs"][0]["shape"] == [16, 48, 1000, 128]
+    assert spec["inputs"][1]["shape"] == [1, 1, 1000, 128]
+    assert spec["outputs"][0]["dtype"] == "float16"
+    assert spec["semantics"]["layout_transform"] == "rotate_half_last_dim"
+    assert spec["sketch"]["compute_pattern"] == "rotary_position_embedding"
+    assert spec["sketch"]["tile_plan"]["shape"] == [768000, 128]
+
+
+def test_extracts_layernorm_gated_opspec():
+    spec = extract_opspec(BENCH / "t3/layernorm_gated.py", repo_root=ROOT)
+
+    assert spec["id"] == "t3/layernorm_gated"
+    assert spec["category"] == "normalization"
+    assert spec["inputs"][0]["dtype"] == "float16"
+    assert spec["inputs"][1]["shape"] == [4096]
+    assert spec["outputs"][0]["shape"] == [32, 512, 4096]
+    assert spec["semantics"]["norm_before_gate"] is True
+    assert spec["semantics"]["is_rms_norm"] is True
+    assert spec["sketch"]["compute_pattern"] == "gated_rmsnorm"
+
+
 def test_unsupported_case_can_emit_metadata():
     spec = extract_opspec(
         BENCH / "t1/matmul_basic.py",
@@ -103,4 +160,4 @@ def test_scan_cli_writes_registry_yaml(tmp_path):
 
     data = yaml.safe_load(output.read_text())
     assert data["summary"]["total_cases"] == 13
-    assert data["summary"]["by_support"]["opspec_supported"] == 4
+    assert data["summary"]["by_support"]["opspec_supported"] == 8
