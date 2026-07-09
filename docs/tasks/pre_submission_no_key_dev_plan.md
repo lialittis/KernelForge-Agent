@@ -96,6 +96,8 @@ Implemented hardening:
 
 ## Task 3: Enforce Full Coverage In Tests
 
+Status: complete.
+
 Update tests so they assert:
 
 - scanner finds all 13 official cases,
@@ -104,6 +106,8 @@ Update tests so they assert:
 - all 13 parsed OpSpec YAML files exist,
 - every OpSpec has required fields and a non-generic Sketch,
 - tuple-output cases describe all outputs explicitly.
+
+Implemented in `tests/test_benchmark_registry_and_opspec.py`.
 
 ## Task 4: Deterministic Reference And Replay Evaluation
 

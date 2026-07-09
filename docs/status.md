@@ -525,6 +525,10 @@ External PR and email submission are manual user actions.
 - Hardened the new Sketch templates with explicit M/N/K and row/expert/top-k
   axis maps, dtype plans, initial tile candidates, bias and tuple-output
   contracts, numerical plans, and backend-risk tags.
+- Enforced full Lite coverage in `tests/test_benchmark_registry_and_opspec.py`:
+  exact 13-case scanner support, exact 13 parsed OpSpec files, required
+  OpSpec/Sketch fields, non-generic Sketches, no unsupported/parse-failed
+  cases, and explicit tuple-output contracts.
 - Added `docs/tasks/pre_submission_no_key_dev_plan.md` to track remaining
   provider-independent work before first submission.
 

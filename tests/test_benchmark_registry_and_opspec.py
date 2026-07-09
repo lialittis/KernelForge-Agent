@@ -14,6 +14,50 @@ from kernel_forge.benchmark import extract_opspec, scan_benchmark_cases
 
 
 BENCH = ROOT / "third_party/akg/akg_agents/benchmark/akg_kernels_bench_lite"
+EXPECTED_CASES = {
+    "t1/gelu",
+    "t1/fused_silu_and_mul",
+    "t1/matmul_basic",
+    "t1/matmul_biasadd",
+    "t1/sigmoid_scale_sum",
+    "t1/softmax",
+    "t2/add_rmsnorm_cast",
+    "t2/add_rmsnorm_quant",
+    "t2/moe_topk_softmax",
+    "t2/rope",
+    "t3/causal_conv1d",
+    "t3/decode_mla",
+    "t3/layernorm_gated",
+}
+REQUIRED_OPSPEC_KEYS = {
+    "id",
+    "name",
+    "tier",
+    "category",
+    "source_path",
+    "reference_class",
+    "candidate_class",
+    "inputs",
+    "outputs",
+    "semantics",
+    "validation",
+    "performance",
+    "sketch",
+    "submission",
+}
+REQUIRED_SKETCH_KEYS = {
+    "operator_category",
+    "compute_pattern",
+    "parallel_axes",
+    "tile_plan",
+    "memory_plan",
+    "pipeline_plan",
+    "boundary_mask",
+    "accumulation_dtype",
+    "backend_target",
+    "performance_knobs",
+    "known_risks",
+}
 
 
 def test_scanner_finds_official_cases_and_supported_subset():
@@ -27,23 +71,10 @@ def test_scanner_finds_official_cases_and_supported_subset():
         for case in registry["cases"]
         if case["support"]["status"] == "opspec_supported"
     }
-    assert supported == {
-        "t1/gelu",
-        "t1/fused_silu_and_mul",
-        "t1/matmul_basic",
-        "t1/matmul_biasadd",
-        "t1/sigmoid_scale_sum",
-        "t1/softmax",
-        "t2/add_rmsnorm_cast",
-        "t2/add_rmsnorm_quant",
-        "t2/moe_topk_softmax",
-        "t2/rope",
-        "t3/causal_conv1d",
-        "t3/decode_mla",
-        "t3/layernorm_gated",
-    }
+    assert supported == EXPECTED_CASES
     assert registry["summary"]["by_support"]["opspec_supported"] == 13
     assert "parse_failed" not in registry["summary"]["by_support"]
+    assert "unsupported" not in registry["summary"]["by_support"]
 
 
 def test_extracts_fused_silu_opspec():
@@ -231,22 +262,68 @@ def test_extracts_decode_mla_opspec():
 
 
 def test_all_supported_cases_have_parsed_opspec_files():
-    parsed = {path.name for path in (ROOT / "benchmarks/parsed").glob("*.yaml")}
-    assert {
-        "t1_fused_silu_and_mul.yaml",
-        "t1_gelu.yaml",
-        "t1_matmul_basic.yaml",
-        "t1_matmul_biasadd.yaml",
-        "t1_sigmoid_scale_sum.yaml",
-        "t1_softmax.yaml",
-        "t2_add_rmsnorm_cast.yaml",
-        "t2_add_rmsnorm_quant.yaml",
-        "t2_moe_topk_softmax.yaml",
-        "t2_rope.yaml",
-        "t3_causal_conv1d.yaml",
-        "t3_decode_mla.yaml",
-        "t3_layernorm_gated.yaml",
-    }.issubset(parsed)
+    parsed = {_case_to_parsed_filename(case_id) for case_id in EXPECTED_CASES}
+    assert {path.name for path in (ROOT / "benchmarks/parsed").glob("*.yaml")} == parsed
+
+
+def test_all_parsed_opspecs_have_required_fields_and_non_generic_sketches():
+    for path in sorted((ROOT / "benchmarks/parsed").glob("*.yaml")):
+        spec = yaml.safe_load(path.read_text())
+        assert set(spec) >= REQUIRED_OPSPEC_KEYS, path
+        assert spec["id"] in EXPECTED_CASES, path
+        assert spec["name"]
+        assert spec["tier"] in {"t1", "t2", "t3"}
+        assert spec["source_path"].endswith(f"{spec['tier']}/{spec['name']}.py")
+        assert spec["reference_class"] == "Model"
+        assert spec["candidate_class"] == "ModelNew"
+
+        assert spec["inputs"], path
+        assert spec["outputs"], path
+        for tensor in [*spec["inputs"], *spec["outputs"]]:
+            assert {"name", "shape", "dtype", "layout"} <= set(tensor), (path, tensor)
+            assert tensor["name"]
+            assert isinstance(tensor["shape"], list)
+            assert tensor["dtype"]
+
+        assert {"rtol", "atol", "shape_cases", "dtype_cases"} <= set(spec["validation"]), path
+        assert spec["validation"]["shape_cases"]
+        assert spec["validation"]["dtype_cases"]
+        assert {"metric", "warmup", "repeats", "num_trials"} <= set(spec["performance"]), path
+
+        sketch = spec["sketch"]
+        assert set(sketch) >= REQUIRED_SKETCH_KEYS, path
+        assert sketch["operator_category"] != "unknown", path
+        assert sketch["compute_pattern"] != "unsupported_pending_classification", path
+        assert sketch["tile_plan"]["strategy"] != "manual_required", path
+        assert sketch["tile_plan"]["shape"], path
+        assert sketch["pipeline_plan"]["stages"], path
+        assert sketch["known_risks"], path
+        assert spec["submission"]["entrypoint"] == "ModelNew"
+        assert spec["submission"]["required_files"] == [f"{spec['tier']}/{spec['name']}.py"]
+
+
+def test_tuple_output_opspecs_describe_all_outputs_explicitly():
+    tuple_specs = []
+    for path in sorted((ROOT / "benchmarks/parsed").glob("*.yaml")):
+        spec = yaml.safe_load(path.read_text())
+        if len(spec["outputs"]) > 1:
+            tuple_specs.append((path, spec))
+
+    assert [spec["id"] for _, spec in tuple_specs] == ["t2/moe_topk_softmax"]
+    for path, spec in tuple_specs:
+        output_names = [item["name"] for item in spec["outputs"]]
+        semantic_outputs = spec["semantics"].get("outputs")
+        sketch_outputs = spec["sketch"].get("output_contract")
+
+        assert semantic_outputs is not None, path
+        assert sketch_outputs is not None, path
+        assert [item["name"] for item in semantic_outputs] == output_names
+        assert [item["name"] for item in sketch_outputs] == output_names
+
+        for output, contract in zip(spec["outputs"], sketch_outputs):
+            assert contract["shape"] == output["shape"]
+            assert contract["dtype"] == output["dtype"]
+            assert contract["semantics"]
 
 
 def test_scan_cli_writes_registry_yaml(tmp_path):
@@ -270,3 +347,8 @@ def test_scan_cli_writes_registry_yaml(tmp_path):
     assert data["summary"]["total_cases"] == 13
     assert data["summary"]["by_support"]["opspec_supported"] == 13
     assert "parse_failed" not in data["summary"]["by_support"]
+    assert "unsupported" not in data["summary"]["by_support"]
+
+
+def _case_to_parsed_filename(case_id: str) -> str:
+    return f"{case_id.replace('/', '_')}.yaml"
