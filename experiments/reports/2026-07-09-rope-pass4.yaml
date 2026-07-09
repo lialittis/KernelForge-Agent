@@ -1,0 +1,143 @@
+case: t2/rope
+id: 2026-07-09-rope-pass4
+akg_commit: 47aa428fcdc8c68f78d331dc578bc6c74fb9d91d
+project_commit: 715ce14e98db377f82cdc37659d0ec483221cb72
+candidate_count: 4
+pass_at_1: true
+pass_at_n: true
+n: 4
+passed_count: 4
+best_candidate:
+  candidate_index: 1
+  team_name: rope_v1
+  result_path: outputs/results/rope_pass4_2026_07_09/rope_v1.json
+  status: pass
+  correctness: true
+  speedup: 1.0006
+  weighted_score: 90.01
+  error: null
+  max_abs_diff: 0.0
+  max_rel_diff: 0.0
+  baseline_ms: 0.3621
+  solution_ms: 0.3619
+  observed_backend: torch_npu_npu_rotary_mul
+best_triton_candidate:
+  candidate_index: 4
+  team_name: rope_v4
+  result_path: outputs/results/rope_pass4_2026_07_09/rope_v4.json
+  status: pass
+  correctness: true
+  speedup: 1.0001
+  weighted_score: 90.0
+  error: null
+  max_abs_diff: 0.0
+  max_rel_diff: 0.0
+  baseline_ms: 0.3617
+  solution_ms: 0.3617
+  observed_backend: triton_rope_flat_bs1024
+candidates:
+- candidate_index: 1
+  team_name: rope_v1
+  result_path: outputs/results/rope_pass4_2026_07_09/rope_v1.json
+  status: pass
+  correctness: true
+  speedup: 1.0006
+  weighted_score: 90.01
+  error: null
+  max_abs_diff: 0.0
+  max_rel_diff: 0.0
+  baseline_ms: 0.3621
+  solution_ms: 0.3619
+  observed_backend: torch_npu_npu_rotary_mul
+  backend_probe:
+    shape: [1, 2, 16, 128]
+    output_device: npu:0
+    output_dtype: torch.float16
+    last_error: null
+    max_abs_diff: 0.0
+    max_rel_diff: 0.0
+    allclose: true
+- candidate_index: 2
+  team_name: rope_v2
+  result_path: outputs/results/rope_pass4_2026_07_09/rope_v2.json
+  status: pass
+  correctness: true
+  speedup: 0.9993
+  weighted_score: 89.94
+  error: null
+  max_abs_diff: 0.0
+  max_rel_diff: 0.0
+  baseline_ms: 0.3613
+  solution_ms: 0.3616
+  observed_backend: triton_rope_row_bs128
+  backend_probe:
+    shape: [1, 2, 16, 128]
+    output_device: npu:0
+    output_dtype: torch.float16
+    last_error: null
+    max_abs_diff: 0.0
+    max_rel_diff: 0.0
+    allclose: true
+- candidate_index: 3
+  team_name: rope_v3
+  result_path: outputs/results/rope_pass4_2026_07_09/rope_v3.json
+  status: pass
+  correctness: true
+  speedup: 0.9976
+  weighted_score: 89.79
+  error: null
+  max_abs_diff: 0.0
+  max_rel_diff: 0.0
+  baseline_ms: 0.3616
+  solution_ms: 0.3624
+  observed_backend: triton_rope_row_bs128_rpp2
+  backend_probe:
+    shape: [1, 2, 16, 128]
+    output_device: npu:0
+    output_dtype: torch.float16
+    last_error: null
+    max_abs_diff: 0.0
+    max_rel_diff: 0.0
+    allclose: true
+- candidate_index: 4
+  team_name: rope_v4
+  result_path: outputs/results/rope_pass4_2026_07_09/rope_v4.json
+  status: pass
+  correctness: true
+  speedup: 1.0001
+  weighted_score: 90.0
+  error: null
+  max_abs_diff: 0.0
+  max_rel_diff: 0.0
+  baseline_ms: 0.3617
+  solution_ms: 0.3617
+  observed_backend: triton_rope_flat_bs1024
+  backend_probe:
+    shape: [1, 2, 16, 128]
+    output_device: npu:0
+    output_dtype: torch.float16
+    last_error: null
+    max_abs_diff: 0.0
+    max_rel_diff: 0.0
+    allclose: true
+comparison_to_reference_preeval:
+  previous_report: experiments/reports/2026-07-09-remaining-reference-preeval-updated-akg.yaml
+  reference_speedup: 1.01
+  reference_weighted_score: 90.15
+  best_seed_speedup: 1.0006
+  best_seed_weighted_score: 90.01
+  best_triton_seed_speedup: 1.0001
+  best_triton_seed_weighted_score: 90.0
+  interpretation: >
+    RoPE is correctness-positive but not a performance-positive Triton target
+    yet. The NPU intrinsic is already very fast; the best Triton seed reaches
+    parity within run variance but does not beat the intrinsic wrapper.
+notes: >
+  Initial Triton probes using fp16 arithmetic matched by absolute tolerance
+  but exceeded the official max-relative-error gate near zero-valued outputs.
+  Casting x, cos, sin, and the rotated partner to float32 before the fused
+  multiply-add matched `torch_npu.npu_rotary_mul` exactly on the probe and
+  official benchmark trials. Benchmark ran on the updated standalone AKG runner
+  with CANN's Python paths preserved by
+  `export PYTHONPATH=/data/KernelForge-Agent:${PYTHONPATH:-}` after sourcing
+  `set_env.sh`.

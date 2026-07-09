@@ -402,6 +402,25 @@ External PR and email submission are manual user actions.
 - Promoted the fixed-hidden-size rowwise RMSNorm/cast tiling lesson into
   `skills/normalization/SKILL.md`; the current best pre-key T2 normalization
   seed is `add_rmsnorm_cast_v2`.
+- Added the deterministic T2 Pass@4 seed batch for `t2/rope`: one
+  `torch_npu.npu_rotary_mul` intrinsic wrapper and three Triton-Ascend
+  rotate-half variants.
+- Fixed the RoPE Triton candidates to use fp32 accumulation after probe data
+  showed fp16 arithmetic exceeded the official max-relative-error gate near
+  zero-valued outputs.
+- Probed all four `t2/rope` Pass@4 candidates on Ascend; v2, v3, and v4
+  launched through real Triton-Ascend backend paths.
+- Ran the official AKG Bench Lite benchmark for `t2/rope`:
+  - `rope_v1`: pass, speedup `1.0006x`, score `90.01`
+  - `rope_v2`: pass, speedup `0.9993x`, score `89.94`
+  - `rope_v3`: pass, speedup `0.9976x`, score `89.79`
+  - `rope_v4`: pass, speedup `1.0001x`, score `90.0`
+- Added completed experiment metadata at
+  `experiments/runs/2026-07-09-rope-pass4.yaml` and Pass@4 report at
+  `experiments/reports/2026-07-09-rope-pass4.yaml`.
+- Promoted the RoPE intrinsic-vs-Triton parity lesson into
+  `skills/transpose_layout/SKILL.md`; `rope_v4` is the best Triton seed but
+  the intrinsic wrapper remains best overall.
 
 ## In Progress
 
@@ -436,38 +455,38 @@ External PR and email submission are manual user actions.
 5. Record the PR link, email date, and submission status in `docs/status.md`.
 6. Use `add_rmsnorm_cast_v2` as the positive normalization retrieval example
    in deterministic replay/prompt assembly before live provider generation.
-7. Prepare and benchmark a deterministic Pass@4 seed batch for `t2/rope`.
-8. After `t2/rope`, choose between `t2/add_rmsnorm_quant` and
+7. Choose between `t2/add_rmsnorm_quant` and
    `t3/layernorm_gated` for the next manual seed based on expected reuse.
-9. Add expression evaluation for the remaining parser gaps:
+8. Add expression evaluation for the remaining parser gaps:
    `t3/causal_conv1d` (`width - 1`) and `t3/decode_mla`
    (`qk_nope_dim + qk_rope_dim`).
-10. Keep `replay` as the deterministic CI/regression provider; use
+9. Keep `replay` as the deterministic CI/regression provider; use
    `scripts/run_replay_regression.py` for the current updated-AKG
    `t1/sigmoid_scale_sum` replay regression path.
-11. Use the completed manual Pass@4 cycles as retrieval examples:
+10. Use the completed manual Pass@4 cycles as retrieval examples:
    updated-AKG `sigmoid_scale_sum_v2` for a positive reduction trajectory and
    updated-AKG `fused_silu_and_mul_v3` for a correctness-positive but
    performance-negative fused-elementwise trajectory, and updated-AKG
    `softmax_v4` for a correctness-positive but still-slower rowwise softmax
    trajectory, and `add_rmsnorm_cast_v2` for a positive T2 normalization
+   trajectory, and `rope_v4`/`rope_v1` for a RoPE intrinsic-vs-Triton parity
    trajectory.
-12. Use
+11. Use
     `experiments/reports/2026-07-09-remaining-reference-preeval-updated-akg.yaml`
     as the baseline for all remaining AKG Bench Lite operators before live
     provider generation; all nine remaining reference cases now pass when
     CANN's `PYTHONPATH` entries are preserved.
-13. Continue rerunning key Pass@4 reports under updated AKG commit
+12. Continue rerunning key Pass@4 reports under updated AKG commit
     `47aa428fcdc8c68f78d331dc578bc6c74fb9d91d` before final result claims;
     manual `t1/sigmoid_scale_sum`, `t1/softmax`, `t1/fused_silu_and_mul`, and
     replay `t1/sigmoid_scale_sum` have been rebaselined.
-14. Install/enable the AKG Agents dependency stack, then rerun
+13. Install/enable the AKG Agents dependency stack, then rerun
     `run_torch_bench_lite.py --backend npu --mode full --cases
     sigmoid_scale_sum --pass-n 4` for a full runner-path comparison.
-15. Run a first live `provider=openai` Pass@4 generation cycle for
+14. Run a first live `provider=openai` Pass@4 generation cycle for
     `t1/sigmoid_scale_sum` once credentials and model selection are available.
-16. Import live generated benchmark results after Ascend verification.
-17. Keep model/provider information explicit in every generated experiment
+15. Import live generated benchmark results after Ascend verification.
+16. Keep model/provider information explicit in every generated experiment
    record.
 
 ## Latest Handoff
@@ -476,31 +495,31 @@ Date: 2026-07-09
 Agent: Codex
 Branch: main
 Summary:
-- Added and benchmarked the first deterministic T2 Pass@4 seed batch for
-  `t2/add_rmsnorm_cast`.
+- Added and benchmarked the deterministic T2 Pass@4 seed batch for `t2/rope`.
 - All four candidates passed under updated AKG commit
-  `47aa428fcdc8c68f78d331dc578bc6c74fb9d91d`; v2 is best at `2.0135x`
-  speedup and weighted score `105.2`.
-- Recorded the run/report metadata and promoted the 4096-wide rowwise
-  RMSNorm/cast Triton tiling lesson into the normalization skill.
+  `47aa428fcdc8c68f78d331dc578bc6c74fb9d91d`; v1 intrinsic wrapper is best at
+  `1.0006x` speedup and weighted score `90.01`, while v4 is the best Triton
+  seed at `1.0001x` and score `90.0`.
+- Recorded the run/report metadata and promoted the fp32-accumulation
+  rotate-half lesson into the transpose/layout skill.
 
 Changed Files:
-- `experiments/reports/2026-07-09-add-rmsnorm-cast-pass4.yaml`
-- `experiments/runs/2026-07-09-add-rmsnorm-cast-pass4.yaml`
+- `experiments/reports/2026-07-09-rope-pass4.yaml`
+- `experiments/runs/2026-07-09-rope-pass4.yaml`
 - `docs/status.md`
-- `kernel_forge/candidates/add_rmsnorm_cast_v1.py`
-- `kernel_forge/candidates/add_rmsnorm_cast_v2.py`
-- `kernel_forge/candidates/add_rmsnorm_cast_v3.py`
-- `kernel_forge/candidates/add_rmsnorm_cast_v4.py`
-- `scripts/create_add_rmsnorm_cast_pass4_submissions.sh`
-- `scripts/probe_add_rmsnorm_cast_backend.py`
-- `skills/normalization/SKILL.md`
+- `kernel_forge/candidates/rope_v1.py`
+- `kernel_forge/candidates/rope_v2.py`
+- `kernel_forge/candidates/rope_v3.py`
+- `kernel_forge/candidates/rope_v4.py`
+- `scripts/create_rope_pass4_submissions.sh`
+- `scripts/probe_rope_backend.py`
+- `skills/transpose_layout/SKILL.md`
 - `tasks/active.md`
-- `tests/test_add_rmsnorm_cast_pass4.py`
+- `tests/test_rope_pass4.py`
 
 Verification:
-- `python -m pytest tests/test_add_rmsnorm_cast_pass4.py tests/test_benchmark_registry_and_opspec.py`
-- `python -m py_compile kernel_forge/candidates/add_rmsnorm_cast_v1.py kernel_forge/candidates/add_rmsnorm_cast_v2.py kernel_forge/candidates/add_rmsnorm_cast_v3.py kernel_forge/candidates/add_rmsnorm_cast_v4.py scripts/probe_add_rmsnorm_cast_backend.py`
+- `python -m pytest tests/test_rope_pass4.py tests/test_benchmark_registry_and_opspec.py`
+- `python -m py_compile kernel_forge/candidates/rope_v1.py kernel_forge/candidates/rope_v2.py kernel_forge/candidates/rope_v3.py kernel_forge/candidates/rope_v4.py scripts/probe_rope_backend.py`
 - Ascend backend probe for all four candidates with
   `export PYTHONPATH=/data/KernelForge-Agent:${PYTHONPATH:-}` preserved.
 - Ascend official standalone benchmark with `tools/run_bench.py --warmup 10
@@ -519,6 +538,6 @@ Open Issues:
   replay/manual Pass@4 results when credentials/model selection are available.
 
 Next Suggested Step:
-- Implement and benchmark a deterministic Pass@4 seed batch for `t2/rope`,
-  then use `add_rmsnorm_cast_v2` and the existing T1 updated-AKG reports as
-  retrieval examples for the first live provider run.
+- Choose the next manual pre-key seed target, likely `t2/add_rmsnorm_quant`
+  for quantized normalization reuse or `t3/layernorm_gated` for higher-tier
+  normalization coverage.
