@@ -477,6 +477,11 @@ External PR and email submission are manual user actions.
 - Promoted the fp16 gated-RMSNorm and row-grouping lesson into
   `skills/normalization/SKILL.md`; `layernorm_gated_v4` is now the strongest
   positive T3 pre-key seed.
+- Added `docs/tasks/pre_key_objective_audit.md` to audit the active pre-key
+  objective against repository evidence. Deterministic replay/import, T2/T3
+  OpSpecs, priority sketches, replay regression, and priority manual seeds are
+  complete; full AKG Agents runner parity remains blocked until a `standard`
+  model level is configured.
 
 ## In Progress
 
@@ -509,13 +514,15 @@ External PR and email submission are manual user actions.
 5. Record the PR link, email date, and submission status in `docs/status.md`.
 6. Use `add_rmsnorm_cast_v2` as the positive normalization retrieval example
    in deterministic replay/prompt assembly before live provider generation.
-7. Use `layernorm_gated_v4` as a positive T3 normalization retrieval example;
+7. Use `docs/tasks/pre_key_objective_audit.md` as the current pre-key
+   objective audit.
+8. Use `layernorm_gated_v4` as a positive T3 normalization retrieval example;
    `t2/add_rmsnorm_quant` is recorded as a negative exact-int8 quantization
    lesson.
-8. Keep `replay` as the deterministic CI/regression provider; use
+9. Keep `replay` as the deterministic CI/regression provider; use
    `scripts/run_replay_regression.py` for the current updated-AKG
    `t1/sigmoid_scale_sum` replay regression path.
-9. Use the completed manual Pass@4 cycles as retrieval examples:
+10. Use the completed manual Pass@4 cycles as retrieval examples:
    updated-AKG `sigmoid_scale_sum_v2` for a positive reduction trajectory and
    updated-AKG `fused_silu_and_mul_v3` for a correctness-positive but
    performance-negative fused-elementwise trajectory, and updated-AKG
@@ -525,22 +532,22 @@ External PR and email submission are manual user actions.
    trajectory, and `add_rmsnorm_quant_v2`-`v4` for a quantized-normalization
    boundary-failure trajectory, and `layernorm_gated_v4` for a positive T3
    fp16 gated-RMSNorm row-grouping trajectory.
-10. Use
+11. Use
     `experiments/reports/2026-07-09-remaining-reference-preeval-updated-akg.yaml`
     as the baseline for all remaining AKG Bench Lite operators before live
     provider generation; all nine remaining reference cases now pass when
     CANN's `PYTHONPATH` entries are preserved.
-11. Continue rerunning key Pass@4 reports under updated AKG commit
+12. Continue rerunning key Pass@4 reports under updated AKG commit
     `47aa428fcdc8c68f78d331dc578bc6c74fb9d91d` before final result claims;
     manual `t1/sigmoid_scale_sum`, `t1/softmax`, `t1/fused_silu_and_mul`, and
     replay `t1/sigmoid_scale_sum` have been rebaselined.
-12. Configure an AKG Agents `standard` model level, then rerun
+13. Configure an AKG Agents `standard` model level, then rerun
     `run_torch_bench_lite.py --backend npu --mode full --cases
     sigmoid_scale_sum --pass-n 4` for a full runner-path comparison.
-13. Run a first live `provider=openai` Pass@4 generation cycle for
+14. Run a first live `provider=openai` Pass@4 generation cycle for
     `t1/sigmoid_scale_sum` once credentials and model selection are available.
-14. Import live generated benchmark results after Ascend verification.
-15. Keep model/provider information explicit in every generated experiment
+15. Import live generated benchmark results after Ascend verification.
+16. Keep model/provider information explicit in every generated experiment
    record.
 
 ## Latest Handoff
@@ -549,38 +556,28 @@ Date: 2026-07-09
 Agent: Codex
 Branch: main
 Summary:
-- Added and evaluated a deterministic `t3/layernorm_gated` Pass@4 seed batch
-  on the Ascend worker under updated AKG.
-- Repaired Triton numerical behavior by matching fp16 intermediates, then
-  changed v3/v4 to row-grouped 4096-wide kernels after chunked reductions
-  failed full-shape correctness.
-- All four final candidates passed; `layernorm_gated_v4` is best with speedup
-  `1.5137x` and weighted score `130.27`.
+- Audited the active pre-key objective against current repository evidence.
+- Confirmed deterministic replay/import automation, T2/T3 OpSpec coverage,
+  priority sketches, replay regression, and priority manual seeds are complete.
+- Confirmed full AKG Agents runner parity remains blocked until a `standard`
+  model level is configured.
 
 Changed Files:
 - `docs/status.md`
-- `experiments/reports/2026-07-09-layernorm-gated-pass4.yaml`
-- `experiments/runs/2026-07-09-layernorm-gated-pass4.yaml`
-- `kernel_forge/candidates/layernorm_gated_v1.py`
-- `kernel_forge/candidates/layernorm_gated_v2.py`
-- `kernel_forge/candidates/layernorm_gated_v3.py`
-- `kernel_forge/candidates/layernorm_gated_v4.py`
-- `scripts/create_layernorm_gated_pass4_submissions.sh`
-- `scripts/probe_layernorm_gated_backend.py`
-- `skills/normalization/SKILL.md`
+- `docs/tasks/pre_key_objective_audit.md`
 - `tasks/active.md`
-- `tests/test_layernorm_gated_pass4.py`
 
 Verification:
-- Local: `python -m pytest tests/test_layernorm_gated_pass4.py`
-- Local: `python -m py_compile` for all four layernorm-gated candidates and
-  the probe script.
-- Ascend: generated submissions with
-  `OUTPUT_ROOT=outputs/submissions/layernorm_gated_pass4_2026_07_09`.
-- Ascend: probed all four candidates with
-  `scripts/probe_layernorm_gated_backend.py --shape 128 4096`.
-- Ascend: official `run_bench.py` for all four candidates with CANN's
-  `PYTHONPATH` preserved; all four passed, with v4 best at `1.5137x`.
+- Local: inspected `docs/status.md`, `tasks/active.md`,
+  `experiments/reports/2026-07-09-runner-path-comparison-sigmoid-scale-sum.yaml`,
+  `scripts/run_replay_regression.py`, `kernel_forge/experiments/passn.py`,
+  `tests/test_experiment_result_import.py`, and
+  `tests/test_benchmark_registry_and_opspec.py`.
+- Local: `python -m pytest tests/test_experiment_result_import.py
+  tests/test_benchmark_registry_and_opspec.py tests/test_layernorm_gated_pass4.py`.
+- Local: YAML parse check for `docs/tasks/pre_key_objective_audit.md` was not
+  needed; it is Markdown.
+- Local: `git diff --check`.
 
 Open Issues:
 - GitLink PR is not opened yet; this is a manual user action.
@@ -594,6 +591,6 @@ Open Issues:
   replay/manual Pass@4 results when credentials/model selection are available.
 
 Next Suggested Step:
-- Before an AI API key/model config is available, either perform a completion
-  audit of the pre-key objective or choose a non-priority operator such as
-  `t2/moe_topk_softmax` for extra manual evidence.
+- Configure an AKG Agents `standard` model level to unblock full runner-path
+  comparison, or choose a non-priority operator such as `t2/moe_topk_softmax`
+  only if more manual pre-key evidence is desired.
