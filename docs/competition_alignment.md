@@ -25,13 +25,13 @@ The competition asks for:
 
 | Requirement | SketchSkill-AKG design | Current status | Next gap |
 | --- | --- | --- | --- |
-| Operator generation | OpSpec -> NPU-aware Sketch -> Skill Retriever -> Code Agent -> Triton-Ascend `ModelNew` | Designed; full Lite benchmark OpSpec/Sketch coverage is available for all 13 cases; deterministic/manual candidates exist for a priority subset | Implement generalized live Code Agent and repair loop |
+| Operator generation | OpSpec -> NPU-aware Sketch -> Skill Retriever -> Code Agent -> Triton-Ascend `ModelNew` | Designed; full Lite benchmark OpSpec/Sketch coverage is available for all 13 cases; deterministic/manual candidates exist for a priority subset | Configure live provider and implement generalized repair loop |
 | AKG/open-source base | AKG Agents, AKG Bench Lite, Triton-Ascend, optional TileLang-Ascend/Ascend C | AKG Bench Lite submodule and runner are integrated | Integrate AKG Agents generation path beyond standalone runner |
 | Benchmark comparison | Official `akg_kernels_bench_lite` registry, parsed OpSpecs, official runner, result importer | 13 cases registered; 13 OpSpecs parsed; priority Pass@4 and reference reports recorded | Keep rerunning final reports under the updated AKG pin before final claims |
-| Correctness on NPU | Official benchmark runner, backend probe, correctness result import, Pass@1/Pass@4 tracking | GELU verified on Ascend worker; result importer implemented | Generalize candidate batch runner and Pass@N calculator |
-| Performance validation | Official latency/speedup/score, future profiling/search agent | GELU performance case study recorded; v13 best tracked GELU | Add throughput/profile fields and multi-operator performance report |
+| Correctness on NPU | Official benchmark runner, backend probe, correctness result import, Pass@1/Pass@4 tracking | Pass@1/Pass@4 evidence exists for a priority subset on Ascend; tuple-output import is supported | Run live-provider batches when model/API configuration exists |
+| Performance validation | Official latency/speedup/score, future profiling/search agent | Priority subset reports include positive, parity, and negative performance cases | Add throughput/profile fields and multi-operator performance report |
 | AI technical design | Architecture, workflow, roadmap, decisions, final product/LLM boundary | Core docs and `docs/technical_design.md` exist; decision 0004 defines LLM boundary | Polish final wording after PR link exists |
-| Agent workflow | Spec Agent, Sketch Agent, Skill Retriever, Code Agent, Verify/Repair Agent, Profiler/Search Agent, Skill Writer | Architecture defined; deterministic parser/sketch pieces, replay provider, OpenAI provider adapter, and prompt flow implemented | Configure model provider and run live generation |
+| Agent workflow | Spec Agent, Sketch Agent, Skill Retriever, Code Agent, Verify/Repair Agent, Profiler/Search Agent, Skill Writer | Architecture defined; deterministic parser/sketch pieces, replay provider, OpenAI provider adapter, prompt flow, validators, and package gates implemented | Configure model provider and run live generation |
 | RAG/Skill Library | Local `skills/` plus experiment-driven write-back | Skill files, prompt templates, retrieval metadata, and positive/negative benchmark lessons exist | Add more skill write-back after new live/repair runs |
 | AI-assisted assets | `AGENTS.md`, `skills/`, experiment records, prompts | Active project memory, prompts, and experiment records are committed | Keep package materials synchronized with final PR/email |
 
@@ -56,17 +56,27 @@ agent-driven generation:
 
 - Stage 1 benchmark/environment reproduction: mostly complete.
 - Stage 2 OpSpec parser: complete for all 13 Lite benchmark cases.
-- Stage 3 Sketch templates: complete for all currently parsed Lite benchmark
-  cases, including matmul-like and MoE top-k softmax cases.
+- Stage 3 Sketch templates: complete for all 13 parsed Lite benchmark cases,
+  including matmul-like and MoE top-k softmax cases.
 - Stage 4 Triton-Ascend generation loop: deterministic replay path exists;
   manual candidates and reports cover a priority subset.
 - Stage 5 Pass@N correctness loop: implemented for generated/manual candidate
   batches through official runner reports.
 - Stage 6 Skill/RAG assets: skills and prompt templates exist, with
   experiment-driven lessons promoted.
-- Stage 7 performance search: demonstrated manually on GELU, not generalized.
+- Stage 7 pre-AI infrastructure: OpSpec/Sketch validators, prompt snapshots,
+  package hygiene tests, replay guards, and result comparison tools exist.
+- Stage 8 performance search: demonstrated manually on priority operators, not
+  generalized.
 
-The next required technical step before live AI credentials is to strengthen
-validators, package hygiene, and deterministic replay/reference evidence. Once
-credentials exist, run AKG Agents full comparison and live provider Pass@4
-generation using the same OpSpec/Sketch/Skill pipeline.
+Submission-facing claim for the current initial-round package:
+
+```text
+Lite benchmark OpSpec coverage: 13/13. Current executable candidates and
+Pass@4 evidence cover a priority subset. Full live AI generation remains gated
+only by model/API configuration.
+```
+
+The next technical step after the initial submission package is to configure
+AKG Agents `standard` model credentials and run AKG Agents full comparison plus
+live provider Pass@4 generation using the same OpSpec/Sketch/Skill pipeline.

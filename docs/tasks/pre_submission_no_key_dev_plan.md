@@ -181,6 +181,8 @@ Implemented state:
 
 ## Task 6: Submission-Facing Updates
 
+Status: complete for local PR/email materials.
+
 Update submission docs after full OpSpec coverage:
 
 - `docs/status.md`
@@ -196,6 +198,16 @@ Lite benchmark OpSpec coverage: 13/13. Current executable candidates and
 Pass@4 evidence cover a priority subset. Full live AI generation remains gated
 only by model/API configuration.
 ```
+
+Implemented state:
+
+- Updated `docs/competition_alignment.md`, `docs/technical_design.md`, and
+  `docs/project_book_full_zh.md` to remove stale T1-only coverage wording.
+- Updated package/PR/email entry points under `docs/submission/` and
+  `docs/submission_package_readme.md` with the same 13/13 coverage and
+  priority-subset Pass@4 claim.
+- Left external actions explicit: GitLink PR creation and project-book email
+  sending remain manual steps after the user fills in the PR link.
 
 ## Deferred Until Credentials Exist
 

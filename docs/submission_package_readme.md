@@ -22,8 +22,9 @@ SketchSkill-AKG 是面向昇腾 910 NPU Benchmark 的技能驱动算子自动生
 
 - 面向评审的中文包根目录 `README.md`，原开发 README 保留为
   `PROJECT_README.md`。
-- Benchmark registry 和 OpSpec/Sketch 解析。
-- T1 非矩阵乘子集的确定性元数据。
+- Benchmark registry 和 Lite 13/13 OpSpec/Sketch 解析。
+- `scripts/validate_opspecs.py` 确定性 validator，以及 prompt/package/replay
+  等 pre-AI infrastructure 测试。
 - `replay` provider 和 `openai` provider 边界。
 - Prompt 模板和 Skill Library。
 - 官方 Ascend Benchmark 实验记录。
@@ -160,7 +161,17 @@ python third_party/akg/akg_agents/benchmark/akg_kernels_bench_lite/tools/run_ben
 | `t1/sigmoid_scale_sum` | manual | true | true, 4/4 | `2.0279x` | 正向 rowwise reduction 案例 |
 | `t1/sigmoid_scale_sum` | replay provider | true | true, 4/4 | `1.9980x` | provider pipeline 复现 |
 | `t1/fused_silu_and_mul` | manual | true | true, 4/4 | `1.0027x` | Triton 变体正确但慢，负向性能案例 |
+| `t2/add_rmsnorm_cast` | manual | true | true, 4/4 | `2.0135x` | 正向 T2 normalization 案例 |
+| `t3/layernorm_gated` | manual | true | true, 4/4 | `1.5137x` | 正向 T3 fp16 gated RMSNorm 案例 |
 | `t1/gelu` | tuning case study | true | 未作为正式 Pass@4 | `0.6059x` | 数值和 backend 调试案例 |
+
+总体提交结论：
+
+```text
+Lite benchmark OpSpec coverage: 13/13. Current executable candidates and
+Pass@4 evidence cover a priority subset. Full live AI generation remains gated
+only by model/API configuration.
+```
 
 ## PR 文案草稿
 
@@ -189,12 +200,12 @@ This PR submits SketchSkill-AKG, a skill-driven AI/Agent prototype for Ascend NP
 ## Current Implementation
 
 - Pinned AKG Bench Lite benchmark submodule.
-- Benchmark registry and OpSpec extraction for the first T1 non-matmul subset.
-- NPU-aware Operator Sketch templates.
+- Benchmark registry and Lite OpSpec/Sketch coverage for all 13 official cases.
+- Deterministic OpSpec/Sketch validation gate.
 - Skill Library and prompt templates.
 - Replay provider and OpenAI Responses provider boundary.
 - Candidate generation, official submission materialization, result import, and Pass@N reporting.
-- Ascend benchmark evidence for GELU, sigmoid_scale_sum, and fused_silu_and_mul.
+- Ascend benchmark evidence for a priority executable subset.
 
 ## Reproduction
 
@@ -205,12 +216,15 @@ See `README.md`, `docs/technical_design.md`, and `docs/submission_package_readme
 - `t1/sigmoid_scale_sum` manual Pass@4: 4/4 passed, best speedup 2.0279x.
 - `t1/sigmoid_scale_sum` replay provider Pass@4: 4/4 passed, best speedup 1.9980x.
 - `t1/fused_silu_and_mul` Pass@4: 4/4 correctness passed, Triton variants recorded as performance-negative lessons.
+- `t2/add_rmsnorm_cast` Pass@4: 4/4 passed, best speedup 2.0135x.
+- `t3/layernorm_gated` Pass@4: 4/4 passed, best speedup 1.5137x.
 
 ## Known Limitations
 
-- T2/T3 symbolic shape parser is deferred.
+- Lite benchmark OpSpec/Sketch coverage is complete; larger Benchmark suites,
+  dynamic shapes, and AKG Agents full-mode comparison remain future work.
 - Full Repair Agent and Profiler/Search Agent automation is still under development.
-- Live OpenAI provider benchmark comparison is planned after initial submission.
+- Live OpenAI/provider benchmark comparison is planned after model/API configuration exists.
 ```
 
 ## 邮件草稿
@@ -228,7 +242,7 @@ Initial Round + 算子炼金术师: SketchSkill-AKG updated project book
 ```text
 老师您好，
 
-附件为算子炼金术师团队 SketchSkill-AKG 项目的更新版项目书。项目已完成 AKG Bench Lite 固定版本管理、T1 非矩阵乘子集 OpSpec/Sketch 解析、Skill Library、Prompt、provider 边界、候选生成、官方 Benchmark 结果导入和 Pass@N 报告，并在昇腾环境上记录了 sigmoid_scale_sum、fused_silu_and_mul 和 GELU 的实验结果。
+附件为算子炼金术师团队 SketchSkill-AKG 项目的更新版项目书。项目已完成 AKG Bench Lite 固定版本管理、Lite 13/13 OpSpec/Sketch 覆盖、Skill Library、Prompt、provider 边界、候选生成、官方 Benchmark 结果导入和 Pass@N 报告，并在昇腾环境上记录了 priority subset 的 Pass@4 实验结果。当前完整 live AI 生成对比仅受模型/API 配置阻塞。
 
 GitLink PR 链接：<PR link 待填写>
 

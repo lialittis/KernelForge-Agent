@@ -553,11 +553,12 @@ External PR and email submission are manual user actions.
 
 ## Next Actions
 
-1. Add provider-independent validation next: OpSpec validator, Sketch
-   validator, prompt context snapshot tests, package hygiene tests, and updated
-   submission-facing docs that claim `13/13` Lite OpSpec coverage.
-2. Manually review `docs/project_book_full_zh.md` for Chinese wording and
+1. Manually review `docs/project_book_full_zh.md` for Chinese wording and
    team-specific details.
+2. Regenerate/export the project book and GitLink package after any final
+   wording edits:
+   `python scripts/export_project_book.py --output outputs/submission/project_book_full_zh.md`
+   and `python scripts/prepare_gitlink_package.py --team operator-alchemists`.
 3. Manually copy the generated GitLink package into the GitLink fork and open
    the PR.
 4. Rerun `scripts/export_project_book.py --pr-link <GitLink PR URL>` after the
@@ -615,43 +616,35 @@ Date: 2026-07-09
 Agent: Codex
 Branch: main
 Summary:
-- Completed Task 5 pre-AI infrastructure improvements for the first
-  provider-independent pass.
-- Added reusable OpSpec/Sketch validators plus `scripts/validate_opspecs.py`;
-  all 13 parsed Lite OpSpecs validate successfully.
-- Added prompt context, package hygiene, replay guard, and multi-output result
-  comparison tests; strengthened Skill Library entries for matmul, top-k
-  softmax/reduction, normalization, and layout/transpose patterns.
+- Completed Task 6 submission-facing updates for local PR/email materials.
+- Updated competition alignment, technical design, project book, package
+  README, PR body, and email draft to consistently claim `13/13` Lite
+  OpSpec/Sketch coverage.
+- Kept the benchmark claim scoped: executable candidates and Pass@4 evidence
+  cover a priority subset; full live AI generation remains gated only by
+  model/API configuration.
 
 Changed Files:
+- `docs/competition_alignment.md`
+- `docs/project_book_full_zh.md`
 - `docs/status.md`
+- `docs/submission/gitlink_pr_body.md`
+- `docs/submission/package_readme_zh.md`
+- `docs/submission/project_book_email_zh.md`
+- `docs/submission_package_readme.md`
+- `docs/technical_design.md`
 - `docs/tasks/pre_submission_no_key_dev_plan.md`
-- `kernel_forge/agents/skills.py`
-- `kernel_forge/benchmark/__init__.py`
-- `kernel_forge/benchmark/validation.py`
-- `scripts/audit_pre_key_readiness.py`
-- `scripts/compare_runner_results.py`
-- `scripts/run_replay_regression.py`
-- `scripts/validate_opspecs.py`
-- `skills/matmul_like/SKILL.md`
-- `skills/normalization/SKILL.md`
-- `skills/reduction/SKILL.md`
-- `skills/transpose_layout/SKILL.md`
 - `tasks/active.md`
-- `tests/test_pre_ai_infrastructure.py`
 
 Verification:
 - Local: `PYTHONPATH=/home/tianchi/.local/lib/python3.10/site-packages python scripts/validate_opspecs.py --json`
   returned `status: pass`, `total_files: 13`, `passed_files: 13`.
-- Local: `PYTHONPATH=/home/tianchi/.local/lib/python3.10/site-packages python -m pytest -q tests/test_pre_ai_infrastructure.py`
-  passed 9 tests.
-- Local: `PYTHONPATH=/home/tianchi/.local/lib/python3.10/site-packages python -m pytest -q tests/test_runner_result_comparison.py tests/test_pre_key_readiness_audit.py tests/test_pre_ai_infrastructure.py`
-  passed 17 tests.
-- Local: `python -m py_compile kernel_forge/benchmark/validation.py kernel_forge/agents/skills.py scripts/validate_opspecs.py scripts/compare_runner_results.py scripts/run_replay_regression.py scripts/audit_pre_key_readiness.py`
 - Local: `PYTHONPATH=/home/tianchi/.local/lib/python3.10/site-packages python scripts/audit_pre_key_readiness.py --json`
   returned `pre_key_deterministic_complete_provider_config_missing` with
   `pre_ai_infrastructure`, `benchmark_registry_full_lite_coverage`,
   `opspec_supported: 13`, `unsupported: 0`, and `parse_failed: 0`.
+- Local: `rg -n "T1 非矩阵乘子集|first T1 non-matmul subset|T2/T3 symbolic shape parser is deferred|T2/T3 parser 不完整|当前自动 OpSpec 支持的 T1|parse_failed|unsupported placeholder|unsupported placeholders|首批 T1|first T1" docs/competition_alignment.md docs/project_book_full_zh.md docs/technical_design.md docs/submission docs/submission_package_readme.md tasks/active.md`
+  returned no stale submission-facing coverage claims.
 - Local: `PYTHONPATH=/home/tianchi/.local/lib/python3.10/site-packages python -m pytest -q`
   passed 105 tests.
 - Local: `git diff --check`
@@ -670,6 +663,5 @@ Open Issues:
   replay/manual Pass@4 results when credentials/model selection are available.
 
 Next Suggested Step:
-- Start Task 6 submission-facing updates: ensure `docs/project_book_full_zh.md`,
-  `docs/technical_design.md`, package README, and GitLink PR text consistently
-  claim `13/13` Lite OpSpec coverage and deterministic pre-key infrastructure.
+- Regenerate the project book/package after any human wording edits, then open
+  the GitLink PR and send the updated project-book email.

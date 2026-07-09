@@ -12,17 +12,14 @@ SketchSkill-AKG is not a single hand-written kernel submission. It is a reusable
 
 - Pinned AKG Bench Lite benchmark submodule.
 - Benchmark registry for all 13 official cases.
-- OpSpec extraction for the first T1 non-matmul subset:
-  - `t1/gelu`
-  - `t1/fused_silu_and_mul`
-  - `t1/sigmoid_scale_sum`
-  - `t1/softmax`
-- NPU-aware Operator Sketch templates for elementwise, fused elementwise, rowwise reduction, rowwise softmax, and unsupported placeholders.
+- Lite benchmark OpSpec coverage: 13/13.
+- NPU-aware Operator Sketch coverage for all 13 parsed Lite cases, including elementwise, fused elementwise, reduction, softmax, normalization, matmul-like, MoE top-k softmax, layout/transpose, convolution, and decode/attention patterns.
+- Deterministic OpSpec/Sketch validation gate through `scripts/validate_opspecs.py`.
 - Skill Library organized by operator pattern and engineering task.
 - Prompt templates for Code Agent, Repair Agent, and Skill Writer.
 - Deterministic `replay` provider and OpenAI Responses API provider boundary.
 - Candidate generation, official submission materialization, result import, and Pass@N reporting.
-- Ascend benchmark evidence for GELU, `sigmoid_scale_sum`, and `fused_silu_and_mul`.
+- Ascend benchmark evidence for a priority executable subset.
 
 # Reproduction
 
@@ -73,7 +70,17 @@ python -m pytest -q tests/test_agent_generation_workflow.py tests/test_fused_sil
 | `t1/sigmoid_scale_sum` | manual | true | true, 4/4 | `2.0279x` | Positive rowwise-reduction case |
 | `t1/sigmoid_scale_sum` | replay provider | true | true, 4/4 | `1.9980x` | Provider workflow reproduced the known trajectory |
 | `t1/fused_silu_and_mul` | manual | true | true, 4/4 | `1.0027x` | Triton variants pass correctness but are performance-negative lessons |
+| `t2/add_rmsnorm_cast` | manual | true | true, 4/4 | `2.0135x` | Positive T2 normalization case |
+| `t3/layernorm_gated` | manual | true | true, 4/4 | `1.5137x` | Positive T3 fp16 gated RMSNorm case |
 | `t1/gelu` | tuning case study | true | not formal Pass@4 | `0.6059x` | Correctness-positive Triton-Ascend case, slower than baseline |
+
+Summary claim:
+
+```text
+Lite benchmark OpSpec coverage: 13/13. Current executable candidates and
+Pass@4 evidence cover a priority subset. Full live AI generation remains gated
+only by model/API configuration.
+```
 
 # Included Documents
 
@@ -88,9 +95,10 @@ python -m pytest -q tests/test_agent_generation_workflow.py tests/test_fused_sil
 
 # Known Limitations
 
-- T2/T3 symbolic shape parser is deferred.
+- Lite benchmark OpSpec/Sketch coverage is complete; larger Benchmark suites,
+  dynamic shapes, and AKG Agents full-mode comparison remain future work.
 - Full Repair Agent and Profiler/Search Agent automation is still under development.
-- Live OpenAI provider benchmark comparison is planned after the initial submission package.
+- Live OpenAI/provider benchmark comparison is planned after model/API configuration exists.
 - GELU Triton-Ascend is correctness-positive but still slower than the framework baseline.
 
 # Project Book And Email Status

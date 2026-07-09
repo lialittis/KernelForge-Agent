@@ -40,6 +40,7 @@ AKG Bench Lite task
 | Prompt templates | `prompts/` |
 | Skill Library | `skills/` |
 | Experiment records | `experiments/` |
+| Validation gates | `kernel_forge/benchmark/validation.py`, `scripts/validate_opspecs.py` |
 
 ## 3. Benchmark 与 OpSpec 设计
 
@@ -67,14 +68,17 @@ OpSpec 是 Benchmark task 到 Agent pipeline 的稳定接口。字段包括：
 | `sketch` | NPU-aware Operator Sketch |
 | `submission` | 需要提交的文件和 entrypoint |
 
-当前支持的 OpSpec 子集：
+当前 OpSpec/Sketch 覆盖：
 
-- `t1/gelu`
-- `t1/fused_silu_and_mul`
-- `t1/sigmoid_scale_sum`
-- `t1/softmax`
+```text
+Lite benchmark OpSpec coverage: 13/13.
+```
 
-T2/T3 任务中存在符号 shape、本地变量构造和复杂输入构造，当前被 registry 明确标记为 deferred，而不是静默失败。
+覆盖包括 T1 的 GELU、fused SiLU、matmul、softmax/reduction，T2 的
+RMSNorm、MoE top-k softmax、RoPE，以及 T3 的 causal conv1d、decode MLA 和
+layernorm gated。`scripts/validate_opspecs.py` 对 13 个 parsed YAML 执行
+结构验证，包括必需字段、tensor spec、validation/performance 字段、非泛化
+Sketch、tuple-output contract 和 matmul/MoE 等类别约束。
 
 ## 4. NPU-aware Operator Sketch
 
@@ -129,6 +133,9 @@ Skill Library 是项目的可复用知识资产。每个 `SKILL.md` 包含适用
 
 - reduction 算子检索 `skills/reduction/SKILL.md`。
 - elementwise / fused elementwise 检索 `skills/elementwise/SKILL.md`。
+- normalization 算子检索 `skills/normalization/SKILL.md`。
+- matmul-like 算子检索 `skills/matmul_like/SKILL.md`。
+- transpose/layout 算子检索 `skills/transpose_layout/SKILL.md`。
 - 存在 broadcast 时检索 `skills/broadcast/SKILL.md`。
 - 存在 layout transform 时检索 `skills/transpose_layout/SKILL.md`。
 - 所有生成任务检索 `skills/ascend_debug/SKILL.md`、`skills/ascend_performance/SKILL.md` 和 `skills/benchmark_evaluation/SKILL.md`。
@@ -231,6 +238,10 @@ Provider 接口定义在 `kernel_forge/agents/provider.py`。
 - GELU block size 从 `1024` 到 `16384` 持续改善，`32768` 触发 UB overflow，`16384 x 2` chunks 为当前最佳。
 - `sigmoid_scale_sum` 一行一个 program、完整 `8192` reduction tile 最优，拆成多个 chunk 反而变慢。
 - `fused_silu_and_mul` 的 flattened-output Triton 变体正确但极慢，应优先考虑框架 intrinsic 或不同后端策略。
+- `add_rmsnorm_cast` 的 4096-wide rowwise RMSNorm Triton seed 形成正向 T2
+  normalization 案例。
+- `layernorm_gated` 表明 fp16 中间舍入语义会影响正确性，row grouping 可
+  在正确性固定后提升性能。
 
 ## 10. Repair Agent 设计
 
@@ -258,7 +269,10 @@ Skill Writer 从实验记录中抽取可复用经验：
 - before/after correctness 和 latency。
 - candidate path、experiment path 和 report path。
 
-当前写回以人工整理为主，已覆盖 GELU、`sigmoid_scale_sum` 和 `fused_silu_and_mul` 的关键经验。后续将让 Skill Writer 自动生成候选写回内容，再由人审阅。
+当前写回以人工整理为主，已覆盖 GELU、`sigmoid_scale_sum`、
+`fused_silu_and_mul`、softmax、`add_rmsnorm_cast`、`add_rmsnorm_quant`、
+RoPE、`layernorm_gated`、matmul 和 MoE top-k softmax 的关键经验。后续将
+让 Skill Writer 自动生成候选写回内容，再由人审阅。
 
 ## 12. 当前实验证据
 
@@ -268,6 +282,19 @@ Skill Writer 从实验记录中抽取可复用经验：
 | `t1/sigmoid_scale_sum` manual | 是 | 是，4/4 | `sigmoid_scale_sum_v2` | `2.0279x` | 第一个正向非 GELU 加速案例 |
 | `t1/sigmoid_scale_sum` replay | 是 | 是，4/4 | `sigmoid_scale_sum_replay_v2` | `1.9980x` | provider pipeline 复现 |
 | `t1/fused_silu_and_mul` | 是 | 是，4/4 | `fused_silu_and_mul_v1` | `1.0027x` | Triton 变体正确但性能负例 |
+| `t1/softmax` | 是 | 是，4/4 | `softmax_v4` | `0.9225x` | 正确但慢于 baseline 的 rowwise softmax 经验 |
+| `t2/add_rmsnorm_cast` | 是 | 是，4/4 | `add_rmsnorm_cast_v2` | `2.0135x` | 正向 T2 normalization 案例 |
+| `t2/rope` | 是 | 是，4/4 | `rope_v1` | `1.0006x` | NPU intrinsic 与 Triton parity 经验 |
+| `t2/add_rmsnorm_quant` | 是 | 是，1/4 | `add_rmsnorm_quant_v1` | `0.9981x` | exact int8 量化边界负例 |
+| `t3/layernorm_gated` | 是 | 是，4/4 | `layernorm_gated_v4` | `1.5137x` | 正向 T3 fp16 gated RMSNorm 案例 |
+
+当前提交应采用的总括性表述为：
+
+```text
+Lite benchmark OpSpec coverage: 13/13. Current executable candidates and
+Pass@4 evidence cover a priority subset. Full live AI generation remains gated
+only by model/API configuration.
+```
 
 ## 13. 测试与质量控制
 
@@ -281,11 +308,15 @@ Skill Writer 从实验记录中抽取可复用经验：
 - candidate Python 编译和安全 import 检查。
 - provider workflow、OpenAI request/response parsing、replay generation。
 - fused SiLU Pass@4 submission/report handling。
+- full Lite OpSpec/Sketch validation through `scripts/validate_opspecs.py`。
+- prompt context snapshots, package hygiene, replay guard, and result
+  comparison preservation for multi-output cases。
 
 本地建议运行：
 
 ```bash
-python -m pytest -q tests/test_agent_generation_workflow.py tests/test_fused_silu_and_mul_pass4.py
+python scripts/validate_opspecs.py --json
+python -m pytest -q tests/test_pre_ai_infrastructure.py
 ```
 
 初始化 submodule 后运行完整测试：
@@ -297,7 +328,8 @@ python -m pytest -q
 
 ## 14. 已知限制
 
-- T2/T3 符号 shape parser 尚未完成。
+- 13 个 Lite case 已有 OpSpec/Sketch；更复杂的后续 Benchmark、动态 shape
+  和完整 AKG Agents full-mode runner 对比仍需扩展。
 - live `provider=openai` 生成候选尚未形成正式 Benchmark 对比结果。
 - Repair Agent 和 Profiler/Search Agent 仍以规则、prompt 和人工流程为主，自动闭环尚未完全实现。
 - GELU Triton-Ascend 候选正确但慢于框架 baseline，需要新策略或后端。
@@ -309,15 +341,18 @@ python -m pytest -q
 
 1. 完成项目书完整版和本技术设计文档。
 2. 准备 GitLink PR package README 和文件清单。
-3. 导出项目书提交版本。
-4. 打开 GitLink PR。
-5. 邮件发送更新版项目书。
-6. 在 `docs/status.md` 记录 PR link、邮件状态和后续工作。
+3. 确认 13/13 OpSpec/Sketch 覆盖和 deterministic pre-key infrastructure 的
+   submission-facing wording 已同步。
+4. 导出项目书提交版本。
+5. 打开 GitLink PR。
+6. 邮件发送更新版项目书。
+7. 在 `docs/status.md` 记录 PR link、邮件状态和后续工作。
 
 技术后续：
 
 1. 运行 live `openai` provider Pass@4。
-2. 扩展 T2/T3 parser。
+2. 配置 AKG Agents `standard` model 并运行 full-mode runner 对比。
 3. 自动化 Repair Agent。
 4. 增加 profile import 和小规模搜索。
-5. 选择代表性算子尝试 TileLang-Ascend 或 Ascend C。
+5. 扩展动态 shape/更大 Benchmark 覆盖。
+6. 选择代表性算子尝试 TileLang-Ascend 或 Ascend C。

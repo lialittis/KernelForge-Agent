@@ -18,7 +18,21 @@
 
 SketchSkill-AKG 面向 CCF x MindSpore 昇腾 AKG 赛题，构建一个用于昇腾 910 NPU Benchmark 的技能驱动算子自动生成与硬件反馈优化系统。项目不把目标定义为一次性手写若干优化 kernel，而是构建可复用的自动化流程：从 AKG Bench Lite 任务中抽取 OpSpec，生成 NPU-aware Operator Sketch，检索算子模式 Skill Library，生成 Triton-Ascend 候选 `ModelNew`，在真实昇腾 NPU 上完成编译、运行、正确性验证、Pass@N 统计、性能测量、失败归因、修复和经验写回。
 
-当前原型已经完成官方 Benchmark 固定版本管理、T1 非矩阵乘子集解析、OpSpec/Sketch 生成、候选提交布局、结果导入、Pass@N 汇总、Prompt 模板、Skill Library、确定性 `replay` 生成 provider、OpenAI Responses live provider 适配器，以及多个真实昇腾硬件实验。已有证据包括：`t1/sigmoid_scale_sum` 手动 Pass@4 全部正确，最佳候选达到约 `2.0279x` 加速；同一任务通过 `replay` provider 复现生成链路，最佳候选约 `1.998x`；`t1/fused_silu_and_mul` Pass@4 全部正确，但 Triton 变体性能显著落后，形成了负向性能经验并写入技能库；GELU 调优形成了数值稳定性、UB 压力、Triton-Ascend backend 诊断等可复用经验。
+当前原型已经完成官方 Benchmark 固定版本管理、AKG Bench Lite 全部 13 个
+case 的 OpSpec/Sketch 覆盖、候选提交布局、结果导入、Pass@N 汇总、Prompt
+模板、Skill Library、确定性 `replay` 生成 provider、OpenAI Responses live
+provider 适配器、OpSpec/Sketch validator、package hygiene 测试，以及多个真
+实昇腾硬件实验。当前可用于初赛 Step 3 的总括性结论是：Lite benchmark
+OpSpec coverage: 13/13. Current executable candidates and Pass@4 evidence
+cover a priority subset. Full live AI generation remains gated only by
+model/API configuration.
+
+已有证据包括：`t1/sigmoid_scale_sum` 手动 Pass@4 全部正确，最佳候选达到约
+`2.0279x` 加速；同一任务通过 `replay` provider 复现生成链路，最佳候选约
+`1.998x`；`t2/add_rmsnorm_cast` 和 `t3/layernorm_gated` 形成正向 T2/T3
+normalization 案例；`t1/fused_silu_and_mul`、`t1/softmax` 和
+`t2/add_rmsnorm_quant` 形成性能或精确量化边界负例；GELU 调优形成了数值
+稳定性、UB 压力、Triton-Ascend backend 诊断等可复用经验。
 
 本项目的核心贡献是一个模型无关、后端可扩展、实验可追踪的算子生成系统，而不是单个算子的临时优化。项目书完整版在基础版基础上补充了当前实现进度、技术设计、复现实验、提交包装方案和下一步计划。
 
@@ -126,14 +140,18 @@ AKG Bench Lite task / reference Model
 | T2 | 4 |
 | T3 | 3 |
 
-当前自动 OpSpec 支持的 T1 非矩阵乘子集：
+当前自动 OpSpec/Sketch 覆盖已达到 Lite benchmark 13/13：
 
-- `t1/gelu`
-- `t1/fused_silu_and_mul`
-- `t1/sigmoid_scale_sum`
-- `t1/softmax`
+- T1：`gelu`、`fused_silu_and_mul`、`matmul_basic`、
+  `matmul_biasadd`、`sigmoid_scale_sum`、`softmax`。
+- T2：`add_rmsnorm_cast`、`add_rmsnorm_quant`、
+  `moe_topk_softmax`、`rope`。
+- T3：`causal_conv1d`、`decode_mla`、`layernorm_gated`。
 
-T2/T3 中存在局部变量和符号 shape 构造，当前 registry 能发现但会标记为 `parse_failed` 或 `unsupported`，后续需要扩展 parser。
+`benchmarks/raw/akg_kernels_bench_lite_registry.yaml` 记录 13 个 case，
+`benchmarks/parsed/` 下有对应 13 个 OpSpec YAML。`scripts/validate_opspecs.py`
+会检查必需字段、tensor spec、validation/performance 字段、非泛化 Sketch、
+tuple-output contract 和 matmul/MoE 等类别约束；当前结果为 13/13 通过。
 
 OpSpec 记录内容包括：
 
@@ -545,20 +563,20 @@ projects/<team-name>/SketchSkill-AKG/
 | 阶段 | 当前状态 | 下一步 |
 | --- | --- | --- |
 | 环境与 Benchmark 复现 | 已完成基本闭环 | 继续记录不同 Ascend worker 差异 |
-| OpSpec 与 Sketch | T1 非矩阵乘 4 个任务已支持 | 扩展 T2/T3 符号 shape parser |
-| Candidate 与 Pass@N | 手动和 replay Pass@4 已跑通 | 接入 live provider 生成并验证 |
-| Skill Library | 已有正负案例写回 | 增加 prompt-to-skill 自动总结 |
+| OpSpec 与 Sketch | Lite benchmark 13/13 已支持并通过 validator | 扩展动态 shape 和更大 Benchmark 覆盖 |
+| Candidate 与 Pass@N | priority subset 手动和 replay Pass@4 已跑通 | 接入 live provider 生成并验证 |
+| Skill Library | matmul、top-k softmax、normalization、reduction、layout 等正负案例已写回 | 增加 prompt-to-skill 自动总结 |
 | Repair Agent | 规则和 prompt 初版存在 | 实现自动错误分类和修复循环 |
 | Profiler/Search | 手动 tuning 案例存在 | 增加 profile import 与搜索记录 |
-| 提交材料 | 基础项目书、PDF、Step 3 plan 已有 | 完成 PR 包、项目书完整版、邮件 |
+| 提交材料 | 基础项目书、PDF、Step 3 plan、PR/package 文案和技术设计已有 | 完成 PR 外部动作和邮件发送 |
 
 ## 十三、预期成果与评价指标
 
 预期成果：
 
 - SketchSkill-AKG 原型系统。
-- Benchmark registry、OpSpec、Sketch、Prompt、Skill 和候选生成 pipeline。
-- 官方 Benchmark 正确性和性能报告。
+- Benchmark registry、13/13 Lite OpSpec、Sketch、Prompt、Skill 和候选生成 pipeline。
+- 官方 Benchmark 正确性和性能报告，当前覆盖 priority subset。
 - Pass@1/Pass@4 汇总。
 - 至少一个正向性能案例和一个负向性能案例。
 - 可复现的远程 Ascend 实验记录。
@@ -585,7 +603,7 @@ projects/<team-name>/SketchSkill-AKG/
 | 性能不及 baseline | score 低 | 正确性优先；只对正确候选做 profiling；记录负例防止重复 |
 | Triton-Ascend API 差异 | 跨 worker 不稳定 | 记录 CANN、torch_npu、triton、backend 版本；提供 bootstrap 脚本 |
 | NPU 资源有限 | 搜索轮次不足 | 保持搜索空间小，优先 T1 子集和代表性算子 |
-| T2/T3 parser 不完整 | 高阶任务覆盖不足 | 先稳定 T1；后续扩展符号 shape 和复杂输入构造 |
+| 更大 Benchmark 或动态 shape 未覆盖 | 后续泛化证据不足 | 当前 Lite 13/13 已完成；后续扩展更复杂 shape 和输入构造 |
 | PR/邮件材料不完整 | 影响初赛提交 | 用 Step 3 checklist 管理 PR 包、项目书、邮件和状态记录 |
 
 ## 十五、初赛 Step 3 提交计划
