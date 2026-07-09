@@ -186,6 +186,17 @@ The wrapper sources CANN and the known venv when present, preserves CANN's
 Python paths, adds the AKG Agents Python path, and fails early with a clear
 message if no `standard` model configuration is visible.
 
+After the full-mode runner JSON exists, compare it with standalone evidence:
+
+```bash
+python scripts/compare_runner_results.py \
+  --standalone-report experiments/reports/2026-07-09-replay-sigmoid-scale-sum-pass4-updated-akg.yaml \
+  --akg-agents-json outputs/results/akg_agents_full_sigmoid_scale_sum_$(date +%Y_%m_%d).json \
+  --case t1/sigmoid_scale_sum \
+  --akg-log-dir outputs/akg_agents_logs \
+  --output experiments/reports/runner-comparison-after-standard-config.yaml
+```
+
 Use environment variables if the rented machine differs:
 
 ```bash

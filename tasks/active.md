@@ -55,7 +55,8 @@ and agents.
    is needed.
 14. Configure an AKG Agents `standard` model level before rerunning
    `scripts/run_akg_agents_full_comparison.sh` for full runner-path
-   comparison.
+   comparison, then use `scripts/compare_runner_results.py` to compare the
+   full-mode JSON with the standalone replay Pass@4 report.
 15. Record model/provider, prompt version, retrieved skills, and candidate index
    for every generated experiment.
 16. Promote reusable generation, repair, or tuning lessons into `skills/`.

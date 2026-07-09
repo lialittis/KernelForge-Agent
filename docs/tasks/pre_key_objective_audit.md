@@ -89,6 +89,17 @@ Before a model is configured, the wrapper exits early with a clear missing
 `standard` model configuration message. Use `--check-only` to print the
 resolved command without launching the runner.
 
+After full-mode JSON exists, compare it with the standalone Pass@N report:
+
+```bash
+python scripts/compare_runner_results.py \
+  --standalone-report experiments/reports/2026-07-09-replay-sigmoid-scale-sum-pass4-updated-akg.yaml \
+  --akg-agents-json outputs/results/akg_agents_full_sigmoid_YYYY_MM_DD.json \
+  --case t1/sigmoid_scale_sum \
+  --akg-log-dir outputs/akg_agents_logs \
+  --output experiments/reports/runner-comparison-after-standard-config.yaml
+```
+
 ### Generated-Result Import Automation
 
 Status: complete for replay/provider-generated candidates.
@@ -192,8 +203,10 @@ Evidence:
 
 1. Configure an AKG Agents `standard` model level.
 2. Run `run_torch_bench_lite.py --mode full --backend npu --cases
-   sigmoid_scale_sum --pass-n 4`.
+   sigmoid_scale_sum --pass-n 4`, preferably through
+   `scripts/run_akg_agents_full_comparison.sh`.
 3. Compare AKG Agents full-mode generated/extracted outputs against the
-   standalone runner schema, Pass@4, speedup, score, and logs.
+   standalone runner schema, Pass@4, speedup, score, and logs with
+   `scripts/compare_runner_results.py`.
 4. After API credentials exist, run the first live provider Pass@4 cycle and
    compare it with replay/manual evidence.

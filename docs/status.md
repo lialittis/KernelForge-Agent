@@ -486,6 +486,11 @@ External PR and email submission are manual user actions.
   post-configuration entry point for AKG Agents full runner comparison. It
   preserves CANN's Python paths, adds the AKG Agents path, and fails early with
   a clear message when no `standard` model configuration is visible.
+- Added `scripts/compare_runner_results.py` to compare standalone Pass@N YAML
+  against AKG Agents runner JSON once full-mode output exists. The comparator
+  reports schema compatibility, Pass@N agreement, best-candidate deltas,
+  speedup/score deltas, optional log paths, and whether standalone remains the
+  authoritative pre-key scorer.
 
 ## In Progress
 
@@ -547,6 +552,7 @@ External PR and email submission are manual user actions.
     replay `t1/sigmoid_scale_sum` have been rebaselined.
 13. Configure an AKG Agents `standard` model level, then rerun
     `scripts/run_akg_agents_full_comparison.sh` for a full runner-path
+    comparison and `scripts/compare_runner_results.py` for schema/result
     comparison.
 14. Run a first live `provider=openai` Pass@4 generation cycle for
     `t1/sigmoid_scale_sum` once credentials and model selection are available.
@@ -570,10 +576,14 @@ Changed Files:
 - `docs/status.md`
 - `docs/dev_guide.md`
 - `docs/tasks/pre_key_objective_audit.md`
+- `scripts/compare_runner_results.py`
 - `scripts/run_akg_agents_full_comparison.sh`
 - `tasks/active.md`
+- `tests/test_runner_result_comparison.py`
 
 Verification:
+- Local: `python -m pytest tests/test_runner_result_comparison.py`
+- Local: `python -m py_compile scripts/compare_runner_results.py`
 - Local: `bash -n scripts/run_akg_agents_full_comparison.sh`
 - Local: `bash scripts/run_akg_agents_full_comparison.sh --help`
 - Local: `python -m pytest tests/test_experiment_result_import.py
