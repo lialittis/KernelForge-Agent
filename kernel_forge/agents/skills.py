@@ -26,6 +26,10 @@ def retrieve_skill_paths(opspec: dict[str, Any]) -> list[str]:
         paths.append("skills/elementwise/SKILL.md")
     elif operator_category == "normalization":
         paths.append("skills/normalization/SKILL.md")
+    elif operator_category == "matmul_like":
+        paths.append("skills/matmul_like/SKILL.md")
+    elif operator_category == "transpose_layout":
+        paths.append("skills/transpose_layout/SKILL.md")
 
     semantics = opspec.get("semantics", {})
     if semantics.get("broadcast") not in {None, "none"}:

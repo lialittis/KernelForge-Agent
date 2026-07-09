@@ -145,6 +145,8 @@ Implemented state:
 
 ## Task 5: Pre-AI Infrastructure Improvements
 
+Status: complete for the first provider-independent pass.
+
 Useful provider-independent work:
 
 - OpSpec validator.
@@ -155,6 +157,27 @@ Useful provider-independent work:
 - result comparison tools.
 - stronger Skill Library entries for matmul, top-k softmax, normalization,
   reduction, and layout/transpose patterns.
+
+Implemented state:
+
+- Added reusable OpSpec and Sketch validation helpers in
+  `kernel_forge/benchmark/validation.py`.
+- Added `scripts/validate_opspecs.py` as a deterministic CLI gate for
+  `benchmarks/parsed`; the current parsed Lite set validates as `13/13`.
+- Added prompt context snapshot coverage for matmul bias-add and MoE top-k
+  softmax so retrieved skills, OpSpec YAML, Sketch YAML, and tuple-output
+  contracts remain visible to future providers.
+- Added package hygiene tests around `scripts/prepare_gitlink_package.py` so
+  submission packages keep source/docs/tests/skills/prompts and exclude
+  runtime outputs and caches.
+- Kept replay regression deterministic by testing the updated-AKG commit guard
+  exposed by `scripts/run_replay_regression.py`.
+- Extended result comparison to preserve per-output candidate details when
+  standalone or AKG Agents JSON includes them.
+- Strengthened Skill Library entries for matmul-like, reduction/top-k softmax,
+  normalization, and transpose/layout patterns.
+- Added `pre_ai_infrastructure` to `scripts/audit_pre_key_readiness.py` so the
+  deterministic readiness audit tracks these files.
 
 ## Task 6: Submission-Facing Updates
 

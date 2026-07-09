@@ -26,6 +26,8 @@ operators.
 - broadcast plan for scale/bias
 - numerical stability
 - multi-stage pipeline if needed
+- explicit intermediate dtype plan when the reference uses fp16-visible stages
+- quantization rounding and clamp semantics for int8 outputs
 
 ## Common Failures
 
@@ -34,6 +36,9 @@ operators.
 - dtype instability
 - incorrect parameter broadcasting
 - multiple-pass implementation with inconsistent indexing
+- fp32 intermediates where the PyTorch/NPU reference visibly rounds to fp16
+- approximate rounding in int8 quantized normalization
+- split-row reductions that pass small probes but fail full-shape trials
 
 ## Profiling And Tuning Notes
 
@@ -43,6 +48,11 @@ operators.
 - For fixed hidden size 4096 RMSNorm-style rows on Ascend, first try one
   Triton program per row with a 4096-wide vector if UB pressure permits. Then
   try 2048x2 or 1024x4 chunking only if compilation or UB pressure fails.
+- If the output dtype is fp16 but the reference applies fp16 intermediate
+  rounding, encode this explicitly in the prompt and generated kernel rather
+  than assuming a fully fp32 internal path.
+- If the output dtype is int8, treat correctness as exact equality because the
+  official tolerance is much smaller than one quantization step.
 
 ## Bad-To-Good Cases
 

@@ -62,6 +62,15 @@ REQUIRED_GROUPS = {
         "experiments/runs/2026-07-09-replay-sigmoid-scale-sum-pass4-updated-akg.yaml",
         "scripts/run_replay_regression.py",
     ],
+    "pre_ai_infrastructure": [
+        "kernel_forge/benchmark/validation.py",
+        "scripts/validate_opspecs.py",
+        "tests/test_pre_ai_infrastructure.py",
+        "skills/matmul_like/SKILL.md",
+        "skills/reduction/SKILL.md",
+        "skills/normalization/SKILL.md",
+        "skills/transpose_layout/SKILL.md",
+    ],
 }
 
 

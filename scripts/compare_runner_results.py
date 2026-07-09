@@ -153,7 +153,7 @@ def _akg_agents_summary(data: dict[str, Any], *, case_id: str, source_path: str)
 def _candidate_summary(row: dict[str, Any]) -> dict[str, Any]:
     if not isinstance(row, dict):
         return {}
-    return {
+    summary = {
         "team_name": row.get("team_name") or row.get("candidate") or row.get("name"),
         "status": row.get("status"),
         "correctness": row.get("correctness"),
@@ -164,6 +164,11 @@ def _candidate_summary(row: dict[str, Any]) -> dict[str, Any]:
         "max_abs_diff": row.get("max_abs_diff"),
         "max_rel_diff": row.get("max_rel_diff"),
     }
+    outputs = _output_summaries(row)
+    if outputs:
+        summary["outputs"] = outputs
+        summary["output_count"] = len(outputs)
+    return summary
 
 
 def _akg_verifier_probe_summary(data: dict[str, Any], *, case_id: str, source_path: str) -> dict[str, Any]:
@@ -218,7 +223,7 @@ def _akg_verifier_probe_summary(data: dict[str, Any], *, case_id: str, source_pa
 def _normalise_akg_performance_row(row: Any) -> dict[str, Any] | None:
     if not isinstance(row, dict):
         return None
-    return {
+    summary = {
         "team_name": row.get("team_name") or row.get("team") or row.get("candidate") or row.get("case"),
         "case": row.get("case") or row.get("case_id") or row.get("name"),
         "status": row.get("status"),
@@ -230,6 +235,51 @@ def _normalise_akg_performance_row(row: Any) -> dict[str, Any] | None:
         "max_abs_diff": row.get("max_abs_diff"),
         "max_rel_diff": row.get("max_rel_diff"),
     }
+    outputs = _output_summaries(row)
+    if outputs:
+        summary["outputs"] = outputs
+        summary["output_count"] = len(outputs)
+    return summary
+
+
+def _output_summaries(row: dict[str, Any]) -> list[dict[str, Any]]:
+    raw_outputs = None
+    for key in (
+        "outputs",
+        "output_details",
+        "per_output",
+        "per_output_details",
+        "output_diffs",
+        "correctness_outputs",
+    ):
+        value = row.get(key)
+        if isinstance(value, list):
+            raw_outputs = value
+            break
+    if not raw_outputs:
+        return []
+
+    outputs: list[dict[str, Any]] = []
+    for index, output in enumerate(raw_outputs):
+        if not isinstance(output, dict):
+            outputs.append({"index": index, "detail": output})
+            continue
+        item: dict[str, Any] = {"index": output.get("index", index)}
+        for key in (
+            "name",
+            "status",
+            "correctness",
+            "shape",
+            "dtype",
+            "max_abs_diff",
+            "max_rel_diff",
+            "detail",
+            "error",
+        ):
+            if key in output:
+                item[key] = output[key]
+        outputs.append(item)
+    return outputs
 
 
 def _comparison_delta(standalone: dict[str, Any], akg_agents: dict[str, Any]) -> dict[str, Any]:

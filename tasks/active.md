@@ -28,9 +28,10 @@ and agents.
    `scripts/run_replay_regression.py` guards the expected updated AKG commit,
    and `scripts/audit_pre_key_readiness.py --json` gates on exact `13/13`
    Lite OpSpec support.
-9. Add provider-independent validation next: OpSpec validator, Sketch
-   validator, prompt context snapshot tests, package hygiene tests, and updated
-   submission-facing docs that claim `13/13` Lite OpSpec coverage.
+9. Provider-independent infrastructure is complete for the first pass:
+   OpSpec/Sketch validators, prompt context snapshot tests, package hygiene
+   tests, replay guard tests, multi-output result-comparison preservation, and
+   strengthened Skill Library entries are in place.
 10. Keep `replay` as the deterministic CI/regression provider; use
    `scripts/run_replay_regression.py` for the current updated-AKG replay
    `t1/sigmoid_scale_sum` regression baseline.
@@ -67,9 +68,9 @@ and agents.
    manual `t1/sigmoid_scale_sum`, `t1/softmax`, `t1/fused_silu_and_mul`, and
    replay `t1/sigmoid_scale_sum` are done.
 17. The priority T2/T3 pre-key manual seeds are complete; next pre-key
-   development should focus on runner comparison/provider setup, or a
-   non-priority operator such as `t2/moe_topk_softmax` if more manual evidence
-   is needed.
+   development should focus on Task 6 submission-facing updates, runner
+   comparison/provider setup, or a non-priority operator such as
+   `t2/moe_topk_softmax` if more manual evidence is needed.
 18. Configure an AKG Agents `standard` model level, verify it with
    `scripts/check_akg_agents_model_config.py --level standard`, then rerun
    `scripts/run_akg_agents_full_comparison.sh` for full runner-path comparison
@@ -82,7 +83,10 @@ and agents.
    it does not produce AKG Agents full-mode Pass@4 or leaderboard scores.
 20. Record model/provider, prompt version, retrieved skills, and candidate index
    for every generated experiment.
-21. Promote reusable generation, repair, or tuning lessons into `skills/`.
+21. Use `scripts/validate_opspecs.py --json` as the deterministic OpSpec/Sketch
+   validation gate before editing parsed benchmark specs, prompt templates, or
+   generated experiment context.
+22. Promote reusable generation, repair, or tuning lessons into `skills/`.
 
 ## Research Questions
 

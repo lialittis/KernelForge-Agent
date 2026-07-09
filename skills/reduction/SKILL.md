@@ -25,6 +25,8 @@ transpose operators.
 - parallel reduction strategy
 - boundary mask for tail elements
 - final writeback shape
+- tuple-output contract when a reduction also selects indices
+- explicit tie and ordering semantics for top-k or argmax-like reductions
 
 ## Common Failures
 
@@ -33,12 +35,18 @@ transpose operators.
 - accumulation dtype too narrow
 - incorrect tail handling
 - race or duplicate accumulation in parallel reduction
+- unstable top-k ordering when values tie
+- returning unnormalized selected probabilities after top-k softmax
+- using the wrong index dtype for tuple-output selections
 
 ## Profiling And Tuning Notes
 
 - Tune tile size and parallel axis after correctness.
 - Compare contiguous versus non-contiguous reduction behavior.
 - Watch UB pressure and partial-reduction writeback overhead.
+- For small expert dimensions, a single row/program may be preferable to
+  complicated cross-program reductions because top-k ordering and selected
+  probability renormalization are easier to keep deterministic.
 
 ## Bad-To-Good Cases
 
@@ -88,3 +96,32 @@ Lessons:
 - For future softmax attempts, prioritize memory-traffic reduction, backend
   softmax primitives, or a different lowering strategy before only increasing
   rows per program.
+
+### `t2/moe_topk_softmax` Tuple Output And Top-K Renormalization
+
+Source OpSpec: `benchmarks/parsed/t2_moe_topk_softmax.yaml`.
+
+Pattern:
+
+1. For each token row, compute stable softmax over expert logits with
+   max-subtraction.
+2. Select top-2 probabilities and corresponding expert indices.
+3. Renormalize the selected probabilities by their selected sum.
+4. Return a tuple: `top_k_probs: float32[1024, 2]` and
+   `top_k_indices: int64[1024, 2]`.
+
+Required generation constraints:
+
+- Preserve tuple output order exactly: probabilities first, indices second.
+- Match `torch.topk` tie behavior and ordering for equal probabilities.
+- Store indices as int64, not int32.
+- Preserve the Sketch `output_contract` and `numerical_plan` in prompt
+  context so the generated code cannot treat this as ordinary softmax.
+
+Repair rules:
+
+- If probabilities pass but indices fail, inspect tie ordering and index dtype.
+- If selected probabilities sum to something other than 1, add the
+  selected-probability renormalization stage after top-k selection.
+- If only near-zero rows fail relative tolerance, inspect max-subtraction and
+  float32 accumulation for the softmax denominator.

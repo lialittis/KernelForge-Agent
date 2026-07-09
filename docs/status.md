@@ -615,34 +615,45 @@ Date: 2026-07-09
 Agent: Codex
 Branch: main
 Summary:
-- Completed deterministic reference/replay evaluation hardening for Task 4 of
-  the pre-submission no-key plan.
-- Preserved per-output correctness details in result import, Pass@N summaries,
-  generated experiment updates, and tests using `t2/moe_topk_softmax` as the
-  tuple-output case.
-- Added an updated-AKG commit guard to `scripts/run_replay_regression.py` and
-  tightened the readiness audit to require exact `13/13` Lite OpSpec coverage.
+- Completed Task 5 pre-AI infrastructure improvements for the first
+  provider-independent pass.
+- Added reusable OpSpec/Sketch validators plus `scripts/validate_opspecs.py`;
+  all 13 parsed Lite OpSpecs validate successfully.
+- Added prompt context, package hygiene, replay guard, and multi-output result
+  comparison tests; strengthened Skill Library entries for matmul, top-k
+  softmax/reduction, normalization, and layout/transpose patterns.
 
 Changed Files:
 - `docs/status.md`
 - `docs/tasks/pre_submission_no_key_dev_plan.md`
-- `kernel_forge/experiments/passn.py`
-- `kernel_forge/experiments/results.py`
+- `kernel_forge/agents/skills.py`
+- `kernel_forge/benchmark/__init__.py`
+- `kernel_forge/benchmark/validation.py`
 - `scripts/audit_pre_key_readiness.py`
+- `scripts/compare_runner_results.py`
 - `scripts/run_replay_regression.py`
+- `scripts/validate_opspecs.py`
+- `skills/matmul_like/SKILL.md`
+- `skills/normalization/SKILL.md`
+- `skills/reduction/SKILL.md`
+- `skills/transpose_layout/SKILL.md`
 - `tasks/active.md`
-- `tests/test_experiment_result_import.py`
+- `tests/test_pre_ai_infrastructure.py`
 
 Verification:
-- Local: `PYTHONPATH=/home/tianchi/.local/lib/python3.10/site-packages python -m pytest -q tests/test_experiment_result_import.py`
-  passed 7 tests.
-- Local: `python -m py_compile kernel_forge/experiments/results.py kernel_forge/experiments/passn.py scripts/run_replay_regression.py scripts/audit_pre_key_readiness.py`
+- Local: `PYTHONPATH=/home/tianchi/.local/lib/python3.10/site-packages python scripts/validate_opspecs.py --json`
+  returned `status: pass`, `total_files: 13`, `passed_files: 13`.
+- Local: `PYTHONPATH=/home/tianchi/.local/lib/python3.10/site-packages python -m pytest -q tests/test_pre_ai_infrastructure.py`
+  passed 9 tests.
+- Local: `PYTHONPATH=/home/tianchi/.local/lib/python3.10/site-packages python -m pytest -q tests/test_runner_result_comparison.py tests/test_pre_key_readiness_audit.py tests/test_pre_ai_infrastructure.py`
+  passed 17 tests.
+- Local: `python -m py_compile kernel_forge/benchmark/validation.py kernel_forge/agents/skills.py scripts/validate_opspecs.py scripts/compare_runner_results.py scripts/run_replay_regression.py scripts/audit_pre_key_readiness.py`
 - Local: `PYTHONPATH=/home/tianchi/.local/lib/python3.10/site-packages python scripts/audit_pre_key_readiness.py --json`
   returned `pre_key_deterministic_complete_provider_config_missing` with
-  `benchmark_registry_full_lite_coverage`, `opspec_supported: 13`,
-  `unsupported: 0`, and `parse_failed: 0`.
+  `pre_ai_infrastructure`, `benchmark_registry_full_lite_coverage`,
+  `opspec_supported: 13`, `unsupported: 0`, and `parse_failed: 0`.
 - Local: `PYTHONPATH=/home/tianchi/.local/lib/python3.10/site-packages python -m pytest -q`
-  passed 96 tests.
+  passed 105 tests.
 - Local: `git diff --check`
 
 Open Issues:
@@ -659,6 +670,6 @@ Open Issues:
   replay/manual Pass@4 results when credentials/model selection are available.
 
 Next Suggested Step:
-- Add provider-independent validation: OpSpec validator, Sketch validator,
-  prompt context snapshot tests, package hygiene tests, and final
-  submission-facing wording updates for `13/13` Lite OpSpec coverage.
+- Start Task 6 submission-facing updates: ensure `docs/project_book_full_zh.md`,
+  `docs/technical_design.md`, package README, and GitLink PR text consistently
+  claim `13/13` Lite OpSpec coverage and deterministic pre-key infrastructure.

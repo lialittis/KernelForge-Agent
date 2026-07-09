@@ -51,7 +51,7 @@ def main() -> int:
     parser.add_argument(
         "--expected-akg-commit",
         default=EXPECTED_AKG_COMMIT,
-        help="Expected third_party/akg commit for benchmark claims.",
+        help="Expected third_party/akg commit for benchmark claims (default: %(default)s).",
     )
     parser.add_argument(
         "--allow-akg-commit-mismatch",

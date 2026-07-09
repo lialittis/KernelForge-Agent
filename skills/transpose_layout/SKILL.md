@@ -23,6 +23,8 @@ Do not use for semantic reductions or arithmetic-only elementwise operators.
 - tile reorder plan
 - boundary mask
 - bank/conflict risk notes when known
+- broadcast-axis mapping for layout-aware fused arithmetic
+- dtype conversion plan for operations near zero where relative error matters
 
 ## Common Failures
 
@@ -30,6 +32,9 @@ Do not use for semantic reductions or arithmetic-only elementwise operators.
 - treating layout conversion as metadata-only reshape
 - non-contiguous indexing bugs
 - poor performance from scattered reads and writes
+- applying rotate-half pairing to adjacent pairs instead of tensor halves
+- losing broadcast dimensions when cos/sin or scale tensors have singleton
+  batch/head axes
 
 ## Profiling And Tuning Notes
 
@@ -40,6 +45,9 @@ Do not use for semantic reductions or arithmetic-only elementwise operators.
   intrinsic first. If implementing Triton, use fp32 accumulation before the
   final fp16 store to match `torch_npu.npu_rotary_mul` under strict max-relative
   error checks.
+- Prefer explicit flat-index formulas in first candidates. Only switch to
+  more complex vectorized layout transforms after shape and broadcast behavior
+  are proven by probes.
 
 ## Bad-To-Good Cases
 
