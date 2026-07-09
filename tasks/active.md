@@ -58,9 +58,13 @@ and agents.
    `scripts/run_akg_agents_full_comparison.sh` for full runner-path comparison
    and use `scripts/compare_runner_results.py` to compare the full-mode JSON
    with the standalone replay Pass@4 report.
-15. Record model/provider, prompt version, retrieved skills, and candidate index
+15. Use `scripts/run_akg_agents_verifier_probe.py` only as a no-key
+   verifier-only smoke path for existing candidates; do not treat it as final
+   runner parity because it does not produce AKG Agents full-mode Pass@4 or
+   leaderboard scores.
+16. Record model/provider, prompt version, retrieved skills, and candidate index
    for every generated experiment.
-16. Promote reusable generation, repair, or tuning lessons into `skills/`.
+17. Promote reusable generation, repair, or tuning lessons into `skills/`.
 
 ## Research Questions
 

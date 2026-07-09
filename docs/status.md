@@ -495,6 +495,10 @@ External PR and email submission are manual user actions.
   model-level configuration without calling a provider and without printing raw
   keys. The full-comparison wrapper now uses it to reject incomplete
   `standard` settings before launching `run_torch_bench_lite.py`.
+- Added `scripts/run_akg_agents_verifier_probe.py` as a no-key, verifier-only
+  AKG Agents probe for existing candidates. `scripts/compare_runner_results.py`
+  now classifies its JSON as `verifier_only_probe` so this partial evidence is
+  not confused with full AKG Agents Pass@4/leaderboard output.
 
 ## In Progress
 
@@ -559,10 +563,13 @@ External PR and email submission are manual user actions.
     `scripts/run_akg_agents_full_comparison.sh` for a full runner-path
     comparison and `scripts/compare_runner_results.py` for schema/result
     comparison.
-14. Run a first live `provider=openai` Pass@4 generation cycle for
+14. Optionally run `scripts/run_akg_agents_verifier_probe.py` after reopening
+    the Ascend `ControlMaster` session to smoke-test the AKG Agents verifier
+    path on `sigmoid_scale_sum_v2`; keep it labeled as partial evidence.
+15. Run a first live `provider=openai` Pass@4 generation cycle for
     `t1/sigmoid_scale_sum` once credentials and model selection are available.
-15. Import live generated benchmark results after Ascend verification.
-16. Keep model/provider information explicit in every generated experiment
+16. Import live generated benchmark results after Ascend verification.
+17. Keep model/provider information explicit in every generated experiment
    record.
 
 ## Latest Handoff
@@ -571,33 +578,30 @@ Date: 2026-07-09
 Agent: Codex
 Branch: main
 Summary:
-- Hardened the AKG Agents full-runner preflight by adding a masked model config
-  checker for the required `standard` level.
-- Wired the checker into `scripts/run_akg_agents_full_comparison.sh`, so
-  incomplete settings fail before a long `run_torch_bench_lite.py` launch.
-- Confirmed full AKG Agents runner parity remains blocked until an actual
-  `standard` model/API configuration is provided.
+- Added a no-key AKG Agents verifier-only probe for existing candidates.
+- Updated the runner comparator to classify verifier-only probe JSON as partial
+  evidence, not full runner parity.
+- Could not run the new probe on Ascend in this session because the key-only
+  SSH/ControlMaster path expired and the gateway requested password auth.
 
 Changed Files:
-- `.gitignore`
 - `docs/status.md`
 - `docs/dev_guide.md`
 - `docs/tasks/pre_key_objective_audit.md`
-- `scripts/check_akg_agents_model_config.py`
-- `scripts/run_akg_agents_full_comparison.sh`
+- `scripts/compare_runner_results.py`
+- `scripts/run_akg_agents_verifier_probe.py`
 - `tasks/active.md`
-- `tests/test_akg_agents_model_config_check.py`
+- `tests/test_runner_result_comparison.py`
 
 Verification:
-- Local: `python -m pytest tests/test_akg_agents_model_config_check.py
-  tests/test_runner_result_comparison.py`
-- Local: `python -m py_compile scripts/check_akg_agents_model_config.py
+- Local: `python -m pytest tests/test_runner_result_comparison.py`
+- Local: `python -m py_compile scripts/run_akg_agents_verifier_probe.py
   scripts/compare_runner_results.py`
-- Local: `bash -n scripts/run_akg_agents_full_comparison.sh`
-- Local: `python scripts/check_akg_agents_model_config.py --level standard
-  --json` exited `2` and reported missing `standard` config with no secrets.
-- Local: `bash scripts/run_akg_agents_full_comparison.sh --check-only` printed
-  the resolved full-mode command and did not launch the runner.
+- Local: `python scripts/run_akg_agents_verifier_probe.py --help`
+- Local: `git diff --check`
+- Ascend sync/run attempt: `ssh -o BatchMode=yes ascend-kf
+  'git -C /data/KernelForge-Agent pull --ff-only'` failed with
+  `Permission denied (password)` because no key-only session was active.
 
 Open Issues:
 - GitLink PR is not opened yet; this is a manual user action.
@@ -607,10 +611,13 @@ Open Issues:
 - Need AKG Agents `standard` model configuration before
   `run_torch_bench_lite.py --mode full` can produce comparable Pass@N and
   performance artifacts.
+- Need a reopened Ascend `ControlMaster` session or provider-level key auth
+  before agents can pull/run more NPU commands non-interactively.
 - Need to run the first real live-provider generation and compare it with
   replay/manual Pass@4 results when credentials/model selection are available.
 
 Next Suggested Step:
-- Configure an AKG Agents `standard` model level, verify it with
-  `scripts/check_akg_agents_model_config.py --level standard`, then rerun the
-  AKG Agents full runner comparison.
+- Reopen the Ascend SSH `ControlMaster` session, fast-forward the worker, then
+  run `scripts/run_akg_agents_verifier_probe.py` for
+  `sigmoid_scale_sum_v2`; full runner parity still needs `standard` model
+  configuration.

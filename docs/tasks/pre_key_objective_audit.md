@@ -30,6 +30,13 @@ manual and replay submissions. AKG Agents runner evidence is limited to import,
 help, environment-check, case-discovery, and JSON-schema probes until model
 configuration exists.
 
+An additional no-key verifier-only probe is available through
+`scripts/run_akg_agents_verifier_probe.py`. It can validate an existing
+candidate through AKG Agents `LangGraphTask` and `verifier_only_workflow`, but
+it is deliberately classified as partial evidence because it does not exercise
+`run_torch_bench_lite.py --mode full`, generated Pass@4 attempts, extraction,
+leaderboard scoring, or full runner result schema.
+
 ## Requirement Status
 
 ### Runner Path Comparison
@@ -54,6 +61,11 @@ Evidence:
   case discovery, and JSON output.
 - AKG Agents runner failed at model creation:
   `模型级别 'standard' 未配置，无法创建 LLM 客户端`.
+- Project-owned verifier probe tooling exists:
+  `scripts/run_akg_agents_verifier_probe.py`. Its JSON output is supported by
+  `scripts/compare_runner_results.py` as `verifier_only_probe`, which keeps
+  standalone `tools/run_bench.py` authoritative until full-mode AKG Agents
+  output exists.
 
 Why not complete:
 
@@ -61,6 +73,9 @@ Why not complete:
   attempts, not as input for existing replay/manual candidates.
 - A comparable Pass@4/performance run requires live model configuration through
   `AKG_AGENTS_STANDARD_*`, `~/.akg/settings.json`, or `.akg/settings*.json`.
+- `verifier_only_workflow` can check an existing candidate without an LLM, but
+  it is not the same runner path and does not produce Pass@4 leaderboard
+  scoring.
 
 Next unblock:
 

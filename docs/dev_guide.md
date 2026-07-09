@@ -231,6 +231,24 @@ python scripts/compare_runner_results.py \
   --output experiments/reports/runner-comparison-after-standard-config.yaml
 ```
 
+If no model key is available yet, a narrower AKG Agents verifier probe can
+exercise the LangGraph verifier/project-generation/logging path on an existing
+candidate. This is useful as a pre-key smoke test, but it is not a substitute
+for the full `run_torch_bench_lite.py --mode full` comparison because it does
+not generate Pass@4 attempts or leaderboard scores:
+
+```bash
+python scripts/run_akg_agents_verifier_probe.py \
+  --case t1/sigmoid_scale_sum \
+  --candidate kernel_forge/candidates/sigmoid_scale_sum_v2.py \
+  --task-type profile \
+  --output outputs/results/akg_agents_verifier_probe_sigmoid_v2.json
+```
+
+The output JSON can be passed to `scripts/compare_runner_results.py`; the
+comparator will classify it as `verifier_only_probe` and keep standalone
+`tools/run_bench.py` authoritative until full-mode AKG Agents results exist.
+
 Use environment variables if the rented machine differs:
 
 ```bash
