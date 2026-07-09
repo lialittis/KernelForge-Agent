@@ -355,9 +355,11 @@ External PR and email submission are manual user actions.
   deliverable status, verification commands, and manual PR/email actions.
 - Compared runner paths on updated-AKG replay `t1/sigmoid_scale_sum`:
   standalone `tools/run_bench.py` is runnable for existing replay/manual
-  submissions, while AKG Agents `run_torch_bench_lite.py` is currently blocked
-  in the pre-key Ascend venv by missing `langchain_core` before it can parse
-  CLI arguments or produce comparable artifacts.
+  submissions. AKG Agents `run_torch_bench_lite.py` is importable after
+  installing its runtime dependency stack, reaches worker registration and
+  environment checks, and emits a correctness-mode JSON schema, but cannot
+  generate successful attempts before an AKG Agents `standard` model level is
+  configured.
 - Standalone runner comparison scores for replay `t1/sigmoid_scale_sum`:
   - `sigmoid_scale_sum_replay_v1`: pass, speedup `0.9994x`, score `59.96`
   - `sigmoid_scale_sum_replay_v2`: pass, speedup `1.9794x`, score `69.79`
@@ -366,7 +368,10 @@ External PR and email submission are manual user actions.
 - Recorded the pre-key runner decision: use standalone
   `tools/run_bench.py` as the authoritative scorer for deterministic
   replay/manual evidence; revisit AKG Agents `run_torch_bench_lite.py` after
-  installing the AKG Agents dependency stack and configuring a live provider.
+  configuring a live provider/model level.
+- Added `scripts/setup_akg_agents_runner_deps.sh` to reproduce the dependency
+  setup needed for `run_torch_bench_lite.py --help` and correctness-probe
+  schema generation.
 - Added deterministic replay regression automation at
   `scripts/run_replay_regression.py`; it generates replay candidates,
   benchmarks them, runs backend probes, writes an enriched Pass@N report, and
@@ -449,9 +454,10 @@ External PR and email submission are manual user actions.
   `ControlMaster` session remains alive; durable automation needs either
   provider-level key configuration or a manually opened persistent master
   connection.
-- AKG Agents `run_torch_bench_lite.py` is not yet runnable in the current
-  pre-key Ascend venv because `langchain_core` is missing from the AKG Agents
-  dependency stack.
+- AKG Agents `run_torch_bench_lite.py --mode full` cannot produce comparable
+  Pass@N/performance artifacts until an AKG Agents `standard` model level is
+  configured through `AKG_AGENTS_STANDARD_*`, `~/.akg/settings.json`, or a local
+  `.akg/settings*.json` file.
 
 ## Next Actions
 
@@ -487,7 +493,7 @@ External PR and email submission are manual user actions.
     `47aa428fcdc8c68f78d331dc578bc6c74fb9d91d` before final result claims;
     manual `t1/sigmoid_scale_sum`, `t1/softmax`, `t1/fused_silu_and_mul`, and
     replay `t1/sigmoid_scale_sum` have been rebaselined.
-12. Install/enable the AKG Agents dependency stack, then rerun
+12. Configure an AKG Agents `standard` model level, then rerun
     `run_torch_bench_lite.py --backend npu --mode full --cases
     sigmoid_scale_sum --pass-n 4` for a full runner-path comparison.
 13. Run a first live `provider=openai` Pass@4 generation cycle for
@@ -502,31 +508,31 @@ Date: 2026-07-09
 Agent: Codex
 Branch: main
 Summary:
-- Removed the remaining OpSpec parser failures by adding safe arithmetic,
-  `torch.full`, `torch.arange`, and reshape/view shape extraction.
-- Added supported OpSpec/sketch templates for `t3/causal_conv1d` and
-  `t3/decode_mla`.
-- Registry coverage is now 10 supported OpSpecs, 3 unsupported cases, and 0
-  parse failures.
+- Installed/specified the AKG Agents runner dependency stack and re-probed
+  `run_torch_bench_lite.py` on Ascend.
+- The runner now reaches `--help`, worker registration, environment check, case
+  discovery, and correctness JSON output for `t1/sigmoid_scale_sum`.
+- The remaining runner-path blocker is missing AKG Agents `standard` model
+  configuration, not missing Python dependencies.
 
 Changed Files:
-- `benchmarks/parsed/t3_causal_conv1d.yaml`
-- `benchmarks/parsed/t3_decode_mla.yaml`
-- `benchmarks/raw/akg_kernels_bench_lite_registry.yaml`
 - `docs/status.md`
-- `kernel_forge/benchmark/extractor.py`
-- `kernel_forge/benchmark/sketch.py`
+- `docs/dev_guide.md`
+- `experiments/reports/2026-07-09-runner-path-comparison-sigmoid-scale-sum.yaml`
+- `experiments/runs/2026-07-09-runner-path-comparison-sigmoid-scale-sum.yaml`
+- `scripts/setup_akg_agents_runner_deps.sh`
 - `tasks/active.md`
-- `tests/test_benchmark_registry_and_opspec.py`
 
 Verification:
-- `python -m pytest tests/test_benchmark_registry_and_opspec.py`
-- `python -m pytest tests/test_benchmark_registry_and_opspec.py tests/test_rope_pass4.py tests/test_add_rmsnorm_cast_pass4.py tests/test_experiment_result_import.py`
-- `python -m py_compile kernel_forge/benchmark/extractor.py kernel_forge/benchmark/sketch.py`
-- `python scripts/extract_opspec.py --case third_party/akg/akg_agents/benchmark/akg_kernels_bench_lite/t3/causal_conv1d.py --output benchmarks/parsed/t3_causal_conv1d.yaml --repo-root .`
-- `python scripts/extract_opspec.py --case third_party/akg/akg_agents/benchmark/akg_kernels_bench_lite/t3/decode_mla.py --output benchmarks/parsed/t3_decode_mla.yaml --repo-root .`
-- `python scripts/scan_benchmark_cases.py --bench-dir third_party/akg/akg_agents/benchmark/akg_kernels_bench_lite --repo-root . --output benchmarks/raw/akg_kernels_bench_lite_registry.yaml`
-- YAML parse check for the two new parsed OpSpecs and the updated registry.
+- Ascend: installed `langchain`, `langchain-community`, `langchain-core`,
+  `langgraph`, `langchain-deepseek`, `tree-sitter`, `tree-sitter-cpp`, and
+  `pandas` into `/data/venvs/kf-triton-ascend`.
+- Ascend: `python third_party/akg/akg_agents/examples/kernel_related/run_torch_bench_lite.py --help`
+- Ascend: constrained correctness probe with `--backend npu --cases
+  sigmoid_scale_sum --pass-n 1 --max-concurrent 1 --output
+  outputs/results/akg_agents_runner_probe_sigmoid_2026_07_09.json`; it
+  produced runner JSON and failed only at missing `standard` model config.
+- YAML parse check for the updated runner comparison report and run record.
 - `git diff --check`
 
 Open Issues:
@@ -534,12 +540,13 @@ Open Issues:
 - The project-book email has not been sent yet; this is a manual user action.
 - After the PR is opened, rerun the exporter with `--pr-link <GitLink PR URL>`
   and attach that final output to the email.
-- Need to install or vendor the AKG Agents dependency stack before
-  `run_torch_bench_lite.py` can be used for full runner-path comparison.
+- Need AKG Agents `standard` model configuration before
+  `run_torch_bench_lite.py --mode full` can produce comparable Pass@N and
+  performance artifacts.
 - Need to run the first real live-provider generation and compare it with
   replay/manual Pass@4 results when credentials/model selection are available.
 
 Next Suggested Step:
-- Choose the next manual pre-key seed target, likely `t2/add_rmsnorm_quant`
-  for quantized normalization reuse or `t3/layernorm_gated` for higher-tier
-  normalization coverage.
+- Before an AI API key/model config is available, continue with a deterministic
+  manual seed target, likely `t2/add_rmsnorm_quant` for quantized normalization
+  reuse or `t3/layernorm_gated` for higher-tier normalization coverage.

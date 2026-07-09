@@ -44,15 +44,15 @@ and agents.
    replay `t1/sigmoid_scale_sum` are done.
 12. Choose between `t2/add_rmsnorm_quant` and `t3/layernorm_gated` for the next
    deterministic manual seed before live provider generation.
-13. Install or vendor the AKG Agents dependency stack so
-   `run_torch_bench_lite.py` can be compared with standalone `run_bench.py`.
+13. Configure an AKG Agents `standard` model level before rerunning
+   `run_torch_bench_lite.py --mode full` for full runner-path comparison.
 14. Record model/provider, prompt version, retrieved skills, and candidate index
    for every generated experiment.
 15. Promote reusable generation, repair, or tuning lessons into `skills/`.
 
 ## Research Questions
 
-- After installing the AKG Agents dependency stack, do standalone
+- After configuring an AKG Agents `standard` model level, do standalone
   `tools/run_bench.py` and AKG Agents `run_torch_bench_lite.py --mode full`
   agree closely enough to cite both for final evidence?
 - Which Triton-Ascend APIs can be relied on across rented workers?

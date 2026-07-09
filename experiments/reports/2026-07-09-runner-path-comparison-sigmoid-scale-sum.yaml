@@ -66,37 +66,86 @@ standalone_runner:
 
 akg_agents_runner:
   path: third_party/akg/akg_agents/examples/kernel_related/run_torch_bench_lite.py
-  status: blocked_pre_key_environment
+  status: blocked_pre_key_provider_config
   input_contract: >
     Agent orchestration runner. `--submission-dir` is an output directory for
     extracted successful Agent attempts, not an input directory for
     pre-existing replay/manual submissions.
-  attempted_command: >
+  dependency_setup:
+    status: pass
+    script: scripts/setup_akg_agents_runner_deps.sh
+    manual_command_used_on_ascend: >
+      source /data/venvs/kf-triton-ascend/bin/activate &&
+      python -m pip install "langchain>=1.0.0" "langchain-community>=0.4.0"
+      "langchain-core>=0.3.0" "langgraph>=1.0.0"
+      "langchain-deepseek>=1.0.0" "tree-sitter>=0.21.0"
+      "tree-sitter-cpp>=0.22.0" "pandas>=2.0.0"
+    installed_packages_observed:
+      langchain_core: 1.4.8
+      langchain: 1.3.11
+      langchain_community: 0.4.2
+      langchain_deepseek: 1.1.0
+      langgraph: 1.2.8
+      openai: 2.44.0
+      pandas: 3.0.3
+      tree_sitter: 0.26.0
+  help_probe_command: >
     source /usr/local/Ascend/ascend-toolkit/set_env.sh &&
     source /data/venvs/kf-triton-ascend/bin/activate &&
     export PYTHONPATH=/data/KernelForge-Agent:/data/KernelForge-Agent/third_party/akg/akg_agents/python:${PYTHONPATH:-} &&
     python third_party/akg/akg_agents/examples/kernel_related/run_torch_bench_lite.py --help
+  help_probe_status: pass
+  constrained_correctness_probe:
+    status: fail_expected_without_model_config
+    command: >
+      source /usr/local/Ascend/ascend-toolkit/set_env.sh &&
+      source /data/venvs/kf-triton-ascend/bin/activate &&
+      export PYTHONPATH=/data/KernelForge-Agent:/data/KernelForge-Agent/third_party/akg/akg_agents/python:${PYTHONPATH:-} &&
+      export AKG_AGENTS_LOG_DIR=/data/KernelForge-Agent/outputs/akg_agents_logs &&
+      python third_party/akg/akg_agents/examples/kernel_related/run_torch_bench_lite.py
+      --mode correctness
+      --backend npu
+      --cases sigmoid_scale_sum
+      --pass-n 1
+      --max-concurrent 1
+      --output outputs/results/akg_agents_runner_probe_sigmoid_2026_07_09.json
+    result_path: outputs/results/akg_agents_runner_probe_sigmoid_2026_07_09.json
+    result_schema: single_json_with_timestamp_runner_version_config_environment_summary_results
+    runner_version: benchmark-lite-v2
+    total_cases: 1
+    total_attempts: 1
+    successful_attempts: 0
+    environment_error: null
+    failure_category: provider_config_missing
+    failure_detail: "模型级别 'standard' 未配置，无法创建 LLM 客户端"
   failure:
-    category: environment_error
-    module: langchain_core
-    message: "ModuleNotFoundError: No module named 'langchain_core'"
+    category: provider_config_missing
+    model_level: standard
+    message: >
+      AKG Agents runner can now import, register the Ascend worker, pass its
+      environment check, discover `sigmoid_scale_sum`, and emit a JSON result.
+      It fails when the coder node tries to create the `standard` LLM client
+      because no AKG_AGENTS_STANDARD_* environment variables or
+      ~/.akg/settings.json model entry are configured.
   result_schema: >
-    Not produced in the current environment. `RUNNER.md` specifies a single
-    JSON artifact with top-level `summary`, `results`, and, in performance/full
-    modes, `performance_results` and `performance_summary`.
+    Correctness mode produced one JSON artifact with top-level `timestamp`,
+    `runner_version`, `mode`, `config`, `environment`, `summary`, and `results`.
+    Full/performance mode should additionally include performance fields after
+    successful Agent submissions are extracted.
 
 decision:
   current_authoritative_pre_key_runner: standalone_tools_run_bench_py
   rationale: >
     The standalone runner directly evaluates existing replay/manual
     submissions, is runnable in the current Ascend venv, and produced complete
-    correctness/performance JSON. The AKG Agents runner is the future
-    orchestration path for live Agent generation, but it currently requires the
-    broader AKG Agents dependency stack and provider/agent configuration before
-    it can produce comparable Pass@N and performance artifacts.
+    correctness/performance JSON. The AKG Agents runner is now importable and
+    schema-producing after installing its declared runtime dependencies, but it
+    is an Agent orchestration path that requires live model configuration before
+    it can generate candidates, extract submissions, or produce comparable
+    Pass@N/performance artifacts.
   follow_up: >
-    After installing the AKG Agents runtime dependencies and configuring a live
-    provider, rerun `run_torch_bench_lite.py --backend npu --mode full --cases
+    After configuring a live provider/model level, rerun
+    `run_torch_bench_lite.py --backend npu --mode full --cases
     sigmoid_scale_sum --pass-n 4` and compare its extracted submissions and
     performance schema against the standalone scorer.
 

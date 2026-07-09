@@ -157,6 +157,22 @@ The bootstrap script:
 - runs `npu-smi info`, a `torch_npu` GELU smoke test, and
   `scripts/diagnose_triton_ascend.py`
 
+The standalone benchmark runner is enough for deterministic replay/manual
+submissions. To probe the AKG Agents orchestration runner
+`run_torch_bench_lite.py`, install the additional LangChain/LangGraph runtime
+stack after the main Ascend bootstrap:
+
+```bash
+bash scripts/setup_akg_agents_runner_deps.sh
+```
+
+That script expands the AKG sparse checkout to include `akg_agents/`, installs
+the runner imports into `/data/venvs/kf-triton-ascend`, and prints the `--help`
+probe command. The runner can import and emit correctness-mode JSON without an
+API key, but successful Agent attempts require an AKG Agents `standard` model
+level configured via `AKG_AGENTS_STANDARD_*`, `~/.akg/settings.json`, or
+`.akg/settings*.json`.
+
 Use environment variables if the rented machine differs:
 
 ```bash

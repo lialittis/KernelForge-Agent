@@ -37,6 +37,24 @@ commands:
     source /data/venvs/kf-triton-ascend/bin/activate &&
     export PYTHONPATH=/data/KernelForge-Agent:/data/KernelForge-Agent/third_party/akg/akg_agents/python:${PYTHONPATH:-} &&
     python third_party/akg/akg_agents/examples/kernel_related/run_torch_bench_lite.py --help
+  akg_agents_dependency_setup: >
+    source /data/venvs/kf-triton-ascend/bin/activate &&
+    python -m pip install "langchain>=1.0.0" "langchain-community>=0.4.0"
+    "langchain-core>=0.3.0" "langgraph>=1.0.0"
+    "langchain-deepseek>=1.0.0" "tree-sitter>=0.21.0"
+    "tree-sitter-cpp>=0.22.0" "pandas>=2.0.0"
+  akg_agents_correctness_probe: >
+    source /usr/local/Ascend/ascend-toolkit/set_env.sh &&
+    source /data/venvs/kf-triton-ascend/bin/activate &&
+    export PYTHONPATH=/data/KernelForge-Agent:/data/KernelForge-Agent/third_party/akg/akg_agents/python:${PYTHONPATH:-} &&
+    export AKG_AGENTS_LOG_DIR=/data/KernelForge-Agent/outputs/akg_agents_logs &&
+    python third_party/akg/akg_agents/examples/kernel_related/run_torch_bench_lite.py
+    --mode correctness
+    --backend npu
+    --cases sigmoid_scale_sum
+    --pass-n 1
+    --max-concurrent 1
+    --output outputs/results/akg_agents_runner_probe_sigmoid_2026_07_09.json
   replay_regression_smoke: >
     source /usr/local/Ascend/ascend-toolkit/set_env.sh &&
     source /data/venvs/kf-triton-ascend/bin/activate &&
@@ -58,9 +76,14 @@ results:
     best_weighted_score: 69.79
     result_dir: outputs/results/runner_compare_standalone_replay_sigmoid_2026_07_09
   akg_agents_runner:
-    status: blocked_pre_key_environment
-    failure_category: environment_error
-    failure_detail: "ModuleNotFoundError: No module named 'langchain_core'"
+    status: blocked_pre_key_provider_config
+    dependency_setup_status: pass
+    help_probe_status: pass
+    correctness_probe_status: fail_expected_without_model_config
+    correctness_probe_result: outputs/results/akg_agents_runner_probe_sigmoid_2026_07_09.json
+    failure_category: provider_config_missing
+    failure_detail: "模型级别 'standard' 未配置，无法创建 LLM 客户端"
+    result_schema_produced: true
     comparable_performance_results_produced: false
   replay_regression_smoke:
     status: pass
@@ -75,11 +98,14 @@ results:
 artifacts:
   report: experiments/reports/2026-07-09-runner-path-comparison-sigmoid-scale-sum.yaml
   standalone_results: outputs/results/runner_compare_standalone_replay_sigmoid_2026_07_09
+  akg_agents_probe_result: outputs/results/akg_agents_runner_probe_sigmoid_2026_07_09.json
   replay_regression_generated_root: outputs/generated/2026-07-09-replay-sigmoid-regression-smoke
   replay_regression_results: outputs/results/replay_sigmoid_regression_smoke_2026_07_09
 
 notes: >
   The comparison currently decides only the pre-key evidence path. Standalone
   `tools/run_bench.py` remains the authoritative scorer for deterministic
-  replay/manual submissions. The AKG Agents runner should be compared again
-  after its dependency stack and live provider configuration are available.
+  replay/manual submissions. The AKG Agents runner is now importable and
+  schema-producing after dependency setup, but it still requires live
+  `standard` model configuration before it can generate successful attempts,
+  extract submissions, and produce comparable full-mode performance artifacts.
