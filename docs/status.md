@@ -579,6 +579,12 @@ Verification:
 - Local: `python -m pytest tests/test_experiment_result_import.py
   tests/test_benchmark_registry_and_opspec.py tests/test_layernorm_gated_pass4.py`
 - Local: `git diff --check`.
+- Ascend: `bash -n scripts/run_akg_agents_full_comparison.sh`
+- Ascend: `CHECK_ONLY=1 bash scripts/run_akg_agents_full_comparison.sh`
+  printed the resolved full-mode `run_torch_bench_lite.py` command without
+  launching the runner.
+- Ascend: no-key preflight exited `2` with the expected missing AKG Agents
+  `standard` model configuration message.
 
 Open Issues:
 - GitLink PR is not opened yet; this is a manual user action.
